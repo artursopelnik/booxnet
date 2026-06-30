@@ -19,53 +19,72 @@ const categoryLabels: Record<string, string> = {
   guide: 'Guide',
 };
 
+/* Per-category gradient + icon for the image placeholder */
+const categoryMeta: Record<string, { from: string; to: string; icon: string }> = {
+  news:       { from: '#2563eb', to: '#38bdf8', icon: '📰' },
+  review:     { from: '#059669', to: '#34d399', icon: '⭐' },
+  comparison: { from: '#7c3aed', to: '#a78bfa', icon: '⚖️' },
+  guide:      { from: '#d97706', to: '#fbbf24', icon: '📚' },
+};
+const meta = categoryMeta[category] ?? { from: '#282820', to: '#585850', icon: '📖' };
+
 const formattedDate = pubDate.toLocaleDateString('de-DE', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
+  day: 'numeric', month: 'short', year: 'numeric',
 });
 ---
 
-<article class="group flex flex-col rounded-xl border border-stone-200 bg-white overflow-hidden transition-shadow hover:shadow-md">
-  {coverImage && (
-    <a href={`/blog/${slug}`} class="block overflow-hidden aspect-video bg-stone-100">
+<article class="group flex flex-col rounded-2xl border border-stone-200/80 bg-white overflow-hidden
+  transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-stone-300">
+
+  <!-- Image area: gradient background always visible; real image layered on top -->
+  <a href={`/blog/${slug}`} class="relative block overflow-hidden flex-shrink-0" style="aspect-ratio:16/9">
+    <!-- Gradient placeholder -->
+    <div
+      class="absolute inset-0 flex items-center justify-center"
+      style={`background: linear-gradient(135deg, ${meta.from}, ${meta.to})`}
+    >
+      <span class="text-6xl opacity-20 select-none">{meta.icon}</span>
+    </div>
+
+    {coverImage && (
       <img
         src={coverImage}
         alt={title}
-        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         loading="lazy"
       />
-    </a>
-  )}
-  {!coverImage && (
-    <a href={`/blog/${slug}`} class="block aspect-video bg-gradient-to-br from-ink-800 to-ink-600 flex items-center justify-center">
-      <span class="text-4xl opacity-30">📖</span>
-    </a>
-  )}
+    )}
 
-  <div class="flex flex-col flex-1 p-5">
-    <div class="flex items-center gap-2 mb-3">
-      <span class:list={['category-badge', `category-${category}`]}>
-        {categoryLabels[category] ?? category}
+    <!-- Category badge pinned to image -->
+    <span class:list={['absolute bottom-3 left-3 category-badge shadow-sm backdrop-blur-sm', `category-${category}`]}>
+      {categoryLabels[category] ?? category}
+    </span>
+
+    {readingTime && (
+      <span class="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-sm px-2 py-0.5 text-[11px] font-medium text-white">
+        <svg class="h-3 w-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zm.5 2.25a.75.75 0 00-1.5 0V8c0 .199.079.39.22.53l2 2a.75.75 0 101.06-1.06L8.5 7.69V4.75z"/>
+        </svg>
+        {readingTime} Min.
       </span>
-      {tags.slice(0, 2).map(tag => (
-        <span class="text-xs text-stone-400">#{tag}</span>
-      ))}
-    </div>
+    )}
+  </a>
 
-    <a href={`/blog/${slug}`} class="flex-1">
-      <h2 class="text-base font-semibold text-ink-900 leading-snug mb-2 group-hover:text-accent-700 transition-colors line-clamp-2">
+  <!-- Card body -->
+  <div class="flex flex-col flex-1 p-5">
+    <a href={`/blog/${slug}`}>
+      <h2 class="text-[0.95rem] font-bold text-ink-900 leading-snug mb-2 group-hover:text-accent-700 transition-colors line-clamp-2">
         {title}
       </h2>
-      <p class="text-sm text-stone-500 line-clamp-3 leading-relaxed">
-        {description}
-      </p>
     </a>
+    <p class="text-sm text-stone-500 line-clamp-3 leading-relaxed flex-1">
+      {description}
+    </p>
 
-    <div class="mt-4 flex items-center justify-between text-xs text-stone-400">
-      <time datetime={pubDate.toISOString()}>{formattedDate}</time>
-      {readingTime && (
-        <span>{readingTime} Min. Lesezeit</span>
+    <div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between">
+      <time class="text-xs text-stone-400" datetime={pubDate.toISOString()}>{formattedDate}</time>
+      {tags.length > 0 && (
+        <span class="text-xs text-stone-400 truncate max-w-[140px]">#{tags[0]}</span>
       )}
     </div>
   </div>

@@ -10,31 +10,37 @@ const navLinks = [
 ];
 
 const currentPath = Astro.url.pathname;
+
+function isActive(href: string) {
+  if (href === '/') return currentPath === '/';
+  return currentPath.startsWith(href.split('?')[0]);
+}
 ---
 
-<header class="sticky top-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur-sm">
+<header class="sticky top-0 z-50 border-b border-stone-200/80 bg-white/95 backdrop-blur-md">
   <div class="mx-auto max-w-6xl px-4 sm:px-6">
-    <div class="flex h-16 items-center justify-between">
+    <div class="flex h-16 items-center justify-between gap-4">
+
       <!-- Logo -->
-      <a href="/" class="flex items-center gap-2 group">
-        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-900 text-white font-bold text-sm transition-transform group-hover:scale-105">
+      <a href="/" class="flex items-center gap-2.5 flex-shrink-0 group">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-900 text-white font-bold text-[13px] transition-transform group-hover:scale-105 select-none shadow-sm">
           BN
         </div>
-        <div>
-          <span class="font-bold text-ink-900 text-lg leading-none block">booxnet</span>
-          <span class="text-xs text-stone-500 leading-none">.com</span>
+        <div class="leading-none">
+          <span class="font-bold text-ink-900 text-[17px] tracking-tight block">booxnet</span>
+          <span class="text-[10px] text-stone-400 font-medium">.com</span>
         </div>
       </a>
 
       <!-- Desktop Nav -->
-      <nav class="hidden md:flex items-center gap-1">
+      <nav class="hidden md:flex items-center gap-0.5" aria-label="Hauptnavigation">
         {navLinks.map(link => (
           <a
             href={link.href}
             class:list={[
-              'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-              currentPath === link.href
-                ? 'bg-ink-900 text-white'
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150',
+              isActive(link.href)
+                ? 'bg-ink-900 text-white shadow-sm'
                 : 'text-stone-600 hover:bg-stone-100 hover:text-ink-900',
             ]}
           >
@@ -46,27 +52,31 @@ const currentPath = Astro.url.pathname;
       <!-- Mobile menu button -->
       <button
         id="mobile-menu-button"
-        class="md:hidden p-2 rounded-md text-stone-600 hover:bg-stone-100"
+        class="md:hidden p-2 rounded-lg text-stone-600 hover:bg-stone-100 transition-colors"
         aria-label="Menü öffnen"
         aria-expanded="false"
+        aria-controls="mobile-menu"
       >
-        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        <svg id="icon-open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+        <svg id="icon-close" class="h-5 w-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
     </div>
 
     <!-- Mobile Nav -->
-    <div id="mobile-menu" class="hidden md:hidden pb-4">
-      <nav class="flex flex-col gap-1">
+    <div id="mobile-menu" class="hidden md:hidden pb-4 border-t border-stone-100 pt-2 mt-0">
+      <nav class="flex flex-col gap-0.5" aria-label="Mobile Navigation">
         {navLinks.map(link => (
           <a
             href={link.href}
             class:list={[
-              'px-3 py-2 rounded-md text-sm font-medium',
-              currentPath === link.href
+              'px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+              isActive(link.href)
                 ? 'bg-ink-900 text-white'
-                : 'text-stone-600 hover:bg-stone-100',
+                : 'text-stone-600 hover:bg-stone-100 hover:text-ink-900',
             ]}
           >
             {link.label}
@@ -80,8 +90,14 @@ const currentPath = Astro.url.pathname;
 <script>
   const btn = document.getElementById('mobile-menu-button');
   const menu = document.getElementById('mobile-menu');
+  const iconOpen = document.getElementById('icon-open');
+  const iconClose = document.getElementById('icon-close');
+
   btn?.addEventListener('click', () => {
-    const isOpen = menu?.classList.toggle('hidden') === false;
-    btn.setAttribute('aria-expanded', String(isOpen));
+    const isOpen = !menu?.classList.contains('hidden');
+    menu?.classList.toggle('hidden');
+    btn.setAttribute('aria-expanded', String(!isOpen));
+    iconOpen?.classList.toggle('hidden', !isOpen);
+    iconClose?.classList.toggle('hidden', isOpen);
   });
 </script>

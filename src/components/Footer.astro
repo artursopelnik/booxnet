@@ -3,50 +3,74 @@ const year = new Date().getFullYear();
 ---
 
 <footer class="border-t border-stone-200 bg-white mt-16">
-  <div class="mx-auto max-w-6xl px-4 sm:px-6 py-12">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 pt-12 pb-8">
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
       <!-- Brand -->
       <div class="lg:col-span-2">
-        <a href="/" class="flex items-center gap-2 mb-3">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-ink-900 text-white font-bold text-xs">
+        <a href="/" class="flex items-center gap-2.5 mb-4 group w-fit">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-900 text-white font-bold text-[13px] shadow-sm transition-transform group-hover:scale-105 select-none">
             BN
           </div>
-          <span class="font-bold text-ink-900">booxnet.com</span>
+          <div class="leading-none">
+            <span class="font-bold text-ink-900 text-base block">booxnet.com</span>
+            <span class="text-[10px] text-stone-400">Inoffizielles Fan-Projekt</span>
+          </div>
         </a>
-        <p class="text-sm text-stone-500 max-w-xs">
-          Inoffizieller Fan-Blog rund um ONYX BOOX E-Ink-Tablets und E-Reader.
-          Nicht verbunden mit Onyx International Co., Ltd.
+        <p class="text-sm text-stone-500 leading-relaxed max-w-xs">
+          Unabhängiger News- und Review-Blog rund um ONYX BOOX E-Ink-Tablets und E-Reader –
+          nicht verbunden mit Onyx International Co., Ltd.
         </p>
-        <p class="mt-3 text-xs text-stone-400">
-          * Affiliate-Links: Wir erhalten eine kleine Provision, die dir keine Mehrkosten verursacht.
+        <p class="mt-3 text-xs text-stone-400 leading-relaxed">
+          * Affiliate-Links: Bei Kauf über unsere Links erhalten wir eine Provision –
+          für dich entstehen keine Mehrkosten.
         </p>
       </div>
 
-      <!-- Navigation -->
+      <!-- Inhalte -->
       <div>
-        <h3 class="text-sm font-semibold text-ink-900 mb-3">Inhalte</h3>
-        <ul class="space-y-2 text-sm text-stone-500">
-          <li><a href="/blog?category=news" class="hover:text-ink-900 transition-colors">News</a></li>
-          <li><a href="/blog?category=review" class="hover:text-ink-900 transition-colors">Reviews</a></li>
-          <li><a href="/blog?category=comparison" class="hover:text-ink-900 transition-colors">Vergleiche</a></li>
-          <li><a href="/blog?category=guide" class="hover:text-ink-900 transition-colors">Guides</a></li>
+        <h3 class="text-xs font-bold text-ink-900 uppercase tracking-wider mb-4">Inhalte</h3>
+        <ul class="space-y-2.5">
+          {[
+            { href: '/blog?category=news',       label: 'News' },
+            { href: '/blog?category=review',     label: 'Reviews' },
+            { href: '/blog?category=comparison', label: 'Vergleiche' },
+            { href: '/blog?category=guide',      label: 'Guides' },
+            { href: '/blog',                     label: 'Alle Artikel' },
+          ].map(l => (
+            <li>
+              <a href={l.href} class="text-sm text-stone-500 hover:text-ink-900 transition-colors">
+                {l.label}
+              </a>
+            </li>
+          ))}
         </ul>
       </div>
 
-      <!-- Legal -->
+      <!-- Rechtliches -->
       <div>
-        <h3 class="text-sm font-semibold text-ink-900 mb-3">Rechtliches</h3>
-        <ul class="space-y-2 text-sm text-stone-500">
-          <li><a href="/about" class="hover:text-ink-900 transition-colors">Über uns / Disclaimer</a></li>
-          <li><a href="/affiliate-disclosure" class="hover:text-ink-900 transition-colors">Affiliate-Disclosure</a></li>
-          <li><a href="/contact" class="hover:text-ink-900 transition-colors">Kontakt / Impressum</a></li>
+        <h3 class="text-xs font-bold text-ink-900 uppercase tracking-wider mb-4">Rechtliches</h3>
+        <ul class="space-y-2.5">
+          {[
+            { href: '/about',                label: 'Über uns / Disclaimer' },
+            { href: '/affiliate-disclosure', label: 'Affiliate-Disclosure' },
+            { href: '/contact',              label: 'Kontakt / Impressum' },
+          ].map(l => (
+            <li>
+              <a href={l.href} class="text-sm text-stone-500 hover:text-ink-900 transition-colors">
+                {l.label}
+              </a>
+            </li>
+          ))}
         </ul>
       </div>
     </div>
 
-    <div class="mt-8 pt-8 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <!-- Bottom bar -->
+    <div class="mt-10 pt-6 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
       <p class="text-xs text-stone-400">
-        &copy; {year} booxnet.com – Inoffizielles Community-Projekt. Alle Markennamen sind Eigentum ihrer jeweiligen Inhaber.
+        &copy; {year} booxnet.com – Inoffizielles Community-Projekt.
+        Alle Markennamen sind Eigentum ihrer jeweiligen Inhaber.
       </p>
       <p class="text-xs text-stone-400">
         Kein offizielles Produkt von Onyx International Co., Ltd.

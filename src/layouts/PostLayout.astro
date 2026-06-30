@@ -15,11 +15,17 @@ const { post, headings } = Astro.props;
 const { title, description, pubDate, updatedDate, category, coverImage, tags, affiliateLinks } = post.data;
 
 const categoryLabels: Record<string, string> = {
-  news: 'News',
-  review: 'Review',
-  comparison: 'Vergleich',
-  guide: 'Guide',
+  news: 'News', review: 'Review', comparison: 'Vergleich', guide: 'Guide',
 };
+
+const categoryMeta: Record<string, { from: string; to: string }> = {
+  news:       { from: '#2563eb', to: '#38bdf8' },
+  review:     { from: '#059669', to: '#34d399' },
+  comparison: { from: '#7c3aed', to: '#a78bfa' },
+  guide:      { from: '#d97706', to: '#fbbf24' },
+};
+
+const catMeta = categoryMeta[category] ?? { from: '#282820', to: '#585850' };
 
 const formattedPubDate = pubDate.toLocaleDateString('de-DE', {
   day: 'numeric', month: 'long', year: 'numeric',
@@ -28,47 +34,77 @@ const formattedUpdatedDate = updatedDate?.toLocaleDateString('de-DE', {
   day: 'numeric', month: 'long', year: 'numeric',
 });
 
-// Estimate reading time from word count
 const wordCount = post.body?.split(/\s+/).length ?? 0;
-const readingTime = Math.ceil(wordCount / 200);
+const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
-// Get related posts (same category, excluding current)
 const allPosts = await getCollection('posts');
 const related = allPosts
   .filter(p => p.slug !== post.slug && p.data.category === category)
   .slice(0, 3);
+
 const hasAffiliate = affiliateLinks && affiliateLinks.length > 0;
+
+function relatedReadingTime(body: string | undefined) {
+  return Math.max(1, Math.ceil((body?.split(/\s+/).length ?? 0) / 200));
+}
 ---
 
 <BaseLayout title={title} description={description} type="article" pubDate={pubDate} ogImage={coverImage}>
-  <article class="mx-auto max-w-3xl px-4 sm:px-6 py-10">
+
+  <!-- Reading Progress Bar -->
+  <div id="reading-progress" aria-hidden="true"></div>
+
+  <!-- Breadcrumb -->
+  <nav class="mx-auto max-w-3xl px-4 sm:px-6 pt-5 pb-0" aria-label="Breadcrumb">
+    <ol class="flex items-center gap-1.5 text-xs text-stone-400 flex-wrap">
+      <li><a href="/" class="hover:text-ink-900 transition-colors font-medium">Home</a></li>
+      <li aria-hidden="true"><svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 010-1.06z" clip-rule="evenodd"/></svg></li>
+      <li><a href="/blog" class="hover:text-ink-900 transition-colors">Blog</a></li>
+      <li aria-hidden="true"><svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 010-1.06z" clip-rule="evenodd"/></svg></li>
+      <li><a href={`/blog?category=${category}`} class:list={['hover:text-ink-900 transition-colors category-badge py-0.5', `category-${category}`]}>
+        {categoryLabels[category] ?? category}
+      </a></li>
+      <li aria-hidden="true"><svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 010-1.06z" clip-rule="evenodd"/></svg></li>
+      <li class="text-stone-500 truncate max-w-[200px]" aria-current="page">{title}</li>
+    </ol>
+  </nav>
+
+  <article class="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+
     <!-- Article Header -->
     <header class="mb-8">
-      <div class="flex items-center gap-2 mb-4">
+      <div class="flex items-center gap-2 mb-4 flex-wrap">
         <span class:list={['category-badge', `category-${category}`]}>
           {categoryLabels[category] ?? category}
         </span>
-        <span class="text-xs text-stone-400">{readingTime} Min. Lesezeit</span>
+        <span class="text-stone-300" aria-hidden="true">·</span>
+        <span class="text-sm text-stone-400 flex items-center gap-1">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zm.5 2.25a.75.75 0 00-1.5 0V8c0 .199.079.39.22.53l2 2a.75.75 0 101.06-1.06L8.5 7.69V4.75z"/>
+          </svg>
+          {readingTime} Min. Lesezeit
+        </span>
       </div>
 
-      <h1 class="text-2xl sm:text-3xl font-bold text-ink-900 leading-tight mb-4">
+      <h1 class="text-[1.9rem] sm:text-[2.2rem] font-extrabold text-ink-900 leading-[1.15] tracking-tight mb-4">
         {title}
       </h1>
-      <p class="text-lg text-stone-500 leading-relaxed mb-4">{description}</p>
 
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-stone-400">
+      <p class="text-lg text-stone-500 leading-relaxed mb-5">{description}</p>
+
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-stone-400 border-t border-stone-100 pt-4">
         <time datetime={pubDate.toISOString()}>
-          Veröffentlicht: {formattedPubDate}
+          Veröffentlicht: <span class="font-medium text-stone-600">{formattedPubDate}</span>
         </time>
         {updatedDate && (
           <time datetime={updatedDate.toISOString()}>
-            Aktualisiert: {formattedUpdatedDate}
+            Aktualisiert: <span class="font-medium text-stone-600">{formattedUpdatedDate}</span>
           </time>
         )}
       </div>
 
       {tags.length > 0 && (
-        <div class="flex flex-wrap gap-1.5 mt-4">
+        <div class="flex flex-wrap gap-1.5 mt-3">
           {tags.map(tag => (
             <span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">
               #{tag}
@@ -79,13 +115,20 @@ const hasAffiliate = affiliateLinks && affiliateLinks.length > 0;
     </header>
 
     <!-- Cover Image -->
-    {coverImage && (
-      <div class="mb-8 rounded-xl overflow-hidden aspect-video bg-stone-100">
-        <img src={coverImage} alt={title} class="w-full h-full object-cover" />
+    {coverImage ? (
+      <div class="mb-8 rounded-2xl overflow-hidden shadow-md relative" style="aspect-ratio:16/9">
+        <img src={coverImage} alt={title} class="w-full h-full object-cover"/>
+      </div>
+    ) : (
+      <div class="mb-8 rounded-2xl overflow-hidden relative" style="aspect-ratio:16/9; background: linear-gradient(135deg, {catMeta.from}, {catMeta.to})">
+        <div class="absolute inset-0 flex items-center justify-center"
+          style={`background: linear-gradient(135deg, ${catMeta.from}, ${catMeta.to})`}>
+          <span class="text-8xl opacity-20 select-none">📖</span>
+        </div>
       </div>
     )}
 
-    <!-- Affiliate Disclosure (if article has affiliate links) -->
+    <!-- Affiliate Disclosure -->
     {hasAffiliate && <AffiliateDisclosure />}
 
     <!-- Table of Contents -->
@@ -96,29 +139,25 @@ const hasAffiliate = affiliateLinks && affiliateLinks.length > 0;
       <slot />
     </div>
 
-    <!-- Affiliate Disclosure at bottom (if article has affiliate links) -->
+    <!-- Bottom: Affiliate compact note -->
     {hasAffiliate && (
-      <div class="mt-10 pt-6 border-t border-stone-100">
+      <div class="mt-10 pt-5 border-t border-stone-100">
         <AffiliateDisclosure compact />
       </div>
     )}
 
-    <!-- Affiliate Product Links -->
-    {hasAffiliate && affiliateLinks && affiliateLinks.length > 0 && (
-      <div class="mt-6 rounded-xl border border-stone-200 bg-stone-50 p-5">
-        <h3 class="text-sm font-semibold text-ink-900 mb-3">Im Artikel erwähnte Produkte</h3>
+    <!-- Product Links -->
+    {hasAffiliate && affiliateLinks && (
+      <div class="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-5">
+        <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-3">Im Artikel erwähnte Produkte</p>
         <ul class="space-y-2">
           {affiliateLinks.map(link => (
             <li>
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                class="flex items-center gap-2 text-sm text-accent-700 hover:underline"
-              >
-                <svg class="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clip-rule="evenodd" />
-                  <path fill-rule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clip-rule="evenodd" />
+              <a href={link.url} target="_blank" rel="noopener noreferrer nofollow"
+                class="flex items-center gap-2 text-sm font-medium text-accent-700 hover:text-accent-800 hover:underline transition-colors">
+                <svg class="h-4 w-4 flex-shrink-0 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clip-rule="evenodd"/>
+                  <path fill-rule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clip-rule="evenodd"/>
                 </svg>
                 {link.label}
               </a>
@@ -127,14 +166,29 @@ const hasAffiliate = affiliateLinks && affiliateLinks.length > 0;
         </ul>
       </div>
     )}
+
+    <!-- Back link -->
+    <div class="mt-10 pt-6 border-t border-stone-100">
+      <a href="/blog" class="inline-flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-ink-900 transition-colors">
+        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clip-rule="evenodd"/>
+        </svg>
+        Zurück zum Blog
+      </a>
+    </div>
   </article>
 
   <!-- Related Articles -->
   {related.length > 0 && (
-    <section class="border-t border-stone-200 bg-stone-50 py-12">
+    <section class="border-t border-stone-200 bg-stone-50 py-14">
       <div class="mx-auto max-w-6xl px-4 sm:px-6">
-        <h2 class="text-xl font-bold text-ink-900 mb-6">Ähnliche Artikel</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-ink-900">Ähnliche Artikel</h2>
+          <a href={`/blog?category=${category}`} class="text-sm font-semibold text-accent-600 hover:text-accent-700 transition-colors">
+            Alle {categoryLabels[category]}s →
+          </a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {related.map(p => (
             <ArticleCard
               title={p.data.title}
@@ -144,6 +198,7 @@ const hasAffiliate = affiliateLinks && affiliateLinks.length > 0;
               slug={p.slug}
               coverImage={p.data.coverImage}
               tags={p.data.tags}
+              readingTime={relatedReadingTime(p.body)}
             />
           ))}
         </div>
@@ -151,3 +206,19 @@ const hasAffiliate = affiliateLinks && affiliateLinks.length > 0;
     </section>
   )}
 </BaseLayout>
+
+<!-- Reading Progress Script -->
+<script>
+  const bar = document.getElementById('reading-progress');
+  if (bar) {
+    const update = () => {
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      const pct = scrollHeight === clientHeight
+        ? 0
+        : (scrollTop / (scrollHeight - clientHeight)) * 100;
+      bar.style.width = `${Math.min(pct, 100)}%`;
+    };
+    document.addEventListener('scroll', update, { passive: true });
+    update();
+  }
+</script>
