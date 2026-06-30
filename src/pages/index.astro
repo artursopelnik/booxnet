@@ -1,0 +1,166 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ArticleCard from '../components/ArticleCard.astro';
+import { getCollection } from 'astro:content';
+
+const allPosts = await getCollection('posts');
+const sortedPosts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const latestPosts = sortedPosts.slice(0, 6);
+const featuredPost = sortedPosts[0];
+
+const categoryLabels: Record<string, string> = {
+  news: 'News',
+  review: 'Review',
+  comparison: 'Vergleich',
+  guide: 'Guide',
+};
+
+const stats = [
+  { label: 'Artikel', value: allPosts.length.toString() },
+  { label: 'Kategorien', value: '4' },
+  { label: 'E-Reader getestet', value: '20+' },
+];
+---
+
+<BaseLayout
+  title="booxnet.com"
+  description="Inoffizieller News- und Review-Blog rund um ONYX BOOX E-Ink-Tablets und E-Reader. Aktuelle Tests, Vergleiche und Guides."
+>
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden bg-gradient-to-br from-ink-900 via-ink-800 to-ink-700 text-white">
+    <div class="absolute inset-0 opacity-5">
+      <div class="absolute inset-0" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
+    </div>
+    <div class="relative mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-28">
+      <div class="max-w-2xl">
+        <span class="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-stone-300 mb-6 border border-white/20">
+          Inoffizielles Community-Projekt
+        </span>
+        <h1 class="text-4xl sm:text-5xl font-bold leading-tight mb-6">
+          Alles rund um<br />
+          <span class="text-accent-400">ONYX BOOX</span><br />
+          E-Ink-Tablets
+        </h1>
+        <p class="text-lg text-stone-300 leading-relaxed mb-8 max-w-xl">
+          Unabhängige Reviews, aktuelle News, Gerätevergleiche und Guides
+          für ONYX BOOX E-Reader und E-Ink-Tablets – von der Community, für die Community.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a
+            href="/blog"
+            class="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-ink-900 hover:bg-stone-100 transition-colors"
+          >
+            Alle Artikel lesen
+          </a>
+          <a
+            href="/blog?category=review"
+            class="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/20 transition-colors"
+          >
+            Reviews ansehen
+          </a>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="mt-14 flex flex-wrap gap-8">
+        {stats.map(stat => (
+          <div>
+            <div class="text-3xl font-bold text-white">{stat.value}</div>
+            <div class="text-sm text-stone-400">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Post -->
+  {featuredPost && (
+    <section class="mx-auto max-w-6xl px-4 sm:px-6 py-12">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-ink-900">Neuester Artikel</h2>
+      </div>
+      <a href={`/blog/${featuredPost.slug}`} class="group block rounded-2xl overflow-hidden border border-stone-200 bg-white hover:shadow-lg transition-shadow">
+        <div class="md:flex">
+          {featuredPost.data.coverImage ? (
+            <div class="md:w-2/5 aspect-video md:aspect-auto overflow-hidden bg-stone-100">
+              <img
+                src={featuredPost.data.coverImage}
+                alt={featuredPost.data.title}
+                class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            </div>
+          ) : (
+            <div class="md:w-2/5 aspect-video md:aspect-auto bg-gradient-to-br from-ink-800 to-ink-600 flex items-center justify-center">
+              <span class="text-6xl opacity-30">📖</span>
+            </div>
+          )}
+          <div class="flex flex-col justify-center p-8 md:w-3/5">
+            <span class:list={['category-badge mb-4 self-start', `category-${featuredPost.data.category}`]}>
+              {categoryLabels[featuredPost.data.category]}
+            </span>
+            <h3 class="text-2xl font-bold text-ink-900 leading-tight mb-3 group-hover:text-accent-700 transition-colors">
+              {featuredPost.data.title}
+            </h3>
+            <p class="text-stone-500 leading-relaxed mb-4">{featuredPost.data.description}</p>
+            <time class="text-sm text-stone-400" datetime={featuredPost.data.pubDate.toISOString()}>
+              {featuredPost.data.pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </time>
+          </div>
+        </div>
+      </a>
+    </section>
+  )}
+
+  <!-- Category Filter Shortcuts -->
+  <section class="bg-stone-100 border-y border-stone-200 py-6">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-sm font-medium text-stone-500 mr-2">Kategorien:</span>
+        {(['news', 'review', 'comparison', 'guide'] as const).map(cat => (
+          <a
+            href={`/blog?category=${cat}`}
+            class:list={['category-badge text-sm py-1 px-3 hover:opacity-80 transition-opacity', `category-${cat}`]}
+          >
+            {categoryLabels[cat]}
+          </a>
+        ))}
+        <a href="/blog" class="ml-auto text-sm text-accent-600 hover:underline font-medium">
+          Alle Artikel →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Latest Articles Grid -->
+  <section class="mx-auto max-w-6xl px-4 sm:px-6 py-12">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-bold text-ink-900">Aktuelle Artikel</h2>
+      <a href="/blog" class="text-sm text-accent-600 hover:underline font-medium">Alle anzeigen →</a>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {latestPosts.slice(1).map(post => (
+        <ArticleCard
+          title={post.data.title}
+          description={post.data.description}
+          pubDate={post.data.pubDate}
+          category={post.data.category}
+          slug={post.slug}
+          coverImage={post.data.coverImage}
+          tags={post.data.tags}
+        />
+      ))}
+    </div>
+  </section>
+
+  <!-- Disclaimer Banner -->
+  <section class="bg-stone-100 border-t border-stone-200 py-8">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6">
+      <p class="text-sm text-stone-500 text-center max-w-2xl mx-auto">
+        <strong class="text-stone-700">Hinweis:</strong> booxnet.com ist ein inoffizielles Fan-Projekt und steht in
+        keiner Verbindung zu Onyx International Co., Ltd. oder der Marke BOOX.
+        Alle Markennamen sind Eigentum ihrer jeweiligen Inhaber.
+        <a href="/about" class="text-accent-600 hover:underline ml-1">Mehr erfahren →</a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>

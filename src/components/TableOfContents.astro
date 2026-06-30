@@ -1,0 +1,37 @@
+---
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+}
+
+const { headings } = Astro.props;
+const filtered = headings.filter(h => h.depth <= 3);
+---
+
+{filtered.length > 2 && (
+  <nav class="not-prose my-8 rounded-xl border border-stone-200 bg-stone-50 p-5" aria-label="Inhaltsverzeichnis">
+    <p class="text-sm font-semibold text-ink-900 mb-3 flex items-center gap-2">
+      <svg class="h-4 w-4 text-stone-400" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z" clip-rule="evenodd" />
+      </svg>
+      Inhaltsverzeichnis
+    </p>
+    <ol class="space-y-1.5">
+      {filtered.map(heading => (
+        <li style={`padding-left: ${(heading.depth - 2) * 16}px`}>
+          <a
+            href={`#${heading.slug}`}
+            class="text-sm text-stone-600 hover:text-accent-700 transition-colors"
+          >
+            {heading.text}
+          </a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+)}

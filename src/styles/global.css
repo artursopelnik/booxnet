@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-stone-50 text-ink-900 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .category-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .category-news {
+    @apply bg-blue-100 text-blue-800;
+  }
+
+  .category-review {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .category-comparison {
+    @apply bg-purple-100 text-purple-800;
+  }
+
+  .category-guide {
+    @apply bg-amber-100 text-amber-800;
+  }
+
+  .prose-article {
+    @apply prose prose-stone max-w-none
+      prose-headings:font-semibold
+      prose-a:text-accent-600 prose-a:no-underline hover:prose-a:underline
+      prose-code:bg-stone-100 prose-code:px-1 prose-code:rounded
+      prose-pre:bg-ink-900 prose-pre:text-stone-100
+      prose-blockquote:border-accent-400 prose-blockquote:bg-accent-50 prose-blockquote:py-1
+      prose-img:rounded-xl prose-img:shadow-md
+      prose-table:text-sm
+      prose-th:bg-stone-100;
+  }
+}

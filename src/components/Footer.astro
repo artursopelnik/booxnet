@@ -1,0 +1,56 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-stone-200 bg-white mt-16">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 py-12">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <!-- Brand -->
+      <div class="lg:col-span-2">
+        <a href="/" class="flex items-center gap-2 mb-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-ink-900 text-white font-bold text-xs">
+            BN
+          </div>
+          <span class="font-bold text-ink-900">booxnet.com</span>
+        </a>
+        <p class="text-sm text-stone-500 max-w-xs">
+          Inoffizieller Fan-Blog rund um ONYX BOOX E-Ink-Tablets und E-Reader.
+          Nicht verbunden mit Onyx International Co., Ltd.
+        </p>
+        <p class="mt-3 text-xs text-stone-400">
+          * Affiliate-Links: Wir erhalten eine kleine Provision, die dir keine Mehrkosten verursacht.
+        </p>
+      </div>
+
+      <!-- Navigation -->
+      <div>
+        <h3 class="text-sm font-semibold text-ink-900 mb-3">Inhalte</h3>
+        <ul class="space-y-2 text-sm text-stone-500">
+          <li><a href="/blog?category=news" class="hover:text-ink-900 transition-colors">News</a></li>
+          <li><a href="/blog?category=review" class="hover:text-ink-900 transition-colors">Reviews</a></li>
+          <li><a href="/blog?category=comparison" class="hover:text-ink-900 transition-colors">Vergleiche</a></li>
+          <li><a href="/blog?category=guide" class="hover:text-ink-900 transition-colors">Guides</a></li>
+        </ul>
+      </div>
+
+      <!-- Legal -->
+      <div>
+        <h3 class="text-sm font-semibold text-ink-900 mb-3">Rechtliches</h3>
+        <ul class="space-y-2 text-sm text-stone-500">
+          <li><a href="/about" class="hover:text-ink-900 transition-colors">Über uns / Disclaimer</a></li>
+          <li><a href="/affiliate-disclosure" class="hover:text-ink-900 transition-colors">Affiliate-Disclosure</a></li>
+          <li><a href="/contact" class="hover:text-ink-900 transition-colors">Kontakt / Impressum</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mt-8 pt-8 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p class="text-xs text-stone-400">
+        &copy; {year} booxnet.com – Inoffizielles Community-Projekt. Alle Markennamen sind Eigentum ihrer jeweiligen Inhaber.
+      </p>
+      <p class="text-xs text-stone-400">
+        Kein offizielles Produkt von Onyx International Co., Ltd.
+      </p>
+    </div>
+  </div>
+</footer>

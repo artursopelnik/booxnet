@@ -1,0 +1,72 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  category: string;
+  slug: string;
+  coverImage?: string;
+  tags?: string[];
+  readingTime?: number;
+}
+
+const { title, description, pubDate, category, slug, coverImage, tags = [], readingTime } = Astro.props;
+
+const categoryLabels: Record<string, string> = {
+  news: 'News',
+  review: 'Review',
+  comparison: 'Vergleich',
+  guide: 'Guide',
+};
+
+const formattedDate = pubDate.toLocaleDateString('de-DE', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<article class="group flex flex-col rounded-xl border border-stone-200 bg-white overflow-hidden transition-shadow hover:shadow-md">
+  {coverImage && (
+    <a href={`/blog/${slug}`} class="block overflow-hidden aspect-video bg-stone-100">
+      <img
+        src={coverImage}
+        alt={title}
+        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        loading="lazy"
+      />
+    </a>
+  )}
+  {!coverImage && (
+    <a href={`/blog/${slug}`} class="block aspect-video bg-gradient-to-br from-ink-800 to-ink-600 flex items-center justify-center">
+      <span class="text-4xl opacity-30">📖</span>
+    </a>
+  )}
+
+  <div class="flex flex-col flex-1 p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <span class:list={['category-badge', `category-${category}`]}>
+        {categoryLabels[category] ?? category}
+      </span>
+      {tags.slice(0, 2).map(tag => (
+        <span class="text-xs text-stone-400">#{tag}</span>
+      ))}
+    </div>
+
+    <a href={`/blog/${slug}`} class="flex-1">
+      <h2 class="text-base font-semibold text-ink-900 leading-snug mb-2 group-hover:text-accent-700 transition-colors line-clamp-2">
+        {title}
+      </h2>
+      <p class="text-sm text-stone-500 line-clamp-3 leading-relaxed">
+        {description}
+      </p>
+    </a>
+
+    <div class="mt-4 flex items-center justify-between text-xs text-stone-400">
+      <time datetime={pubDate.toISOString()}>{formattedDate}</time>
+      {readingTime && (
+        <span>{readingTime} Min. Lesezeit</span>
+      )}
+    </div>
+  </div>
+</article>
