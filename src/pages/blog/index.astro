@@ -3,106 +3,91 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArticleCard from '../../components/ArticleCard.astro';
 import { getCollection } from 'astro:content';
 
-const allPosts = await getCollection('posts');
-const sortedPosts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const all     = await getCollection('posts');
+const sorted  = all.sort((a,b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const cats    = ['news','review','comparison','guide'] as const;
+const catLabels: Record<string,string> = { news:'News', review:'Review', comparison:'Vergleich', guide:'Guide' };
 
-const categoryLabels: Record<string, string> = {
-  news: 'News', review: 'Review', comparison: 'Vergleich', guide: 'Guide',
-};
+const active = Astro.url.searchParams.get('category') ?? 'all';
+const shown  = active === 'all' ? sorted : sorted.filter(p => p.data.category === active);
 
-const categories = ['news', 'review', 'comparison', 'guide'] as const;
-
-const activeCategory = Astro.url.searchParams.get('category') ?? 'all';
-
-const filtered = activeCategory === 'all'
-  ? sortedPosts
-  : sortedPosts.filter(p => p.data.category === activeCategory);
-
-function readingTime(body: string | undefined) {
-  return Math.max(1, Math.ceil((body?.split(/\s+/).length ?? 0) / 200));
-}
+function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).length ?? 0) / 200)); }
 ---
 
 <BaseLayout
   title="Blog – Alle Artikel"
-  description="Alle News, Reviews, Vergleiche und Guides rund um ONYX BOOX E-Ink-Tablets und E-Reader."
+  description="Alle News, Reviews, Vergleiche und Guides rund um ONYX BOOX E-Ink-Tablets."
 >
   <div class="mx-auto max-w-6xl px-4 sm:px-6 py-10">
 
     <!-- Page header -->
-    <header class="mb-8">
-      <h1 class="text-3xl font-extrabold text-ink-900 mb-1 tracking-tight">Blog</h1>
-      <p class="text-stone-500">News, Reviews, Vergleiche und Guides zu ONYX BOOX Geräten</p>
+    <header class="mb-8 pb-6 border-b border-ink-200">
+      <h1 class="font-display font-black text-3xl sm:text-4xl text-ink-900 mb-1 tracking-tight">Blog</h1>
+      <p class="text-ink-500 text-sm">News, Reviews, Vergleiche und Guides zu ONYX BOOX Geräten</p>
     </header>
 
-    <!-- Tab-style category filter -->
-    <div class="mb-8" role="navigation" aria-label="Kategorien filtern">
-      <div class="flex items-end gap-0 border-b-2 border-stone-200 overflow-x-auto">
-        <a
-          href="/blog"
-          class:list={[
-            'flex-shrink-0 px-4 pb-2.5 pt-1 text-sm font-semibold transition-all border-b-2 -mb-[2px]',
-            activeCategory === 'all'
-              ? 'border-accent-500 text-accent-700'
-              : 'border-transparent text-stone-500 hover:text-ink-900 hover:border-stone-300',
-          ]}
-        >
+    <!-- Tab filter -->
+    <nav class="mb-8" aria-label="Kategorien">
+      <div class="flex items-end gap-0 border-b-2 border-ink-200 overflow-x-auto">
+
+        {/* All tab */}
+        <a href="/blog" class:list={[
+          'flex-shrink-0 px-4 pb-2.5 pt-1 text-sm font-semibold transition-all border-b-2 -mb-[2px]',
+          active === 'all'
+            ? 'border-accent-500 text-accent-600'
+            : 'border-transparent text-ink-500 hover:text-ink-900 hover:border-ink-300',
+        ]}>
           Alle
           <span class:list={[
-            'ml-1.5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 py-0.5 min-w-[1.25rem]',
-            activeCategory === 'all' ? 'bg-accent-100 text-accent-700' : 'bg-stone-100 text-stone-500',
-          ]}>
-            {allPosts.length}
-          </span>
+            'ml-1.5 inline-flex items-center justify-center rounded-sm text-[10px] font-bold px-1.5 py-0.5',
+            active === 'all' ? 'bg-accent-100 text-accent-700' : 'bg-ink-100 text-ink-500',
+          ]}>{all.length}</span>
         </a>
 
-        {categories.map(cat => {
-          const count = allPosts.filter(p => p.data.category === cat).length;
-          const isActive = activeCategory === cat;
+        {cats.map(cat => {
+          const count = all.filter(p => p.data.category === cat).length;
+          const isA = active === cat;
           return (
-            <a
-              href={`/blog?category=${cat}`}
-              class:list={[
-                'flex-shrink-0 px-4 pb-2.5 pt-1 text-sm font-semibold transition-all border-b-2 -mb-[2px]',
-                isActive
-                  ? 'border-accent-500 text-accent-700'
-                  : 'border-transparent text-stone-500 hover:text-ink-900 hover:border-stone-300',
-              ]}
-            >
-              {categoryLabels[cat]}
+            <a href={`/blog?category=${cat}`} class:list={[
+              'flex-shrink-0 px-4 pb-2.5 pt-1 text-sm font-semibold transition-all border-b-2 -mb-[2px]',
+              isA
+                ? 'border-accent-500 text-accent-600'
+                : 'border-transparent text-ink-500 hover:text-ink-900 hover:border-ink-300',
+            ]}>
+              {catLabels[cat]}
               <span class:list={[
-                'ml-1.5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 py-0.5 min-w-[1.25rem]',
-                isActive ? 'bg-accent-100 text-accent-700' : 'bg-stone-100 text-stone-500',
-              ]}>
-                {count}
-              </span>
+                'ml-1.5 inline-flex items-center justify-center rounded-sm text-[10px] font-bold px-1.5 py-0.5',
+                isA ? 'bg-accent-100 text-accent-700' : 'bg-ink-100 text-ink-500',
+              ]}>{count}</span>
             </a>
           );
         })}
       </div>
-    </div>
+    </nav>
 
-    <!-- Articles grid -->
-    {filtered.length > 0 ? (
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filtered.map(post => (
+    <!-- Grid -->
+    {shown.length > 0 ? (
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {shown.map((p, i) => (
           <ArticleCard
-            title={post.data.title}
-            description={post.data.description}
-            pubDate={post.data.pubDate}
-            category={post.data.category}
-            slug={post.slug}
-            coverImage={post.data.coverImage}
-            tags={post.data.tags}
-            readingTime={readingTime(post.body)}
+            title={p.data.title}
+            description={p.data.description}
+            pubDate={p.data.pubDate}
+            category={p.data.category}
+            slug={p.slug}
+            coverImage={p.data.coverImage}
+            readingTime={rt(p.body)}
+            variant={i === 0 && active === 'all' ? 'overlay' : 'default'}
           />
         ))}
       </div>
     ) : (
       <div class="py-24 text-center">
-        <div class="text-5xl mb-4 opacity-30">🔍</div>
-        <p class="text-stone-500 text-lg font-medium">Keine Artikel in dieser Kategorie.</p>
-        <a href="/blog" class="mt-4 inline-block text-accent-600 hover:underline text-sm font-medium">Alle Artikel anzeigen</a>
+        <svg class="mx-auto h-12 w-12 text-ink-300 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+        </svg>
+        <p class="text-ink-500 font-medium">Keine Artikel in dieser Kategorie.</p>
+        <a href="/blog" class="mt-3 inline-block text-sm text-accent-600 hover:underline font-medium">Alle Artikel anzeigen</a>
       </div>
     )}
   </div>

@@ -3,7 +3,7 @@ title: "BOOX Note Air3 C vs. Supernote A5 X2: Welches E-Ink-Notizbuch ist besser
 description: "Direktvergleich: BOOX Note Air3 C gegen Supernote A5 X2 – Preis, Display, Schreiberlebnis, Software und Ökosystem im großen Test."
 pubDate: 2024-10-28
 category: "comparison"
-coverImage: "/images/boox-vs-supernote.jpg"
+coverImage: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=1200&q=80"
 tags: ["BOOX Note Air3 C", "Supernote A5 X2", "Vergleich", "E-Ink-Notizbuch"]
 affiliateLinks:
   - label: "BOOX Note Air3 C auf Amazon"

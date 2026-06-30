@@ -3,7 +3,7 @@ title: "Einsteiger-Guide: So richtest du dein ONYX BOOX optimal ein"
 description: "Schritt-für-Schritt-Anleitung zur optimalen Einrichtung deines BOOX-Geräts: Apps, Einstellungen, Tipps und Tricks für Einsteiger."
 pubDate: 2024-09-10
 category: "guide"
-coverImage: "/images/boox-setup-guide.jpg"
+coverImage: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1200&q=80"
 tags: ["Guide", "Einrichtung", "Android", "Apps", "Tipps"]
 ---
 
@@ -29,13 +29,9 @@ BOOX-Geräte kommen mit vorinstalliertem Google Play Store. Melde dich mit deine
 
 Gehe zu Einstellungen → Anzeigeeinstellungen und passe die Auffrischungsrate an. Für Lesen: A2-Modus; für detaillierte Inhalte: GC16-Modus.
 
-## Schritt 4: Stylus kalibrieren (falls vorhanden)
+## Schritt 4: Stylus kalibrieren
 
 Unter Einstellungen → Stylus kannst du den Eingabestift kalibrieren und Druckempfindlichkeit anpassen.
-
-## Schritt 5: Sideloading von APKs
-
-Falls eine App nicht im Play Store verfügbar ist, kannst du APKs direkt installieren. Aktiviere "Unbekannte Quellen" unter Einstellungen → Sicherheit.
 
 ## Profi-Tipps
 

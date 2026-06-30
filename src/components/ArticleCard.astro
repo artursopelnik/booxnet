@@ -8,84 +8,131 @@ interface Props {
   coverImage?: string;
   tags?: string[];
   readingTime?: number;
+  variant?: 'default' | 'overlay' | 'horizontal';
 }
 
-const { title, description, pubDate, category, slug, coverImage, tags = [], readingTime } = Astro.props;
+const {
+  title, description, pubDate, category, slug,
+  coverImage, tags = [], readingTime,
+  variant = 'default',
+} = Astro.props;
 
-const categoryLabels: Record<string, string> = {
-  news: 'News',
-  review: 'Review',
-  comparison: 'Vergleich',
-  guide: 'Guide',
+const catLabels: Record<string, string> = {
+  news: 'News', review: 'Review', comparison: 'Vergleich', guide: 'Guide',
 };
 
-/* Per-category gradient + icon for the image placeholder */
-const categoryMeta: Record<string, { from: string; to: string; icon: string }> = {
-  news:       { from: '#2563eb', to: '#38bdf8', icon: '📰' },
-  review:     { from: '#059669', to: '#34d399', icon: '⭐' },
-  comparison: { from: '#7c3aed', to: '#a78bfa', icon: '⚖️' },
-  guide:      { from: '#d97706', to: '#fbbf24', icon: '📚' },
+/* Gradient used when no image or as bg layer under image */
+const gradients: Record<string, string> = {
+  news:       'linear-gradient(135deg,#1e40af,#0ea5e9)',
+  review:     'linear-gradient(135deg,#065f46,#10b981)',
+  comparison: 'linear-gradient(135deg,#4c1d95,#8b5cf6)',
+  guide:      'linear-gradient(135deg,#92400e,#f59e0b)',
 };
-const meta = categoryMeta[category] ?? { from: '#282820', to: '#585850', icon: '📖' };
+const grad = gradients[category] ?? 'linear-gradient(135deg,#1C1C18,#4A4A42)';
 
-const formattedDate = pubDate.toLocaleDateString('de-DE', {
-  day: 'numeric', month: 'short', year: 'numeric',
-});
+const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
 ---
 
-<article class="group flex flex-col rounded-2xl border border-stone-200/80 bg-white overflow-hidden
-  transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-stone-300">
-
-  <!-- Image area: gradient background always visible; real image layered on top -->
-  <a href={`/blog/${slug}`} class="relative block overflow-hidden flex-shrink-0" style="aspect-ratio:16/9">
-    <!-- Gradient placeholder -->
-    <div
-      class="absolute inset-0 flex items-center justify-center"
-      style={`background: linear-gradient(135deg, ${meta.from}, ${meta.to})`}
-    >
-      <span class="text-6xl opacity-20 select-none">{meta.icon}</span>
-    </div>
-
+<!-- OVERLAY VARIANT – large card with image behind text -->
+{variant === 'overlay' && (
+  <a href={`/blog/${slug}`}
+    class="group overlay-card block w-full h-full min-h-[360px] bg-ink-800 rounded-xl overflow-hidden">
     {coverImage && (
       <img
-        src={coverImage}
-        alt={title}
-        class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        src={coverImage} alt={title}
+        class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         loading="lazy"
       />
     )}
-
-    <!-- Category badge pinned to image -->
-    <span class:list={['absolute bottom-3 left-3 category-badge shadow-sm backdrop-blur-sm', `category-${category}`]}>
-      {categoryLabels[category] ?? category}
-    </span>
-
-    {readingTime && (
-      <span class="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-sm px-2 py-0.5 text-[11px] font-medium text-white">
-        <svg class="h-3 w-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zm.5 2.25a.75.75 0 00-1.5 0V8c0 .199.079.39.22.53l2 2a.75.75 0 101.06-1.06L8.5 7.69V4.75z"/>
-        </svg>
-        {readingTime} Min.
-      </span>
+    {!coverImage && (
+      <div class="absolute inset-0" style={`background:${grad}`}></div>
     )}
-  </a>
-
-  <!-- Card body -->
-  <div class="flex flex-col flex-1 p-5">
-    <a href={`/blog/${slug}`}>
-      <h2 class="text-[0.95rem] font-bold text-ink-900 leading-snug mb-2 group-hover:text-accent-700 transition-colors line-clamp-2">
+    <div class="card-content">
+      <span class:list={['cat-badge mb-3 inline-block', `cat-${category}`]}>{catLabels[category]}</span>
+      <h2 class="font-display font-bold text-xl sm:text-2xl text-white leading-tight mb-2 group-hover:text-accent-300 transition-colors">
         {title}
       </h2>
-    </a>
-    <p class="text-sm text-stone-500 line-clamp-3 leading-relaxed flex-1">
-      {description}
-    </p>
+      <p class="text-ink-300 text-sm leading-relaxed line-clamp-2 mb-3">{description}</p>
+      <div class="flex items-center gap-3 text-ink-400 text-xs">
+        <time datetime={pubDate.toISOString()}>{date}</time>
+        {readingTime && (
+          <span class="flex items-center gap-1">
+            <svg class="h-3 w-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.5 3.25a.75.75 0 00-1.5 0V8c0 .2.08.39.22.53l2 2a.75.75 0 101.06-1.06L8.5 7.69V4.25z"/>
+            </svg>
+            {readingTime} Min.
+          </span>
+        )}
+      </div>
+    </div>
+  </a>
+)}
 
-    <div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between">
-      <time class="text-xs text-stone-400" datetime={pubDate.toISOString()}>{formattedDate}</time>
-      {tags.length > 0 && (
-        <span class="text-xs text-stone-400 truncate max-w-[140px]">#{tags[0]}</span>
+<!-- HORIZONTAL VARIANT – image left, text right (sidebar headlines) -->
+{variant === 'horizontal' && (
+  <a href={`/blog/${slug}`}
+    class="group flex gap-3 py-3 border-b border-ink-100 last:border-0">
+    <div class="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-ink-200">
+      {coverImage ? (
+        <img src={coverImage} alt={title}
+          class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+        />
+      ) : (
+        <div class="h-full w-full" style={`background:${grad}`}></div>
       )}
     </div>
-  </div>
-</article>
+    <div class="flex-1 min-w-0">
+      <span class:list={['cat-badge mb-1', `cat-${category}`]}>{catLabels[category]}</span>
+      <h3 class="text-sm font-semibold text-ink-900 leading-tight line-clamp-2 group-hover:text-accent-600 transition-colors mt-1">
+        {title}
+      </h3>
+      <time class="text-2xs text-ink-400 mt-1 block" datetime={pubDate.toISOString()}>{date}</time>
+    </div>
+  </a>
+)}
+
+<!-- DEFAULT VARIANT – classic editorial card -->
+{variant === 'default' && (
+  <article class="group flex flex-col rounded-xl border border-ink-200 bg-white overflow-hidden
+    transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-ink-300">
+
+    <!-- Image area -->
+    <a href={`/blog/${slug}`} class="relative block overflow-hidden flex-shrink-0" style="aspect-ratio:3/2">
+      <div class="absolute inset-0" style={`background:${grad}`}></div>
+      {coverImage && (
+        <img
+          src={coverImage} alt={title}
+          class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+      )}
+      <span class:list={['absolute top-3 left-3 cat-badge shadow-sm', `cat-${category}`]}>
+        {catLabels[category]}
+      </span>
+    </a>
+
+    <!-- Body -->
+    <div class="flex flex-col flex-1 p-5">
+      <a href={`/blog/${slug}`}>
+        <h2 class="font-display font-bold text-[1rem] text-ink-900 leading-snug mb-2
+                   group-hover:text-accent-600 transition-colors line-clamp-2">
+          {title}
+        </h2>
+      </a>
+      <p class="text-sm text-ink-500 line-clamp-2 leading-relaxed flex-1">{description}</p>
+
+      <div class="mt-4 pt-3 border-t border-ink-100 flex items-center justify-between text-xs text-ink-400">
+        <time datetime={pubDate.toISOString()}>{date}</time>
+        {readingTime && (
+          <span class="flex items-center gap-1">
+            <svg class="h-3 w-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.5 3.25a.75.75 0 00-1.5 0V8c0 .2.08.39.22.53l2 2a.75.75 0 101.06-1.06L8.5 7.69V4.25z"/>
+            </svg>
+            {readingTime} Min.
+          </span>
+        )}
+      </div>
+    </div>
+  </article>
+)}
