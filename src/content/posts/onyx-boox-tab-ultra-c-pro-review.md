@@ -3,7 +3,7 @@ title: "ONYX BOOX Tab Ultra C Pro im Test: Das beste Farb-E-Ink-Tablet 2024?"
 description: "Wir haben das ONYX BOOX Tab Ultra C Pro ausführlich getestet – mit Kess3-Display, Android 12 und Stylus-Support. Lohnt sich der Kauf?"
 pubDate: 2024-11-15
 category: "review"
-coverImage: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1200&q=80"
+coverImage: "/images/boox-tab-ultra-c-pro.jpg"
 tags: ["BOOX Tab Ultra C Pro", "E-Ink Farbe", "Kess3", "Android", "Review"]
 affiliateLinks:
   - label: "BOOX Tab Ultra C Pro auf Amazon"
