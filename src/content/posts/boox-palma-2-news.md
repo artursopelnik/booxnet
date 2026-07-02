@@ -3,6 +3,7 @@ title: "BOOX Palma 2 offiziell vorgestellt: Pocket-E-Reader mit Android 13"
 description: "Onyx International hat den BOOX Palma 2 angekündigt – der Nachfolger des beliebten Pocket-E-Readers kommt mit Android 13 und verbessertem Display."
 pubDate: 2024-12-01
 category: "news"
+series: "palma"
 coverImage: "/images/boox-palma-2.jpg"
 tags: ["BOOX Palma 2", "News", "Android 13", "Pocket E-Reader"]
 affiliateLinks:

@@ -1,10 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArticleCard from '../components/ArticleCard.astro';
+import SeriesPanel from '../components/SeriesPanel.astro';
 import { getCollection } from 'astro:content';
 
 const all   = await getCollection('posts');
 const posts = all.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const seriesList = ['tab', 'note', 'go', 'palma'] as const;
+const seriesCount = (s: string) => all.filter(p => p.data.series === s).length;
 
 function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).length ?? 0) / 200)); }
 
@@ -94,17 +98,27 @@ const catLabels: Record<string,string> = {
   )}
 
   <!-- ══════════════════════════════════════════════
-       CATEGORY STRIP
+       DEVICE SERIES — BOOX-style product panels
   ══════════════════════════════════════════════ -->
   <section class="border-y border-ink-200 bg-white">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 py-4">
-      <div class="flex items-center gap-2 overflow-x-auto">
-        <span class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mr-2 flex-shrink-0">Kategorien</span>
-        {(['news','review','comparison','guide'] as const).map(cat => (
-          <a href={`/blog?category=${cat}`}
-            class:list={['cat-badge flex-shrink-0 hover:opacity-80 transition-opacity text-xs py-1 px-3 rounded-sm', `cat-${cat}`]}>
-            {catLabels[cat]}
-          </a>
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+      <div class="flex items-end justify-between mb-6">
+        <div>
+          <p class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mb-2">Geräte-Serien</p>
+          <h2 class="font-display font-bold text-2xl text-ink-900 tracking-tight">Finde dein BOOX</h2>
+        </div>
+        <div class="hidden sm:flex items-center gap-2">
+          {(['news','review','comparison','guide'] as const).map(cat => (
+            <a href={`/blog?category=${cat}`}
+              class:list={['cat-badge hover:opacity-80 transition-opacity py-1 px-2.5', `cat-${cat}`]}>
+              {catLabels[cat]}
+            </a>
+          ))}
+        </div>
+      </div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {seriesList.map(s => (
+          <SeriesPanel series={s} count={seriesCount(s)} />
         ))}
       </div>
     </div>

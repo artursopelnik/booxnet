@@ -3,6 +3,7 @@ title: "Einsteiger-Guide: So richtest du dein ONYX BOOX optimal ein"
 description: "Schritt-für-Schritt-Anleitung zur optimalen Einrichtung deines BOOX-Geräts: Apps, Einstellungen, Tipps und Tricks für Einsteiger."
 pubDate: 2024-09-10
 category: "guide"
+series: "general"
 coverImage: "/images/getting-started.jpg"
 tags: ["Guide", "Einrichtung", "Android", "Apps", "Tipps"]
 ---
