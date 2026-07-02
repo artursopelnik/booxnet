@@ -20,28 +20,25 @@ const {
 } = Astro.props;
 ---
 
-<div class="not-prose rounded-xl border border-stone-200 bg-white p-5 flex gap-4 my-6 shadow-sm">
-  {image && (
-    <div class="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-stone-100">
+<div class="not-prose rounded-xl border border-ink-200 bg-white p-5 flex gap-4 my-6">
+  <div class="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-ink-100 flex items-center justify-center">
+    {image ? (
       <img src={image} alt={name} class="w-full h-full object-contain p-2" loading="lazy" />
-    </div>
-  )}
-  {!image && (
-    <div class="flex-shrink-0 w-24 h-24 rounded-lg bg-stone-100 flex items-center justify-center text-3xl text-stone-300">
-      📱
-    </div>
-  )}
+    ) : (
+      <svg class="h-9 w-9 text-ink-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5h3m-6.75 2.25h10.5a2.25 2.25 0 002.25-2.25v-15a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 4.5v15a2.25 2.25 0 002.25 2.25z"/>
+      </svg>
+    )}
+  </div>
 
   <div class="flex flex-col flex-1 gap-2">
     <div class="flex items-start gap-2 flex-wrap">
       <h3 class="font-semibold text-ink-900 text-sm leading-tight">{name}</h3>
       {badge && (
-        <span class="inline-flex items-center rounded-full bg-accent-100 px-2 py-0.5 text-xs font-medium text-accent-700">
-          {badge}
-        </span>
+        <span class="cat-badge bg-accent-100 text-accent-800">{badge}</span>
       )}
     </div>
-    <p class="text-xs text-stone-500 leading-relaxed">{description}</p>
+    <p class="text-xs text-ink-500 leading-relaxed">{description}</p>
     <div class="flex items-center gap-3 mt-auto">
       {price && (
         <span class="text-sm font-semibold text-ink-900">{price}</span>
@@ -50,9 +47,9 @@ const {
         href={affiliateUrl}
         target="_blank"
         rel="noopener noreferrer nofollow"
-        class="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-ink-900 hover:bg-amber-500 transition-colors"
+        class="inline-flex items-center gap-1.5 rounded bg-accent-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-accent-700 transition-colors"
       >
-        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M10 6v2H5v11h11v-5h2v7H3V6h7zm11-3v8h-2V6.413l-7.293 7.294-1.414-1.414L17.585 5H13V3h8z"/>
         </svg>
         {affiliateLabel}

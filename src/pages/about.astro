@@ -7,33 +7,52 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   description="booxnet.com ist ein inoffizielles Fan-Projekt rund um ONYX BOOX E-Ink-Tablets. Erfahre mehr über das Projekt, unsere Ziele und den wichtigen Disclaimer."
 >
   <div class="mx-auto max-w-3xl px-4 sm:px-6 py-12">
-    <header class="mb-10">
-      <h1 class="text-3xl font-bold text-ink-900 mb-3">Über booxnet.com</h1>
-      <p class="text-stone-500 text-lg">Inoffizielles Community-Projekt rund um ONYX BOOX E-Ink-Tablets</p>
+
+    <!-- Page header -->
+    <header class="mb-10 pb-6 border-b border-ink-200">
+      <p class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mb-3">
+        Das Projekt
+      </p>
+      <h1 class="font-display font-black text-3xl sm:text-4xl text-ink-900 mb-2 tracking-tight">Über booxnet.com</h1>
+      <p class="text-ink-500 text-lg">Inoffizielles Community-Projekt rund um ONYX BOOX E-Ink-Tablets</p>
     </header>
 
-    <!-- Important Disclaimer -->
-    <div class="mb-10 rounded-xl border-2 border-amber-300 bg-amber-50 p-6">
-      <h2 class="flex items-center gap-2 text-lg font-bold text-amber-900 mb-3">
-        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+    <!-- Important Disclaimer — dark editorial panel -->
+    <aside class="mb-12 rounded-xl bg-ink-900 text-ink-200 p-6 sm:p-8 relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-[3px] bg-accent-500" aria-hidden="true"></div>
+      <h2 class="flex items-center gap-2.5 font-display font-bold text-xl text-ink-50 mb-4">
+        <svg class="h-5 w-5 text-accent-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
         </svg>
         Wichtiger Disclaimer
       </h2>
-      <p class="text-amber-800 leading-relaxed mb-3">
-        <strong>booxnet.com ist ein inoffizielles Fan- und Community-Projekt.</strong> Diese Website steht in
-        <strong>keinerlei Verbindung</strong> zu Onyx International Co., Ltd. oder der Marke BOOX™.
+      <p class="leading-relaxed mb-4">
+        <strong class="text-ink-50">booxnet.com ist ein inoffizielles Fan- und Community-Projekt.</strong> Diese Website steht in
+        <strong class="text-ink-50">keinerlei Verbindung</strong> zu Onyx International Co., Ltd. oder der Marke BOOX™.
       </p>
-      <ul class="text-amber-800 text-sm space-y-1 list-disc list-inside">
-        <li>Wir sind nicht autorisiert, im Namen von Onyx International zu sprechen</li>
-        <li>Alle Markennamen (BOOX, ONYX, ONYX BOOX) sind Eigentum von Onyx International Co., Ltd.</li>
-        <li>Produktinformationen basieren auf öffentlich verfügbaren Quellen und eigenen Tests</li>
-        <li>Wir übernehmen keine Garantie für die Richtigkeit von Spezifikationsangaben</li>
-        <li>Für offizielle Informationen besuche <a href="https://www.boox.com" class="underline" target="_blank" rel="noopener noreferrer">boox.com</a></li>
+      <ul class="text-sm text-ink-300 space-y-2">
+        {[
+          'Wir sind nicht autorisiert, im Namen von Onyx International zu sprechen',
+          'Alle Markennamen (BOOX, ONYX, ONYX BOOX) sind Eigentum von Onyx International Co., Ltd.',
+          'Produktinformationen basieren auf öffentlich verfügbaren Quellen und eigenen Tests',
+          'Wir übernehmen keine Garantie für die Richtigkeit von Spezifikationsangaben',
+        ].map(item => (
+          <li class="flex gap-2.5">
+            <span class="mt-[7px] h-1 w-1 rounded-full bg-accent-400 flex-shrink-0" aria-hidden="true"></span>
+            {item}
+          </li>
+        ))}
+        <li class="flex gap-2.5">
+          <span class="mt-[7px] h-1 w-1 rounded-full bg-accent-400 flex-shrink-0" aria-hidden="true"></span>
+          <span>
+            Für offizielle Informationen besuche
+            <a href="https://www.boox.com" class="text-ink-50 underline decoration-ink-600 underline-offset-2 hover:decoration-accent-400 transition-colors" target="_blank" rel="noopener noreferrer">boox.com</a>
+          </span>
+        </li>
       </ul>
-    </div>
+    </aside>
 
-    <div class="prose prose-stone max-w-none">
+    <div class="prose-article">
       <h2>Was ist booxnet.com?</h2>
       <p>
         booxnet.com ist ein internationaler Fan-Blog, der sich auf ONYX BOOX E-Ink-Tablets
