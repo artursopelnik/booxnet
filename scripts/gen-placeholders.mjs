@@ -74,8 +74,8 @@ function makeSvg({ shapes }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FAFAFA"/>
-      <stop offset="100%" stop-color="#E8E8ED"/>
+      <stop offset="0%" stop-color="#F4F5F7"/>
+      <stop offset="100%" stop-color="#DFE1E4"/>
     </linearGradient>
     <radialGradient id="floor" cx="50%" cy="88%" r="45%">
       <stop offset="0%" stop-color="#000000" stop-opacity="0.10"/>

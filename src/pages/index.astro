@@ -27,29 +27,40 @@ const catLabels: Record<string,string> = {
 >
 
   <!-- ══════════════════════════════════════════════
-       MASTHEAD – editorial newspaper header feel
+       HERO — on gray page canvas, boox.com-style
   ══════════════════════════════════════════════ -->
-  <section class="border-b border-ink-200 bg-white">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-14 text-center">
+  <section class="border-b border-ink-200">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16 text-center">
       <p class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mb-4">
         Inoffizielles Community-Projekt · ONYX BOOX Fan-Blog
       </p>
-      <h1 class="font-display font-black text-4xl sm:text-6xl lg:text-7xl text-ink-900 leading-[1.05] tracking-tight mb-5">
-        E-Ink. Reviews.<br class="hidden sm:block"/>
-        <span class="text-accent-500">Unabhängig.</span>
+      <h1 class="font-display font-black text-4xl sm:text-5xl lg:text-6xl text-ink-900 leading-[1.08] tracking-tight mb-5">
+        E-Ink. Reviews.
+        <span class="text-ink-500">Unabhängig.</span>
       </h1>
-      <p class="text-ink-500 text-lg max-w-xl mx-auto leading-relaxed">
+      <p class="text-ink-500 text-lg max-w-xl mx-auto leading-relaxed mb-8">
         Tests, News und Guides rund um ONYX BOOX E-Ink-Tablets –
         ehrlich, direkt, von der Community.
       </p>
+      <div class="flex items-center justify-center gap-3">
+        <a href="/blog"
+          class="rounded-full bg-ink-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-ink-700 transition-colors">
+          Alle Artikel
+        </a>
+        <a href="/about"
+          class="rounded-full border border-ink-300 bg-transparent px-6 py-2.5 text-sm font-semibold text-ink-700 hover:border-ink-900 hover:text-ink-900 transition-colors">
+          Über das Projekt
+        </a>
+      </div>
     </div>
   </section>
 
   <!-- ══════════════════════════════════════════════
-       EDITORIAL GRID: big featured + sidebar stack
+       FEATURED — white surface section
   ══════════════════════════════════════════════ -->
   {featured && (
-    <section class="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+    <section class="bg-white border-b border-ink-200">
+      <div class="mx-auto max-w-6xl px-4 sm:px-6 py-12">
       <div class="section-label">Aktuell</div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -94,14 +105,15 @@ const catLabels: Record<string,string> = {
           </a>
         </div>
       </div>
+      </div>
     </section>
   )}
 
   <!-- ══════════════════════════════════════════════
-       DEVICE SERIES — BOOX-style product panels
+       DEVICE SERIES — white tiles on gray canvas
   ══════════════════════════════════════════════ -->
-  <section class="border-y border-ink-200 bg-white">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+  <section>
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 py-12">
       <div class="flex items-end justify-between mb-6">
         <div>
           <p class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mb-2">Geräte-Serien</p>
@@ -125,24 +137,26 @@ const catLabels: Record<string,string> = {
   </section>
 
   <!-- ══════════════════════════════════════════════
-       ARTICLE GRID
+       ARTICLE GRID — white surface section
   ══════════════════════════════════════════════ -->
   {grid.length > 0 && (
-    <section class="mx-auto max-w-6xl px-4 sm:px-6 py-10">
-      <div class="section-label">Alle Artikel</div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {grid.map(p => (
-          <ArticleCard
-            title={p.data.title}
-            description={p.data.description}
-            pubDate={p.data.pubDate}
-            category={p.data.category}
-            slug={p.slug}
-            coverImage={p.data.coverImage}
-            readingTime={rt(p.body)}
-            variant="default"
-          />
-        ))}
+    <section class="bg-white border-t border-ink-200">
+      <div class="mx-auto max-w-6xl px-4 sm:px-6 py-12">
+        <div class="section-label">Alle Artikel</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {grid.map(p => (
+            <ArticleCard
+              title={p.data.title}
+              description={p.data.description}
+              pubDate={p.data.pubDate}
+              category={p.data.category}
+              slug={p.slug}
+              coverImage={p.data.coverImage}
+              readingTime={rt(p.body)}
+              variant="default"
+            />
+          ))}
+        </div>
       </div>
     </section>
   )}

@@ -6,7 +6,8 @@
   html { scroll-behavior: smooth; }
 
   body {
-    @apply bg-white text-ink-900 antialiased;
+    /* Gray page canvas — white surfaces layer on top (boox.com section rhythm) */
+    @apply bg-ink-50 text-ink-900 antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }

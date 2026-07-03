@@ -4,19 +4,19 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        /* Neutral tech grays — boox.com-style clean palette */
+        /* Layered cool grays — boox.com works with a gray rhythm, not pure b/w */
         ink: {
-          50:  '#FAFAFA',
-          100: '#F5F5F7',
-          200: '#E8E8ED',
-          300: '#D2D2D7',
-          400: '#86868B',
-          500: '#6E6E73',
-          600: '#515154',
-          700: '#3A3A3C',
-          800: '#1D1D1F',
-          900: '#111113',
-          950: '#000000',
+          50:  '#F7F8FA',   /* page background */
+          100: '#F0F1F3',   /* tile surfaces */
+          200: '#E4E5E8',   /* borders, dividers */
+          300: '#D1D3D6',
+          400: '#8E9194',   /* muted labels */
+          500: '#75787B',   /* secondary text */
+          600: '#55585B',
+          700: '#3B3E41',
+          800: '#232528',   /* dark surfaces */
+          900: '#17191B',   /* primary text, footer */
+          950: '#0D0E0F',
         },
         /* Clean-tech blue accent */
         accent: {
