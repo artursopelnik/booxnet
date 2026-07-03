@@ -1,8 +1,11 @@
-export const locales = ['en', 'es', 'fr', 'ru'] as const;
+export const locales = ['de', 'en', 'es', 'fr', 'ru'] as const;
 export type Locale = (typeof locales)[number];
-export const defaultLocale: Locale = 'en';
+export const defaultLocale: Locale = 'de';
+/** Language articles fall back to when no translation exists */
+export const contentFallbackLocale: Locale = 'en';
 
 export const localeNames: Record<Locale, string> = {
+  de: 'Deutsch',
   en: 'English',
   es: 'Español',
   fr: 'Français',
@@ -10,6 +13,79 @@ export const localeNames: Record<Locale, string> = {
 };
 
 export const ui = {
+  de: {
+    'nav.news': 'News',
+    'nav.reviews': 'Reviews',
+    'nav.comparisons': 'Vergleiche',
+    'nav.guides': 'Guides',
+    'nav.allArticles': 'Alle Artikel',
+    'nav.about': 'Über uns',
+    'nav.home': 'Startseite',
+    'nav.menu': 'Menü',
+
+    'cat.news': 'News',
+    'cat.review': 'Review',
+    'cat.comparison': 'Vergleich',
+    'cat.guide': 'Guide',
+
+    'series.label': 'Serie',
+    'series.kicker': 'Geräte-Serien',
+    'series.title': 'Finde dein BOOX',
+    'series.tab': 'Tab-Serie',
+    'series.note': 'Note-Serie',
+    'series.go': 'Go-Serie',
+    'series.palma': 'Palma',
+    'series.general': 'Allgemein',
+    'series.tab.tagline': 'Große E-Ink-Tablets mit Stylus',
+    'series.note.tagline': 'Digitale Notizbücher im A5-Format',
+    'series.go.tagline': 'Kompakte E-Reader für unterwegs',
+    'series.palma.tagline': 'E-Ink im Smartphone-Format',
+    'series.articles': 'Artikel',
+    'series.article': 'Artikel',
+
+    'home.kicker': 'Inoffizielles Community-Projekt · ONYX BOOX Fan-Blog',
+    'home.title1': 'E-Ink. Reviews.',
+    'home.title2': 'Unabhängig.',
+    'home.subtitle': 'Tests, News und Guides rund um ONYX BOOX E-Ink-Tablets – ehrlich, direkt, von der Community.',
+    'home.cta.articles': 'Alle Artikel',
+    'home.cta.about': 'Über das Projekt',
+    'home.featured': 'Aktuell',
+    'home.moreArticles': 'Weitere Artikel',
+    'home.allArticles': 'Alle Artikel',
+    'home.disclaimer': 'booxnet.com ist ein inoffizielles Fan-Projekt, nicht verbunden mit Onyx International Co., Ltd. oder der Marke BOOX™. Alle Markennamen sind Eigentum ihrer jeweiligen Inhaber.',
+    'home.learnMore': 'Mehr erfahren',
+
+    'blog.title': 'Blog',
+    'blog.subtitle': 'News, Reviews, Vergleiche und Guides zu ONYX BOOX Geräten',
+    'blog.all': 'Alle',
+    'blog.empty': 'Keine Artikel für diese Auswahl.',
+    'blog.reset': 'Filter zurücksetzen',
+
+    'post.readingTime': 'Min. Lesezeit',
+    'post.published': 'Veröffentlicht:',
+    'post.updated': 'Aktualisiert:',
+    'post.toc': 'Inhalt',
+    'post.tocAria': 'Inhaltsverzeichnis',
+    'post.products': 'Im Artikel erwähnte Produkte',
+    'post.back': 'Zurück zum Blog',
+    'post.related': 'Ähnliche Artikel',
+    'post.affiliate.label': 'Affiliate-Hinweis',
+    'post.affiliate.text': 'Dieser Artikel enthält Affiliate-Links. Wenn du über diese Links einkaufst, erhalten wir eine kleine Provision – für dich entstehen dabei keine Mehrkosten. Unsere Meinungen bleiben davon unabhängig.',
+    'post.affiliate.link': 'Vollständige Affiliate-Disclosure lesen',
+    'post.affiliate.compact': '* Affiliate-Links: Wir erhalten eine kleine Provision, falls du über unsere Links kaufst – für dich entstehen keine Mehrkosten.',
+    'post.affiliate.more': 'Mehr erfahren',
+
+    'footer.tagline': 'Unabhängiger News- und Review-Blog rund um ONYX BOOX E-Ink-Tablets und E-Reader – nicht verbunden mit Onyx International Co., Ltd.',
+    'footer.affiliate': '* Affiliate-Links: Bei Kauf über unsere Links erhalten wir eine Provision – für dich entstehen keine Mehrkosten.',
+    'footer.content': 'Inhalte',
+    'footer.legal': 'Rechtliches',
+    'footer.aboutDisclaimer': 'Über uns / Disclaimer',
+    'footer.affiliateDisclosure': 'Affiliate-Disclosure',
+    'footer.contact': 'Kontakt / Impressum',
+    'footer.copyright': 'booxnet.com – Inoffizielles Community-Projekt. Alle Markennamen sind Eigentum ihrer jeweiligen Inhaber.',
+    'footer.notOfficial': 'Kein offizielles Produkt von Onyx International Co., Ltd.',
+  },
+
   en: {
     'nav.news': 'News',
     'nav.reviews': 'Reviews',
@@ -327,6 +403,7 @@ export function localizePath(lang: Locale, path: string): string {
 
 /** Date formatting locales */
 export const dateLocale: Record<Locale, string> = {
+  de: 'de-DE',
   en: 'en-US',
   es: 'es-ES',
   fr: 'fr-FR',

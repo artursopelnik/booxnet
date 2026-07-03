@@ -1,24 +1,28 @@
 ---
-import { getCollection } from 'astro:content';
 import PostLayout from '../../../layouts/PostLayout.astro';
+import { getLocalizedPosts } from '../../../i18n/content';
 import { locales, defaultLocale, type Locale } from '../../../i18n/ui';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('posts');
   const langs = locales.filter(l => l !== defaultLocale);
-  return langs.flatMap(lang =>
-    posts.map(post => ({
-      params: { lang, slug: post.slug },
-      props: { post },
-    }))
-  );
+  const paths = [];
+  for (const lang of langs) {
+    const posts = await getLocalizedPosts(lang);
+    for (const { slug, entry } of posts) {
+      paths.push({
+        params: { lang, slug },
+        props: { post: entry, cleanSlug: slug },
+      });
+    }
+  }
+  return paths;
 }
 
-const { post } = Astro.props;
+const { post, cleanSlug } = Astro.props;
 const lang = Astro.params.lang as Locale;
 const { Content, headings } = await post.render();
 ---
 
-<PostLayout post={post} headings={headings} lang={lang}>
+<PostLayout post={post} slug={cleanSlug} headings={headings} lang={lang}>
   <Content />
 </PostLayout>

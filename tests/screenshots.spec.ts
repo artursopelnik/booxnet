@@ -26,6 +26,7 @@ const pages = [
   { name: 'about', path: '/about' },
   { name: 'affiliate-disclosure', path: '/affiliate-disclosure' },
   { name: 'contact', path: '/contact' },
+  { name: 'home-en', path: '/en' },
   { name: 'home-es', path: '/es' },
   { name: 'home-fr', path: '/fr' },
   { name: 'home-ru', path: '/ru' },

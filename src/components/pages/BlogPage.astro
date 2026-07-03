@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArticleCard from '../ArticleCard.astro';
-import { getCollection } from 'astro:content';
+import { getLocalizedPosts } from '../../i18n/content';
 import { type Locale, useTranslations, localizePath } from '../../i18n/ui';
 
 interface Props {
@@ -10,8 +10,8 @@ interface Props {
 const { lang } = Astro.props;
 const t = useTranslations(lang);
 
-const all    = await getCollection('posts');
-const sorted = all.sort((a,b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const sorted = await getLocalizedPosts(lang);
+const all = sorted;
 
 const cats = ['news','review','comparison','guide'] as const;
 const catLabels: Record<string,string> = {
@@ -50,7 +50,7 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
           <span class="tab-count ml-1.5 inline-flex items-center justify-center rounded-sm text-[10px] font-bold px-1.5 py-0.5 bg-ink-100 text-ink-500">{all.length}</span>
         </a>
         {cats.map(cat => {
-          const count = all.filter(p => p.data.category === cat).length;
+          const count = all.filter(p => p.entry.data.category === cat).length;
           return (
             <a href={`${blogPath}?category=${cat}`} data-filter-cat={cat} class="filter-tab flex-shrink-0 px-4 pb-2.5 pt-1 text-sm font-semibold transition-all border-b-2 -mb-[2px] border-transparent text-ink-500 hover:text-ink-900 hover:border-ink-300">
               {catLabels[cat]}
@@ -69,7 +69,7 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
         {t('blog.all')}
       </a>
       {seriesList.map(s => {
-        const count = all.filter(p => p.data.series === s).length;
+        const count = all.filter(p => p.entry.data.series === s).length;
         return count > 0 && (
           <a href={`${blogPath}?series=${s}`} data-filter-series={s}
             class="filter-chip flex-shrink-0 rounded-full border border-ink-300 px-3.5 py-1.5 text-xs font-semibold text-ink-600 hover:border-ink-900 hover:text-ink-900 transition-colors">
@@ -82,15 +82,15 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
     <!-- Grid — all posts rendered, JS toggles visibility -->
     <div id="post-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {sorted.map(p => (
-        <div class="post-item" data-category={p.data.category} data-series={p.data.series}>
+        <div class="post-item" data-category={p.entry.data.category} data-series={p.entry.data.series}>
           <ArticleCard
-            title={p.data.title}
-            description={p.data.description}
-            pubDate={p.data.pubDate}
-            category={p.data.category}
+            title={p.entry.data.title}
+            description={p.entry.data.description}
+            pubDate={p.entry.data.pubDate}
+            category={p.entry.data.category}
             slug={p.slug}
-            coverImage={p.data.coverImage}
-            readingTime={rt(p.body)}
+            coverImage={p.entry.data.coverImage}
+            readingTime={rt(p.entry.body)}
             variant="default"
             lang={lang}
           />

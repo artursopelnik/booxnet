@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArticleCard from '../ArticleCard.astro';
 import SeriesPanel from '../SeriesPanel.astro';
-import { getCollection } from 'astro:content';
+import { getLocalizedPosts } from '../../i18n/content';
 import { type Locale, useTranslations, localizePath } from '../../i18n/ui';
 
 interface Props {
@@ -11,11 +11,10 @@ interface Props {
 const { lang } = Astro.props;
 const t = useTranslations(lang);
 
-const all   = await getCollection('posts');
-const posts = all.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const posts = await getLocalizedPosts(lang);
 
 const seriesList = ['tab', 'note', 'go', 'palma'] as const;
-const seriesCount = (s: string) => all.filter(p => p.data.series === s).length;
+const seriesCount = (s: string) => posts.filter(p => p.entry.data.series === s).length;
 
 function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).length ?? 0) / 200)); }
 
@@ -71,13 +70,13 @@ const catLabels: Record<string,string> = {
           <!-- Featured – overlay card, 2/3 width -->
           <div class="lg:col-span-2 min-h-[420px]">
             <ArticleCard
-              title={featured.data.title}
-              description={featured.data.description}
-              pubDate={featured.data.pubDate}
-              category={featured.data.category}
+              title={featured.entry.data.title}
+              description={featured.entry.data.description}
+              pubDate={featured.entry.data.pubDate}
+              category={featured.entry.data.category}
               slug={featured.slug}
-              coverImage={featured.data.coverImage}
-              readingTime={rt(featured.body)}
+              coverImage={featured.entry.data.coverImage}
+              readingTime={rt(featured.entry.body)}
               variant="overlay"
               lang={lang}
             />
@@ -90,13 +89,13 @@ const catLabels: Record<string,string> = {
             </p>
             {sidebar.map(p => (
               <ArticleCard
-                title={p.data.title}
-                description={p.data.description}
-                pubDate={p.data.pubDate}
-                category={p.data.category}
+                title={p.entry.data.title}
+                description={p.entry.data.description}
+                pubDate={p.entry.data.pubDate}
+                category={p.entry.data.category}
                 slug={p.slug}
-                coverImage={p.data.coverImage}
-                readingTime={rt(p.body)}
+                coverImage={p.entry.data.coverImage}
+                readingTime={rt(p.entry.body)}
                 variant="horizontal"
                 lang={lang}
               />
@@ -147,13 +146,13 @@ const catLabels: Record<string,string> = {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {grid.map(p => (
             <ArticleCard
-              title={p.data.title}
-              description={p.data.description}
-              pubDate={p.data.pubDate}
-              category={p.data.category}
+              title={p.entry.data.title}
+              description={p.entry.data.description}
+              pubDate={p.entry.data.pubDate}
+              category={p.entry.data.category}
               slug={p.slug}
-              coverImage={p.data.coverImage}
-              readingTime={rt(p.body)}
+              coverImage={p.entry.data.coverImage}
+              readingTime={rt(p.entry.body)}
               variant="default"
               lang={lang}
             />

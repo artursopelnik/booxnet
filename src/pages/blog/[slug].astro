@@ -1,19 +1,20 @@
 ---
-import { getCollection } from 'astro:content';
 import PostLayout from '../../layouts/PostLayout.astro';
+import { getLocalizedPosts } from '../../i18n/content';
+import { defaultLocale } from '../../i18n/ui';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('posts');
-  return posts.map(post => ({
-    params: { slug: post.slug },
-    props: { post },
+  const posts = await getLocalizedPosts(defaultLocale);
+  return posts.map(({ slug, entry }) => ({
+    params: { slug },
+    props: { post: entry, cleanSlug: slug },
   }));
 }
 
-const { post } = Astro.props;
+const { post, cleanSlug } = Astro.props;
 const { Content, headings } = await post.render();
 ---
 
-<PostLayout post={post} headings={headings}>
+<PostLayout post={post} slug={cleanSlug} headings={headings} lang={defaultLocale}>
   <Content />
 </PostLayout>

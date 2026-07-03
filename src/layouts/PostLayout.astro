@@ -3,17 +3,19 @@ import BaseLayout from './BaseLayout.astro';
 import AffiliateDisclosure from '../components/AffiliateDisclosure.astro';
 import TableOfContents from '../components/TableOfContents.astro';
 import ArticleCard from '../components/ArticleCard.astro';
-import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
+import { getLocalizedPosts } from '../i18n/content';
 import { type Locale, useTranslations, localizePath, defaultLocale, dateLocale } from '../i18n/ui';
 
 interface Props {
   post: CollectionEntry<'posts'>;
+  /** Clean slug without locale prefix (used in URLs) */
+  slug: string;
   headings: { depth: number; slug: string; text: string }[];
   lang?: Locale;
 }
 
-const { post, headings, lang = defaultLocale } = Astro.props;
+const { post, slug, headings, lang = defaultLocale } = Astro.props;
 const { title, description, pubDate, updatedDate, category, coverImage, tags, affiliateLinks } = post.data;
 const t = useTranslations(lang);
 
@@ -26,8 +28,8 @@ const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
 const fmt = (d: Date) => d.toLocaleDateString(dateLocale[lang], { day:'numeric', month:'long', year:'numeric' });
 
-const allPosts = await getCollection('posts');
-const related  = allPosts.filter(p => p.slug !== post.slug && p.data.category === category).slice(0, 3);
+const allPosts = await getLocalizedPosts(lang);
+const related  = allPosts.filter(p => p.slug !== slug && p.entry.data.category === category).slice(0, 3);
 const hasAff   = affiliateLinks && affiliateLinks.length > 0;
 
 const blogPath = localizePath(lang, '/blog');
@@ -169,13 +171,13 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {related.map(p => (
             <ArticleCard
-              title={p.data.title}
-              description={p.data.description}
-              pubDate={p.data.pubDate}
-              category={p.data.category}
+              title={p.entry.data.title}
+              description={p.entry.data.description}
+              pubDate={p.entry.data.pubDate}
+              category={p.entry.data.category}
               slug={p.slug}
-              coverImage={p.data.coverImage}
-              readingTime={rt(p.body)}
+              coverImage={p.entry.data.coverImage}
+              readingTime={rt(p.entry.body)}
               variant="default"
               lang={lang}
             />
