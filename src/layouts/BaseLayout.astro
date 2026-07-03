@@ -1,6 +1,7 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { type Locale, locales, defaultLocale } from '../i18n/ui';
 import '../styles/global.css';
 
 interface Props {
@@ -10,23 +11,38 @@ interface Props {
   canonicalUrl?: string;
   type?: 'website' | 'article';
   pubDate?: Date;
+  lang?: Locale;
 }
 
 const {
   title,
-  description = 'booxnet.com – Inoffizieller News- und Review-Blog rund um ONYX BOOX E-Ink-Tablets und E-Reader.',
+  description = 'booxnet.com – Independent news and review blog for ONYX BOOX E-Ink tablets and e-readers.',
   ogImage = '/og-default.png',
   canonicalUrl = Astro.url.href,
   type = 'website',
   pubDate,
+  lang = defaultLocale,
 } = Astro.props;
 
 const siteName = 'booxnet.com';
 const fullTitle = title === siteName ? title : `${title} | ${siteName}`;
+
+const ogLocale: Record<Locale, string> = {
+  en: 'en_US', es: 'es_ES', fr: 'fr_FR', ru: 'ru_RU',
+};
+
+/* hreflang alternates: current path mapped to each locale */
+const basePath = lang === defaultLocale
+  ? Astro.url.pathname
+  : Astro.url.pathname.replace(new RegExp(`^/${lang}`), '') || '/';
+const alternates = locales.map(l => ({
+  hreflang: l,
+  href: new URL(l === defaultLocale ? basePath : `/${l}${basePath === '/' ? '' : basePath}`, Astro.site).href,
+}));
 ---
 
 <!doctype html>
-<html lang="de" class="scroll-smooth">
+<html lang={lang} class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -35,6 +51,10 @@ const fullTitle = title === siteName ? title : `${title} | ${siteName}`;
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalUrl} />
+    {alternates.map(a => (
+      <link rel="alternate" hreflang={a.hreflang} href={a.href} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={new URL(basePath, Astro.site).href} />
 
     <!-- Open Graph -->
     <meta property="og:type"        content={type} />
@@ -43,7 +63,7 @@ const fullTitle = title === siteName ? title : `${title} | ${siteName}`;
     <meta property="og:image"       content={new URL(ogImage, Astro.site).href} />
     <meta property="og:url"         content={canonicalUrl} />
     <meta property="og:site_name"   content={siteName} />
-    <meta property="og:locale"      content="de_DE" />
+    <meta property="og:locale"      content={ogLocale[lang]} />
     {pubDate && <meta property="article:published_time" content={pubDate.toISOString()} />}
 
     <!-- Twitter -->
@@ -61,10 +81,10 @@ const fullTitle = title === siteName ? title : `${title} | ${siteName}`;
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   </head>
   <body class="min-h-screen flex flex-col">
-    <Header />
+    <Header lang={lang} />
     <main class="flex-1">
       <slot />
     </main>
-    <Footer />
+    <Footer lang={lang} />
   </body>
 </html>

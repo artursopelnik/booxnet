@@ -15,6 +15,7 @@ const images = [
   { file: 'boox-tab-ultra-c-pro.jpg',  shapes: 'tablet' },
   { file: 'boox-note-air3-c.jpg',      shapes: 'split'  },
   { file: 'getting-started.jpg',       shapes: 'book'   },
+  { file: 'boox-go-10-3-gen-ii.jpg',   shapes: 'slim'   },
 ];
 
 const DEVICE = '#1D1D1F';
@@ -69,7 +70,21 @@ function makeSvg({ shapes }) {
     <line x1="748" y1="344" x2="830" y2="344" stroke="${LINE}" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
   `;
 
-  const shapeMap = { phone, tablet, split, book };
+  const slim = `
+    <rect x="380" y="90" width="440" height="560" rx="18" fill="${DEVICE}"/>
+    <rect x="394" y="104" width="412" height="532" rx="8" fill="${SCREEN}"/>
+    <line x1="424" y1="160" x2="770" y2="160" stroke="${LINE}" stroke-width="4" stroke-linecap="round"/>
+    <line x1="424" y1="192" x2="720" y2="192" stroke="${LINE}" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <line x1="424" y1="224" x2="750" y2="224" stroke="${LINE}" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <line x1="424" y1="256" x2="690" y2="256" stroke="${LINE}" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <!-- handwritten squiggle -->
+    <path d="M430 380 q40 -40 80 0 t80 0 t80 0 t80 0" fill="none" stroke="#55585B" stroke-width="4" stroke-linecap="round"/>
+    <path d="M430 440 q30 -25 60 0 t60 0 t60 0" fill="none" stroke="#55585B" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+    <!-- slim stylus -->
+    <rect x="860" y="150" width="13" height="320" rx="6.5" fill="${DEVICE}" transform="rotate(10 866 310)"/>
+  `;
+
+  const shapeMap = { phone, tablet, split, book, slim };
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>

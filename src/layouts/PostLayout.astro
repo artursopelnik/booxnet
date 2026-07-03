@@ -5,32 +5,37 @@ import TableOfContents from '../components/TableOfContents.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
+import { type Locale, useTranslations, localizePath, defaultLocale, dateLocale } from '../i18n/ui';
 
 interface Props {
   post: CollectionEntry<'posts'>;
   headings: { depth: number; slug: string; text: string }[];
+  lang?: Locale;
 }
 
-const { post, headings } = Astro.props;
+const { post, headings, lang = defaultLocale } = Astro.props;
 const { title, description, pubDate, updatedDate, category, coverImage, tags, affiliateLinks } = post.data;
+const t = useTranslations(lang);
 
 const catLabels: Record<string,string> = {
-  news:'News', review:'Review', comparison:'Vergleich', guide:'Guide',
+  news: t('cat.news'), review: t('cat.review'), comparison: t('cat.comparison'), guide: t('cat.guide'),
 };
 
 const wordCount  = post.body?.split(/\s+/).length ?? 0;
 const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
-const fmt = (d: Date) => d.toLocaleDateString('de-DE', { day:'numeric', month:'long', year:'numeric' });
+const fmt = (d: Date) => d.toLocaleDateString(dateLocale[lang], { day:'numeric', month:'long', year:'numeric' });
 
 const allPosts = await getCollection('posts');
 const related  = allPosts.filter(p => p.slug !== post.slug && p.data.category === category).slice(0, 3);
 const hasAff   = affiliateLinks && affiliateLinks.length > 0;
 
+const blogPath = localizePath(lang, '/blog');
+
 function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).length ?? 0) / 200)); }
 ---
 
-<BaseLayout title={title} description={description} type="article" pubDate={pubDate} ogImage={coverImage}>
+<BaseLayout title={title} description={description} type="article" pubDate={pubDate} ogImage={coverImage} lang={lang}>
 
   <!-- Reading progress -->
   <div id="reading-progress" aria-hidden="true"></div>
@@ -41,13 +46,13 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
   <!-- Breadcrumb -->
   <nav class="mx-auto max-w-3xl px-4 sm:px-6 pt-5" aria-label="Breadcrumb">
     <ol class="flex items-center flex-wrap gap-1 text-xs text-ink-400">
-      <li><a href="/" class="hover:text-ink-900 transition-colors">Home</a></li>
+      <li><a href={localizePath(lang, '/')} class="hover:text-ink-900 transition-colors">{t('nav.home')}</a></li>
       <li aria-hidden="true" class="text-ink-300">/</li>
-      <li><a href="/blog" class="hover:text-ink-900 transition-colors">Blog</a></li>
+      <li><a href={blogPath} class="hover:text-ink-900 transition-colors">{t('blog.title')}</a></li>
       <li aria-hidden="true" class="text-ink-300">/</li>
       <li>
-        <a href={`/blog?category=${category}`}
-          class:list={['cat-badge py-0.5 hover:opacity-80', `cat-${category}`]}>
+        <a href={`${blogPath}?category=${category}`}
+          class="cat-badge py-0.5 hover:opacity-80">
           {catLabels[category]}
         </a>
       </li>
@@ -60,13 +65,13 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
   <article class="mx-auto max-w-3xl px-4 sm:px-6 py-8">
     <header class="mb-8">
       <div class="flex items-center gap-2 mb-4">
-        <span class:list={['cat-badge', `cat-${category}`]}>{catLabels[category]}</span>
+        <span class="cat-badge">{catLabels[category]}</span>
         <span class="text-ink-300" aria-hidden="true">·</span>
         <span class="text-xs text-ink-400 flex items-center gap-1.5">
           <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.5 3.25a.75.75 0 00-1.5 0V8c0 .2.08.39.22.53l2 2a.75.75 0 101.06-1.06L8.5 7.69V4.25z"/>
           </svg>
-          {readingTime} Min. Lesezeit
+          {readingTime} {t('post.readingTime')}
         </span>
       </div>
 
@@ -78,11 +83,11 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
 
       <div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink-400 border-t border-ink-100 pt-4">
         <time datetime={pubDate.toISOString()}>
-          Veröffentlicht: <strong class="text-ink-600 font-medium">{fmt(pubDate)}</strong>
+          {t('post.published')} <strong class="text-ink-600 font-medium">{fmt(pubDate)}</strong>
         </time>
         {updatedDate && (
           <time datetime={updatedDate.toISOString()}>
-            Aktualisiert: <strong class="text-ink-600 font-medium">{fmt(updatedDate)}</strong>
+            {t('post.updated')} <strong class="text-ink-600 font-medium">{fmt(updatedDate)}</strong>
           </time>
         )}
       </div>
@@ -106,10 +111,10 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
     )}
 
     <!-- Affiliate disclosure -->
-    {hasAff && <AffiliateDisclosure />}
+    {hasAff && <AffiliateDisclosure lang={lang} />}
 
     <!-- TOC -->
-    <TableOfContents headings={headings} />
+    <TableOfContents headings={headings} lang={lang} />
 
     <!-- Body -->
     <div class="prose-article">
@@ -119,14 +124,14 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
     <!-- Bottom disclosure -->
     {hasAff && (
       <div class="mt-10 pt-5 border-t border-ink-100">
-        <AffiliateDisclosure compact />
+        <AffiliateDisclosure compact lang={lang} />
       </div>
     )}
 
     <!-- Affiliate product links -->
     {hasAff && affiliateLinks && (
       <div class="mt-5 rounded-xl border border-ink-200 bg-ink-50 p-5">
-        <p class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mb-3">Im Artikel erwähnte Produkte</p>
+        <p class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mb-3">{t('post.products')}</p>
         <ul class="space-y-2">
           {affiliateLinks.map(link => (
             <li>
@@ -146,11 +151,11 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
 
     <!-- Back link -->
     <div class="mt-10 pt-6 border-t border-ink-100">
-      <a href="/blog" class="inline-flex items-center gap-2 text-sm font-medium text-ink-500 hover:text-ink-900 transition-colors">
+      <a href={blogPath} class="inline-flex items-center gap-2 text-sm font-medium text-ink-500 hover:text-ink-900 transition-colors">
         <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fill-rule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.61l4.16 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.61 9.25H16.25A.75.75 0 0117 10z" clip-rule="evenodd"/>
         </svg>
-        Zurück zum Blog
+        {t('post.back')}
       </a>
     </div>
   </article>
@@ -160,7 +165,7 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
   {related.length > 0 && (
     <section class="py-12">
       <div class="mx-auto max-w-6xl px-4 sm:px-6">
-        <div class="section-label">Ähnliche Artikel</div>
+        <div class="section-label">{t('post.related')}</div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {related.map(p => (
             <ArticleCard
@@ -172,6 +177,7 @@ function rt(body?: string) { return Math.max(1, Math.ceil((body?.split(/\s+/).le
               coverImage={p.data.coverImage}
               readingTime={rt(p.body)}
               variant="default"
+              lang={lang}
             />
           ))}
         </div>

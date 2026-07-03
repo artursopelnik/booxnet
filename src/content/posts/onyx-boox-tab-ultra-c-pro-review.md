@@ -1,54 +1,54 @@
 ---
-title: "ONYX BOOX Tab Ultra C Pro im Test: Das beste Farb-E-Ink-Tablet 2024?"
-description: "Wir haben das ONYX BOOX Tab Ultra C Pro ausführlich getestet – mit Kess3-Display, Android 12 und Stylus-Support. Lohnt sich der Kauf?"
+title: "ONYX BOOX Tab Ultra C Pro Review: Still the Color E-Ink Workhorse?"
+description: "We took a deep look at the ONYX BOOX Tab Ultra C Pro – Kaleido 3 color display, Android, and stylus support. Is it worth buying today?"
 pubDate: 2024-11-15
 category: "review"
 series: "tab"
 coverImage: "/images/boox-tab-ultra-c-pro.jpg"
-tags: ["BOOX Tab Ultra C Pro", "E-Ink Farbe", "Kess3", "Android", "Review"]
+tags: ["BOOX Tab Ultra C Pro", "Color E-Ink", "Kaleido 3", "Android", "Review"]
 affiliateLinks:
-  - label: "BOOX Tab Ultra C Pro auf Amazon"
-    url: "https://www.amazon.de/s?k=BOOX+Tab+Ultra+C+Pro"
-  - label: "BOOX Tab Ultra C Pro im BOOX-Shop"
+  - label: "BOOX Tab Ultra C Pro on Amazon"
+    url: "https://www.amazon.com/s?k=BOOX+Tab+Ultra+C+Pro"
+  - label: "BOOX Tab Ultra C Pro at the BOOX Shop"
     url: "https://shop.boox.com"
 ---
 
-Das **ONYX BOOX Tab Ultra C Pro** ist das Flaggschiff-Farb-E-Ink-Tablet von Onyx International. Mit dem neuen Kess3-Display verspricht es eine deutlich verbesserte Farbanzeige gegenüber dem Vorgänger.
+The **ONYX BOOX Tab Ultra C Pro** is Onyx International's flagship color E-Ink tablet. With its Kaleido 3 color display it promises significantly better color reproduction than earlier color e-paper devices.
 
-## Display und Bildqualität
+## Display and Image Quality
 
-Das 10,3-Zoll-Display mit 2480 × 1860 Pixel Auflösung (300 PPI) bietet eine knackige Schärfe. Die Kess3-Technologie von E Ink bringt erstmals wirklich brauchbare Farben auf ein E-Ink-Display.
+The 10.3-inch display with a 2480 × 1860 resolution (300 PPI in black and white) delivers crisp, paper-like text. E Ink's Kaleido 3 technology finally brings genuinely usable color to an E-Ink screen.
 
-### Farbtreue im Alltag
+### Color Accuracy in Daily Use
 
-Die Farben sind nicht mit einem OLED- oder IPS-Display vergleichbar, aber für E-Ink-Verhältnisse beeindruckend. PDFs mit Diagrammen und Grafiken sind endlich gut lesbar. Fotos wirken pastellartig, aber erkennbar.
+The colors are not comparable to an OLED or IPS panel, but for e-paper they are impressive. PDFs with charts and diagrams are finally readable at a glance. Photos look pastel-toned but recognizable.
 
-### Schreib- und Zeichenperformance
+### Writing and Drawing Performance
 
-Der mitgelieferte Stylus reagiert mit sehr geringer Latenz. Das Schreibgefühl auf dem Glas ist texturiert und angenehm.
+The included stylus responds with very low latency. The textured glass surface makes writing feel controlled and pleasant.
 
-## Performance und Software
+## Performance and Software
 
-Angetrieben von einem Qualcomm Snapdragon mit 6 GB RAM läuft Android 12 flüssig. Der Google Play Store ist vorinstalliert.
+Powered by a Qualcomm Snapdragon with 6 GB of RAM, Android runs smoothly. The Google Play Store comes pre-installed.
 
-### Apps und Kompatibilität
+### Apps and Compatibility
 
-Praktisch jede Android-App läuft – natürlich mit E-Ink-typischen Einschränkungen bei Animationen. Kindle, Tolino, PocketBook und KOReader funktionieren hervorragend.
+Practically every Android app runs – with the usual E-Ink limitations around animations. Kindle, Kobo, PocketBook and KOReader all work brilliantly.
 
-## Akku und Verarbeitung
+## Battery and Build Quality
 
-Der 6.300-mAh-Akku hält bei gemischter Nutzung etwa 5–7 Tage. Das Aluminiumgehäuse fühlt sich hochwertig an.
+The 6,300 mAh battery lasts about 5–7 days of mixed use. The aluminum body feels premium.
 
-## Fazit
+## Verdict
 
-Das BOOX Tab Ultra C Pro ist das aktuell beste Farb-E-Ink-Tablet auf dem Markt. Der Preis ist hoch, aber gerechtfertigt für Nutzer, die ein produktives E-Ink-Erlebnis mit Farbe suchen.
+The BOOX Tab Ultra C Pro remains one of the best color E-Ink tablets you can buy. It is expensive, but justified for anyone who wants a productive color e-paper experience.
 
-**Bewertung: 8,5/10**
+**Rating: 8.5/10**
 
-| Kriterium | Bewertung |
-|-----------|-----------|
+| Criterion | Score |
+|-----------|-------|
 | Display | 9/10 |
 | Performance | 8/10 |
-| Akku | 8/10 |
-| Verarbeitung | 9/10 |
+| Battery | 8/10 |
+| Build quality | 9/10 |
 | Software | 8/10 |

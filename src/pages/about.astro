@@ -3,95 +3,100 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
 <BaseLayout
-  title="Über booxnet.com – Disclaimer"
-  description="booxnet.com ist ein inoffizielles Fan-Projekt rund um ONYX BOOX E-Ink-Tablets. Erfahre mehr über das Projekt, unsere Ziele und den wichtigen Disclaimer."
+  title="About booxnet.com – Disclaimer"
+  description="booxnet.com is an unofficial fan project covering ONYX BOOX E-Ink tablets. Learn about the project, our mission and the important disclaimer."
 >
   <div class="mx-auto max-w-3xl px-4 sm:px-6 py-12">
 
     <!-- Page header -->
     <header class="mb-10 pb-6 border-b border-ink-200">
       <p class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mb-3">
-        Das Projekt
+        The Project
       </p>
-      <h1 class="font-display font-black text-3xl sm:text-4xl text-ink-900 mb-2 tracking-tight">Über booxnet.com</h1>
-      <p class="text-ink-500 text-lg">Inoffizielles Community-Projekt rund um ONYX BOOX E-Ink-Tablets</p>
+      <h1 class="font-display font-black text-3xl sm:text-4xl text-ink-900 mb-2 tracking-tight">About booxnet.com</h1>
+      <p class="text-ink-500 text-lg">Unofficial community project covering ONYX BOOX E-Ink tablets</p>
     </header>
 
-    <!-- Important Disclaimer — dark editorial panel -->
+    <!-- Important Disclaimer — dark panel -->
     <aside class="mb-12 rounded-xl bg-ink-900 text-ink-200 p-6 sm:p-8 relative overflow-hidden">
-      <div class="absolute top-0 left-0 right-0 h-[3px] bg-accent-500" aria-hidden="true"></div>
+      <div class="absolute top-0 left-0 right-0 h-[3px] bg-ink-500" aria-hidden="true"></div>
       <h2 class="flex items-center gap-2.5 font-display font-bold text-xl text-ink-50 mb-4">
-        <svg class="h-5 w-5 text-accent-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <svg class="h-5 w-5 text-ink-300 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
         </svg>
-        Wichtiger Disclaimer
+        Important Disclaimer
       </h2>
       <p class="leading-relaxed mb-4">
-        <strong class="text-ink-50">booxnet.com ist ein inoffizielles Fan- und Community-Projekt.</strong> Diese Website steht in
-        <strong class="text-ink-50">keinerlei Verbindung</strong> zu Onyx International Co., Ltd. oder der Marke BOOX™.
+        <strong class="text-ink-50">booxnet.com is an unofficial fan and community project.</strong> This website has
+        <strong class="text-ink-50">no affiliation whatsoever</strong> with Onyx International Co., Ltd. or the BOOX™ brand.
       </p>
       <ul class="text-sm text-ink-300 space-y-2">
         {[
-          'Wir sind nicht autorisiert, im Namen von Onyx International zu sprechen',
-          'Alle Markennamen (BOOX, ONYX, ONYX BOOX) sind Eigentum von Onyx International Co., Ltd.',
-          'Produktinformationen basieren auf öffentlich verfügbaren Quellen und eigenen Tests',
-          'Wir übernehmen keine Garantie für die Richtigkeit von Spezifikationsangaben',
+          'We are not authorized to speak on behalf of Onyx International',
+          'All trademarks (BOOX, ONYX, ONYX BOOX) are property of Onyx International Co., Ltd.',
+          'Product information is based on publicly available sources and our own testing',
+          'We make no guarantee for the accuracy of specification details',
         ].map(item => (
           <li class="flex gap-2.5">
-            <span class="mt-[7px] h-1 w-1 rounded-full bg-accent-400 flex-shrink-0" aria-hidden="true"></span>
+            <span class="mt-[7px] h-1 w-1 rounded-full bg-ink-400 flex-shrink-0" aria-hidden="true"></span>
             {item}
           </li>
         ))}
         <li class="flex gap-2.5">
-          <span class="mt-[7px] h-1 w-1 rounded-full bg-accent-400 flex-shrink-0" aria-hidden="true"></span>
+          <span class="mt-[7px] h-1 w-1 rounded-full bg-ink-400 flex-shrink-0" aria-hidden="true"></span>
           <span>
-            Für offizielle Informationen besuche
-            <a href="https://www.boox.com" class="text-ink-50 underline decoration-ink-600 underline-offset-2 hover:decoration-accent-400 transition-colors" target="_blank" rel="noopener noreferrer">boox.com</a>
+            For official information visit
+            <a href="https://www.boox.com" class="text-ink-50 underline decoration-ink-600 underline-offset-2 hover:decoration-ink-300 transition-colors" target="_blank" rel="noopener noreferrer">boox.com</a>
           </span>
         </li>
       </ul>
     </aside>
 
     <div class="prose-article">
-      <h2>Was ist booxnet.com?</h2>
+      <h2>What is booxnet.com?</h2>
       <p>
-        booxnet.com ist ein internationaler Fan-Blog, der sich auf ONYX BOOX E-Ink-Tablets
-        und E-Reader spezialisiert hat. Unser Team aus E-Reader-Enthusiasten schreibt unabhängige
-        Reviews, vergleicht Geräte und veröffentlicht News rund um die BOOX-Produktfamilie.
+        booxnet.com is an international fan blog specializing in ONYX BOOX E-Ink tablets
+        and e-readers. Our team of e-reader enthusiasts writes independent reviews,
+        compares devices, and publishes news about the BOOX product family.
       </p>
 
-      <h2>Unsere Mission</h2>
+      <h2>Our Mission</h2>
       <p>
-        Wir möchten die deutschsprachige Community rund um ONYX BOOX-Geräte mit
-        hochwertigen, unabhängigen Inhalten versorgen. Dabei legen wir Wert auf:
+        We want to provide the community around ONYX BOOX devices with high-quality,
+        independent content. Our core values:
       </p>
       <ul>
-        <li><strong>Unabhängigkeit:</strong> Unsere Meinungen sind nicht von Herstellern oder Händlern beeinflusst.</li>
-        <li><strong>Transparenz:</strong> Affiliate-Links sind klar gekennzeichnet.</li>
-        <li><strong>Qualität:</strong> Wir testen Geräte ausführlich, bevor wir darüber schreiben.</li>
-        <li><strong>Community:</strong> Wir freuen uns über Feedback, Korrekturen und Verbesserungsvorschläge.</li>
+        <li><strong>Independence:</strong> Our opinions are not influenced by manufacturers or retailers.</li>
+        <li><strong>Transparency:</strong> Affiliate links are clearly labeled.</li>
+        <li><strong>Quality:</strong> We test devices thoroughly before writing about them.</li>
+        <li><strong>Community:</strong> We welcome feedback, corrections and suggestions.</li>
       </ul>
 
-      <h2>Unsere Kategorien</h2>
+      <h2>Our Categories</h2>
       <ul>
-        <li><strong>News:</strong> Aktuelle Meldungen zu neuen BOOX-Geräten, Software-Updates und Ankündigungen.</li>
-        <li><strong>Reviews:</strong> Ausführliche Tests von BOOX E-Ink-Tablets und E-Readern.</li>
-        <li><strong>Vergleiche:</strong> Direkte Gegenüberstellungen verschiedener Modelle.</li>
-        <li><strong>Guides:</strong> Anleitungen und Tipps zur Nutzung und Einrichtung.</li>
+        <li><strong>News:</strong> Current reports on new BOOX devices, software updates and announcements.</li>
+        <li><strong>Reviews:</strong> In-depth tests of BOOX E-Ink tablets and e-readers.</li>
+        <li><strong>Comparisons:</strong> Direct head-to-heads between different models.</li>
+        <li><strong>Guides:</strong> Tutorials and tips for setup and daily use.</li>
       </ul>
 
-      <h2>Haftungsausschluss</h2>
+      <h2>Languages</h2>
       <p>
-        Die auf dieser Website veröffentlichten Informationen dienen ausschließlich
-        Informationszwecken. Wir übernehmen keine Gewähr für die Aktualität, Korrektheit
-        oder Vollständigkeit der bereitgestellten Informationen. Kaufentscheidungen solltest
-        du immer auf Basis mehrerer Quellen treffen.
+        booxnet.com is published in English, with the interface also available in
+        Spanish, French and Russian. Article translations are added over time.
       </p>
 
-      <h2>Kontakt</h2>
+      <h2>Liability Disclaimer</h2>
       <p>
-        Fragen, Feedback oder Kooperationsanfragen? Schreib uns über unsere
-        <a href="/contact">Kontaktseite</a>.
+        The information published on this website is for informational purposes only.
+        We make no warranty as to the timeliness, correctness or completeness of the
+        information provided. Always base purchase decisions on multiple sources.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions, feedback or partnership inquiries? Reach us via our
+        <a href="/contact">contact page</a>.
       </p>
     </div>
   </div>

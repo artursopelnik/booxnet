@@ -1,36 +1,33 @@
 ---
-title: "BOOX Palma 2 offiziell vorgestellt: Pocket-E-Reader mit Android 13"
-description: "Onyx International hat den BOOX Palma 2 angekündigt – der Nachfolger des beliebten Pocket-E-Readers kommt mit Android 13 und verbessertem Display."
+title: "BOOX Palma 2 Officially Announced: Pocket E-Reader with Android 13"
+description: "Onyx International has announced the BOOX Palma 2 – the successor to the beloved pocket e-reader arrives with Android 13 and an improved display."
 pubDate: 2024-12-01
 category: "news"
 series: "palma"
 coverImage: "/images/boox-palma-2.jpg"
 tags: ["BOOX Palma 2", "News", "Android 13", "Pocket E-Reader"]
 affiliateLinks:
-  - label: "BOOX Palma 2 vorbestellen"
+  - label: "Pre-order the BOOX Palma 2"
     url: "https://shop.boox.com"
 ---
 
-Onyx International hat offiziell den **BOOX Palma 2** angekündigt, den Nachfolger des 2023 erschienenen BOOX Palma – einem der beliebtesten Pocket-E-Reader auf dem Markt.
+Onyx International has officially announced the **BOOX Palma 2**, the successor to one of the most surprising e-reader hits of recent years.
 
-## Was ist neu beim BOOX Palma 2?
+## What's New
 
-### Android 13 statt Android 11
+The phone-sized e-reader keeps its 6.13-inch E-Ink Carta display but upgrades the internals:
 
-Die größte Neuerung ist das Betriebssystem-Upgrade auf **Android 13**. Das bringt verbesserte Datenschutzfunktionen, bessere App-Kompatibilität und aktuelle Sicherheitspatches.
+- **Android 13** instead of Android 11
+- Faster octa-core processor
+- Improved front light with warmer color temperature
+- A fingerprint reader integrated into the power button
 
-### Verbessertes E-Ink-Display
+## Why the Palma Matters
 
-Das 6,13-Zoll-Display behält die 824 × 1648 Pixel Auflösung (300 PPI), soll aber durch eine neue Frontlicht-Technologie eine gleichmäßigere Beleuchtung bieten.
+The original Palma found an audience nobody predicted: people who want to replace doom-scrolling with reading. It slips into a pocket, runs every reading app through the Play Store, and its battery lasts for days.
 
-### Schnellerer Prozessor
+## Availability
 
-Ein neuer Octa-Core-Prozessor mit mehr RAM sorgt für flüssigeres Multitasking und schnellere App-Starts.
+The Palma 2 is available through the official BOOX shop and select retailers. The original Palma is expected to drop in price – making it an interesting budget alternative.
 
-## Verfügbarkeit und Preis
-
-Der BOOX Palma 2 soll Anfang 2025 für rund **280–320 EUR** erhältlich sein. Vorbestellungen sind bereits im offiziellen BOOX-Shop möglich.
-
-## Unsere Einschätzung
-
-Der BOOX Palma war bereits ein starkes Gerät – der Palma 2 dürfte mit Android 13 und verbesserter Performance zum Referenzgerät unter den Pocket-E-Readern werden. Wir sind gespannt auf unseren ausführlichen Test!
+We will publish a full review as soon as our unit arrives. In the meantime, check the [official BOOX shop](https://shop.boox.com) for details.

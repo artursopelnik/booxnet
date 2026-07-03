@@ -1,4 +1,12 @@
 ---
+import { type Locale, useTranslations, localizePath, defaultLocale } from '../i18n/ui';
+
+interface Props {
+  lang?: Locale;
+}
+const { lang = defaultLocale } = Astro.props;
+const t = useTranslations(lang);
+
 const year = new Date().getFullYear();
 ---
 
@@ -8,35 +16,29 @@ const year = new Date().getFullYear();
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
       <!-- Brand -->
       <div class="lg:col-span-2">
-        <a href="/" class="inline-flex items-center gap-2.5 mb-4 group">
-          <div class="flex h-8 w-8 items-center justify-center rounded bg-ink-50 text-ink-900 select-none
-                      text-xs font-black tracking-tight transition-transform group-hover:scale-105">
-            BN
-          </div>
-          <span class="font-display font-bold text-lg text-ink-50 leading-none tracking-tight">
-            booxnet<span class="text-accent-400">.</span>
+        <a href={localizePath(lang, '/')} class="inline-block mb-4 group">
+          <span class="text-xl font-black uppercase tracking-tighter text-ink-50 leading-none select-none">
+            BOOXNET
           </span>
         </a>
         <p class="text-sm text-ink-400 leading-relaxed max-w-xs">
-          Unabhängiger News- und Review-Blog rund um ONYX BOOX E-Ink-Tablets und E-Reader –
-          nicht verbunden mit Onyx International Co., Ltd.
+          {t('footer.tagline')}
         </p>
         <p class="mt-4 text-xs text-ink-400 leading-relaxed max-w-xs">
-          * Affiliate-Links: Bei Kauf über unsere Links erhalten wir eine Provision –
-          für dich entstehen keine Mehrkosten.
+          {t('footer.affiliate')}
         </p>
       </div>
 
-      <!-- Inhalte -->
+      <!-- Content -->
       <div>
-        <h3 class="text-2xs font-bold text-ink-400 uppercase tracking-editorial mb-4">Inhalte</h3>
+        <h3 class="text-2xs font-bold text-ink-400 uppercase tracking-editorial mb-4">{t('footer.content')}</h3>
         <ul class="space-y-2.5">
           {[
-            { href: '/blog?category=news',       label: 'News' },
-            { href: '/blog?category=review',     label: 'Reviews' },
-            { href: '/blog?category=comparison', label: 'Vergleiche' },
-            { href: '/blog?category=guide',      label: 'Guides' },
-            { href: '/blog',                     label: 'Alle Artikel' },
+            { href: localizePath(lang, '/blog?category=news'),       label: t('nav.news') },
+            { href: localizePath(lang, '/blog?category=review'),     label: t('nav.reviews') },
+            { href: localizePath(lang, '/blog?category=comparison'), label: t('nav.comparisons') },
+            { href: localizePath(lang, '/blog?category=guide'),      label: t('nav.guides') },
+            { href: localizePath(lang, '/blog'),                     label: t('nav.allArticles') },
           ].map(l => (
             <li>
               <a href={l.href} class="text-sm text-ink-300 hover:text-ink-50 transition-colors">
@@ -47,14 +49,14 @@ const year = new Date().getFullYear();
         </ul>
       </div>
 
-      <!-- Rechtliches -->
+      <!-- Legal -->
       <div>
-        <h3 class="text-2xs font-bold text-ink-400 uppercase tracking-editorial mb-4">Rechtliches</h3>
+        <h3 class="text-2xs font-bold text-ink-400 uppercase tracking-editorial mb-4">{t('footer.legal')}</h3>
         <ul class="space-y-2.5">
           {[
-            { href: '/about',                label: 'Über uns / Disclaimer' },
-            { href: '/affiliate-disclosure', label: 'Affiliate-Disclosure' },
-            { href: '/contact',              label: 'Kontakt / Impressum' },
+            { href: '/about',                label: t('footer.aboutDisclaimer') },
+            { href: '/affiliate-disclosure', label: t('footer.affiliateDisclosure') },
+            { href: '/contact',              label: t('footer.contact') },
           ].map(l => (
             <li>
               <a href={l.href} class="text-sm text-ink-300 hover:text-ink-50 transition-colors">
@@ -69,11 +71,10 @@ const year = new Date().getFullYear();
     <!-- Bottom bar -->
     <div class="mt-12 pt-6 border-t border-ink-700/60 flex flex-col sm:flex-row items-center justify-between gap-3">
       <p class="text-xs text-ink-400">
-        &copy; {year} booxnet.com – Inoffizielles Community-Projekt.
-        Alle Markennamen sind Eigentum ihrer jeweiligen Inhaber.
+        &copy; {year} {t('footer.copyright')}
       </p>
       <p class="text-xs text-ink-400">
-        Kein offizielles Produkt von Onyx International Co., Ltd.
+        {t('footer.notOfficial')}
       </p>
     </div>
   </div>

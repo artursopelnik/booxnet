@@ -1,4 +1,6 @@
 ---
+import { type Locale, useTranslations, defaultLocale } from '../i18n/ui';
+
 interface Heading {
   depth: number;
   slug: string;
@@ -7,9 +9,11 @@ interface Heading {
 
 interface Props {
   headings: Heading[];
+  lang?: Locale;
 }
 
-const { headings } = Astro.props;
+const { headings, lang = defaultLocale } = Astro.props;
+const t = useTranslations(lang);
 const filtered = headings.filter(h => h.depth <= 3);
 
 /* Editorial numbering: only h2 entries get an index */
@@ -23,10 +27,11 @@ const items = filtered.map(h => ({
 {filtered.length > 2 && (
   <nav
     class="not-prose my-8 border-y border-ink-200 py-5"
-    aria-label="Inhaltsverzeichnis"
+    aria-label={t('post.tocAria')}
+    data-toc
   >
     <p class="text-2xs font-bold uppercase tracking-editorial text-ink-400 mb-4">
-      Inhalt
+      {t('post.toc')}
     </p>
     <ol class="space-y-2">
       {items.map(h => (
@@ -36,16 +41,16 @@ const items = filtered.map(h => ({
             class:list={[
               'group flex items-baseline gap-3 transition-colors',
               h.depth === 2
-                ? 'text-[0.95rem] font-medium text-ink-800 hover:text-accent-600'
-                : 'text-sm text-ink-500 hover:text-accent-600',
+                ? 'text-[0.95rem] font-medium text-ink-800 hover:text-ink-600'
+                : 'text-sm text-ink-500 hover:text-ink-700',
             ]}
           >
             {h.num && (
-              <span class="font-mono text-2xs text-ink-300 group-hover:text-accent-500 transition-colors flex-shrink-0 tabular-nums">
+              <span class="font-mono text-2xs text-ink-300 group-hover:text-ink-500 transition-colors flex-shrink-0 tabular-nums">
                 {h.num}
               </span>
             )}
-            <span class="border-b border-transparent group-hover:border-accent-300 transition-colors">{h.text}</span>
+            <span class="border-b border-transparent group-hover:border-ink-300 transition-colors">{h.text}</span>
           </a>
         </li>
       ))}

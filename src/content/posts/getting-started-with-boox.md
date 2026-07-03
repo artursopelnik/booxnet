@@ -1,46 +1,56 @@
 ---
-title: "Einsteiger-Guide: So richtest du dein ONYX BOOX optimal ein"
-description: "Schritt-für-Schritt-Anleitung zur optimalen Einrichtung deines BOOX-Geräts: Apps, Einstellungen, Tipps und Tricks für Einsteiger."
+title: "Getting Started: How to Set Up Your ONYX BOOX the Right Way"
+description: "Step-by-step guide to setting up your BOOX device: essential apps, display settings, and tips every new owner should know."
 pubDate: 2024-09-10
 category: "guide"
 series: "general"
 coverImage: "/images/getting-started.jpg"
-tags: ["Guide", "Einrichtung", "Android", "Apps", "Tipps"]
+tags: ["Setup", "Guide", "Beginners", "Tips"]
 ---
 
-Du hast gerade dein erstes ONYX BOOX Gerät ausgepackt? Dieser Guide hilft dir, das Maximum aus deinem E-Ink-Tablet herauszuholen.
+You unboxed your new BOOX device – now what? This guide walks you through the setup steps that make the biggest difference in daily use.
 
-## Schritt 1: Ersteinrichtung
+## Step 1: System Update First
 
-Folge dem Setup-Assistenten und verbinde dich mit deinem WLAN. Entscheide, ob du einen BOOX-Account anlegen möchtest – dieser ist für die Cloud-Sync-Funktion nötig, aber nicht zwingend erforderlich.
+Before anything else, go to **Settings → Firmware Update**. Onyx ships significant improvements in firmware updates, and a fresh device is often several versions behind.
 
-## Schritt 2: Google Play Store einrichten
+## Step 2: Sign In to Google Play
 
-BOOX-Geräte kommen mit vorinstalliertem Google Play Store. Melde dich mit deinem Google-Konto an und installiere deine bevorzugten Apps.
+BOOX devices ship with the Play Store, but it needs activation:
 
-### Empfohlene Apps für E-Ink
+1. Open **Settings → Apps → Enable Google Play**
+2. Restart the device
+3. Sign in with your Google account
 
-- **Kindle** – für deine Amazon-Bibliothek
-- **KOReader** – open-source Leseprogramm mit vielen Einstellungen
-- **Moon+ Reader Pro** – vielseitiger Ebook-Reader
-- **Obsidian** – Markdown-Notizen mit Sync
-- **Pocket** – Artikel zum späteren Lesen speichern
+Certification can take a few minutes to a few hours.
 
-## Schritt 3: Bildschirm-Auffrischung optimieren
+## Step 3: Tune the E-Ink Refresh Modes
 
-Gehe zu Einstellungen → Anzeigeeinstellungen und passe die Auffrischungsrate an. Für Lesen: A2-Modus; für detaillierte Inhalte: GC16-Modus.
+The most important BOOX skill is choosing the right refresh mode per app:
 
-## Schritt 4: Stylus kalibrieren
+- **HD mode:** best quality – for reading
+- **Balanced mode:** good middle ground – for browsing and notes
+- **Fast / Ultrafast:** for scrolling-heavy apps, at the cost of ghosting
 
-Unter Einstellungen → Stylus kannst du den Eingabestift kalibrieren und Druckempfindlichkeit anpassen.
+Set per-app modes in the **App Optimization** panel – it makes a night-and-day difference.
 
-## Profi-Tipps
+## Step 4: Essential Apps
 
-1. **Dunkelmodus** in allen Apps aktivieren – schont die Augen noch mehr
-2. **Auto-Rotate deaktivieren** – stabilere Darstellung beim Lesen
-3. **Energiesparmodus** für maximale Akkulaufzeit
-4. **KOReader installieren** – bietet die meisten Anpassungsmöglichkeiten
+Our starter kit:
 
-## Fazit
+- **KOReader** – the power tool for EPUB and PDF
+- **Kindle / Kobo** – if you own books in those ecosystems
+- **Readwise Reader** or **Pocket** – read-it-later on e-paper is fantastic
+- **Syncthing** – wireless file sync to your computer
 
-Mit den richtigen Einstellungen und Apps wird dein BOOX zum perfekten digitalen Begleiter – ob für Lesen, Notizen oder Produktivität.
+## Step 5: Set Up Cloud Sync for Notes
+
+In the Notes app, connect **Onyx Cloud** (or Dropbox/OneDrive) under Settings so every notebook is backed up automatically.
+
+## Bonus Tips
+
+- Long-press the ball/navigation widget to reposition it
+- Swipe down from the top-right corner for the control center
+- The built-in screen recorder is handy for sharing E-Ink app behavior
+
+Enjoy your new e-paper companion!

@@ -26,6 +26,10 @@ const pages = [
   { name: 'about', path: '/about' },
   { name: 'affiliate-disclosure', path: '/affiliate-disclosure' },
   { name: 'contact', path: '/contact' },
+  { name: 'home-es', path: '/es' },
+  { name: 'home-fr', path: '/fr' },
+  { name: 'home-ru', path: '/ru' },
+  { name: 'blog-es', path: '/es/blog' },
 ];
 
 for (const page of pages) {
@@ -73,7 +77,7 @@ test('article: affiliate disclosure shown', async ({ page }, testInfo) => {
   if (testInfo.project.name !== 'desktop') test.skip();
   await page.goto('/blog/onyx-boox-tab-ultra-c-pro-review');
   await page.waitForLoadState('networkidle');
-  const disclosure = page.locator('aside').filter({ hasText: 'Affiliate-Hinweis' });
+  const disclosure = page.locator('aside[data-disclosure="affiliate"]');
   await expect(disclosure).toBeVisible();
   await page.screenshot({
     path: screenshotPath('article-affiliate-disclosure-detail', 'desktop'),
@@ -87,7 +91,7 @@ test('article: table of contents shown', async ({ page }, testInfo) => {
   if (testInfo.project.name !== 'desktop') test.skip();
   await page.goto('/blog/onyx-boox-tab-ultra-c-pro-review');
   await page.waitForLoadState('networkidle');
-  const toc = page.locator('nav[aria-label="Inhaltsverzeichnis"]');
+  const toc = page.locator('nav[data-toc]');
   await expect(toc).toBeVisible();
 });
 

@@ -1,4 +1,6 @@
 ---
+import { type Locale, useTranslations, localizePath, defaultLocale, dateLocale } from '../i18n/ui';
+
 interface Props {
   title: string;
   description: string;
@@ -9,27 +11,32 @@ interface Props {
   tags?: string[];
   readingTime?: number;
   variant?: 'default' | 'overlay' | 'horizontal';
+  lang?: Locale;
 }
 
 const {
   title, description, pubDate, category, slug,
   coverImage, tags = [], readingTime,
   variant = 'default',
+  lang = defaultLocale,
 } = Astro.props;
 
+const t = useTranslations(lang);
+
 const catLabels: Record<string, string> = {
-  news: 'News', review: 'Review', comparison: 'Vergleich', guide: 'Guide',
+  news: t('cat.news'), review: t('cat.review'), comparison: t('cat.comparison'), guide: t('cat.guide'),
 };
 
 /* Neutral fallback surface when no image (boox.com-style light product background) */
-const grad = 'linear-gradient(180deg,#FAFAFA,#E8E8ED)';
+const grad = 'linear-gradient(180deg,#F4F5F7,#DFE1E4)';
 
-const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+const date = pubDate.toLocaleDateString(dateLocale[lang], { day: 'numeric', month: 'short', year: 'numeric' });
+const href = localizePath(lang, `/blog/${slug}`);
 ---
 
 <!-- OVERLAY VARIANT – large card with image behind text -->
 {variant === 'overlay' && (
-  <a href={`/blog/${slug}`}
+  <a href={href}
     class="group overlay-card block w-full h-full min-h-[360px] bg-ink-800 rounded-xl overflow-hidden">
     {coverImage && (
       <img
@@ -42,8 +49,8 @@ const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short
       <div class="absolute inset-0" style={`background:${grad}`}></div>
     )}
     <div class="card-content">
-      <span class:list={['cat-badge mb-3 inline-block', `cat-${category}`]}>{catLabels[category]}</span>
-      <h2 class="font-display font-bold text-xl sm:text-2xl text-white leading-tight mb-2 group-hover:text-accent-300 transition-colors">
+      <span class="cat-badge mb-3 inline-block">{catLabels[category]}</span>
+      <h2 class="font-display font-bold text-xl sm:text-2xl text-white leading-tight mb-2 group-hover:text-ink-200 transition-colors">
         {title}
       </h2>
       <p class="text-ink-300 text-sm leading-relaxed line-clamp-2 mb-3">{description}</p>
@@ -54,7 +61,7 @@ const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short
             <svg class="h-3 w-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
               <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.5 3.25a.75.75 0 00-1.5 0V8c0 .2.08.39.22.53l2 2a.75.75 0 101.06-1.06L8.5 7.69V4.25z"/>
             </svg>
-            {readingTime} Min.
+            {readingTime} {t('post.readingTime')}
           </span>
         )}
       </div>
@@ -64,7 +71,7 @@ const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short
 
 <!-- HORIZONTAL VARIANT – image left, text right (sidebar headlines) -->
 {variant === 'horizontal' && (
-  <a href={`/blog/${slug}`}
+  <a href={href}
     class="group flex gap-3 py-3 border-b border-ink-100 last:border-0">
     <div class="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-ink-200">
       {coverImage ? (
@@ -77,8 +84,8 @@ const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short
       )}
     </div>
     <div class="flex-1 min-w-0">
-      <span class:list={['cat-badge mb-1', `cat-${category}`]}>{catLabels[category]}</span>
-      <h3 class="text-sm font-semibold text-ink-900 leading-tight line-clamp-2 group-hover:text-accent-600 transition-colors mt-1">
+      <span class="cat-badge mb-1">{catLabels[category]}</span>
+      <h3 class="text-sm font-semibold text-ink-900 leading-tight line-clamp-2 group-hover:text-ink-600 transition-colors mt-1">
         {title}
       </h3>
       <time class="text-2xs text-ink-400 mt-1 block" datetime={pubDate.toISOString()}>{date}</time>
@@ -86,13 +93,13 @@ const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short
   </a>
 )}
 
-<!-- DEFAULT VARIANT – classic editorial card -->
+<!-- DEFAULT VARIANT – classic card -->
 {variant === 'default' && (
   <article class="group flex flex-col rounded-xl border border-ink-200 bg-white overflow-hidden
     transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-ink-300">
 
     <!-- Image area -->
-    <a href={`/blog/${slug}`} class="relative block overflow-hidden flex-shrink-0" style="aspect-ratio:3/2">
+    <a href={href} class="relative block overflow-hidden flex-shrink-0" style="aspect-ratio:3/2">
       <div class="absolute inset-0" style={`background:${grad}`}></div>
       {coverImage && (
         <img
@@ -101,16 +108,16 @@ const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short
           loading="lazy"
         />
       )}
-      <span class:list={['absolute top-3 left-3 cat-badge shadow-sm', `cat-${category}`]}>
+      <span class="absolute top-3 left-3 cat-badge shadow-sm">
         {catLabels[category]}
       </span>
     </a>
 
     <!-- Body -->
     <div class="flex flex-col flex-1 p-5">
-      <a href={`/blog/${slug}`}>
+      <a href={href}>
         <h2 class="font-display font-bold text-[1rem] text-ink-900 leading-snug mb-2
-                   group-hover:text-accent-600 transition-colors line-clamp-2">
+                   group-hover:text-ink-600 transition-colors line-clamp-2">
           {title}
         </h2>
       </a>
@@ -123,7 +130,7 @@ const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short
             <svg class="h-3 w-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
               <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.5 3.25a.75.75 0 00-1.5 0V8c0 .2.08.39.22.53l2 2a.75.75 0 101.06-1.06L8.5 7.69V4.25z"/>
             </svg>
-            {readingTime} Min.
+            {readingTime} {t('post.readingTime')}
           </span>
         )}
       </div>
