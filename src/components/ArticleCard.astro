@@ -21,14 +21,8 @@ const catLabels: Record<string, string> = {
   news: 'News', review: 'Review', comparison: 'Vergleich', guide: 'Guide',
 };
 
-/* Gradient used when no image or as bg layer under image */
-const gradients: Record<string, string> = {
-  news:       'linear-gradient(135deg,#1e40af,#0ea5e9)',
-  review:     'linear-gradient(135deg,#065f46,#10b981)',
-  comparison: 'linear-gradient(135deg,#4c1d95,#8b5cf6)',
-  guide:      'linear-gradient(135deg,#92400e,#f59e0b)',
-};
-const grad = gradients[category] ?? 'linear-gradient(135deg,#1C1C18,#4A4A42)';
+/* Neutral fallback surface when no image (boox.com-style light product background) */
+const grad = 'linear-gradient(180deg,#FAFAFA,#E8E8ED)';
 
 const date = pubDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
 ---

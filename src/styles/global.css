@@ -6,14 +6,14 @@
   html { scroll-behavior: smooth; }
 
   body {
-    @apply bg-ink-50 text-ink-900 antialiased;
+    @apply bg-white text-ink-900 antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
-  /* Display font for editorial headlines */
-  .font-display, h1, .display-heading {
-    font-family: 'Playfair Display', Georgia, serif;
+  /* Headlines: bold sans, tight tracking — clean-tech look */
+  h1, h2, h3, h4 {
+    @apply tracking-tight;
   }
 
   :focus-visible {
@@ -29,13 +29,12 @@
 @layer components {
   /* ── Category badges ── */
   .cat-badge {
-    @apply inline-flex items-center gap-1 rounded-sm px-2 py-0.5
-           text-2xs font-bold uppercase tracking-editorial;
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5
+           text-2xs font-bold uppercase tracking-editorial
+           bg-white/95 text-ink-900 ring-1 ring-ink-300;
   }
-  .cat-news       { @apply bg-blue-100   text-blue-800;    }
-  .cat-review     { @apply bg-emerald-100 text-emerald-800; }
-  .cat-comparison { @apply bg-violet-100  text-violet-800;  }
-  .cat-guide      { @apply bg-amber-100   text-amber-800;   }
+  /* Category classes kept for markup compat — monochrome clean-tech look */
+  .cat-news, .cat-review, .cat-comparison, .cat-guide { }
 
   /* ── Reading progress bar ── */
   #reading-progress {
