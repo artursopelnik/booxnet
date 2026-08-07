@@ -25,7 +25,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
+import { detectStudioLang } from '../lib/lang'
 import { storedNeuralVoices } from '../lib/neural'
+import { isStudioInstalled } from '../lib/supertonic/assets'
 import { toSentences } from '../lib/text'
 import {
   getSavedRate,
@@ -39,6 +41,8 @@ import {
 import {
   NEURAL_VOICES,
   neuralVoiceToAppVoice,
+  STUDIO_VOICES,
+  studioVoiceToAppVoice,
   systemVoiceToAppVoice,
   type AppVoice,
 } from '../lib/voices'
@@ -50,6 +54,7 @@ export default function ReaderPage() {
   const [book, setBook] = useState<Book | null | undefined>(undefined)
   const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([])
   const [storedNeural, setStoredNeural] = useState<Set<string>>(new Set())
+  const [studioInstalled, setStudioInstalled] = useState(false)
   const [voiceKey, setVoiceKey] = useState<string | null>(getSavedVoiceKey())
   const [rate, setRate] = useState(getSavedRate())
   const [state, setState] = useState<SpeakerState>('idle')
@@ -86,21 +91,29 @@ export default function ReaderPage() {
   useEffect(() => {
     loadSystemVoices().then(setSystemVoices)
     storedNeuralVoices().then(setStoredNeural)
+    isStudioInstalled().then(setStudioInstalled)
   }, [])
 
   useEffect(() => {
     speaker.setSentences(sentences.map((s) => s.text))
   }, [speaker, sentences])
 
+  // Detected book language, used by the multilingual studio engine.
+  useEffect(() => {
+    if (!book) return
+    speaker.setLangHint(detectStudioLang(book.pages.join(' ')))
+  }, [speaker, book])
+
   // All voices the user can actually use right now.
   const availableVoices = useMemo<AppVoice[]>(
     () => [
+      ...(studioInstalled ? STUDIO_VOICES.map(studioVoiceToAppVoice) : []),
       ...NEURAL_VOICES.filter((meta) => storedNeural.has(meta.id)).map(
         neuralVoiceToAppVoice,
       ),
       ...systemVoices.map(systemVoiceToAppVoice),
     ],
-    [storedNeural, systemVoices],
+    [studioInstalled, storedNeural, systemVoices],
   )
 
   const voice = useMemo(() => {
@@ -241,7 +254,13 @@ export default function ReaderPage() {
                 Satz {Math.min(current + 1, sentences.length)} von{' '}
                 {sentences.length}
                 {voice &&
-                  ` · ${voice.name}${voice.kind === 'neural' ? ' (neuronal)' : ''}`}
+                  ` · ${voice.name}${
+                    voice.kind === 'neural'
+                      ? ' (neuronal)'
+                      : voice.kind === 'studio'
+                        ? ' (Studio)'
+                        : ''
+                  }`}
               </IonNote>
             </div>
             <div className="player__controls">
@@ -304,6 +323,7 @@ export default function ReaderPage() {
         selectedKey={voice?.key ?? null}
         onSelect={selectVoice}
         onStoredChange={setStoredNeural}
+        onStudioChange={setStudioInstalled}
         onDismiss={() => setVoiceSheetOpen(false)}
       />
     </IonPage>

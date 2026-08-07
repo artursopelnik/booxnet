@@ -8,6 +8,7 @@
  *   lookahead prefetch so playback stays gapless.
  */
 import { prefetch, synthesize } from './neural'
+import { studioPrefetch, studioSynthesize } from './supertonic/engine'
 import type { AppVoice } from './voices'
 
 export interface SpeakerEvents {
@@ -62,10 +63,25 @@ export function saveRate(rate: number): void {
   localStorage.setItem(RATE_KEY, String(rate))
 }
 
-function sampleFor(lang: string): string {
-  return lang.toLowerCase().startsWith('de')
-    ? 'Hallo! So klinge ich, wenn ich dir dein Buch vorlese.'
-    : 'Hello! This is how I sound when I read your book to you.'
+/** First name of a voice, for the personalized preview sentence. */
+function firstName(voice: AppVoice): string {
+  return voice.name.split(/[\s(·]/)[0] || voice.name
+}
+
+/** Builds the "Hallo, ich bin Thorsten." preview sentence per language. */
+export function previewTextFor(voice: AppVoice): string {
+  const name = firstName(voice)
+  // Studio voices are multilingual – greet in the app language.
+  const lang = voice.lang === 'multi' ? 'de' : voice.lang.toLowerCase()
+  if (lang.startsWith('de'))
+    return `Hallo, ich bin ${name}. So klinge ich, wenn ich dir dein Buch vorlese.`
+  if (lang.startsWith('fr'))
+    return `Bonjour, je suis ${name}. Voici ma voix quand je te fais la lecture.`
+  if (lang.startsWith('es'))
+    return `¡Hola! Soy ${name}. Así sueno cuando te leo tu libro.`
+  if (lang.startsWith('it'))
+    return `Ciao, sono ${name}. Questa è la mia voce quando ti leggo il tuo libro.`
+  return `Hi, I'm ${name}. This is how I sound when I read your book to you.`
 }
 
 let previewAudio: HTMLAudioElement | null = null
@@ -78,11 +94,11 @@ function stopPreview(): void {
   }
 }
 
-/** Speaks a short sample sentence with the given voice. */
+/** Speaks a short personalized sample sentence with the given voice. */
 export async function previewVoice(voice: AppVoice): Promise<void> {
   window.speechSynthesis.cancel()
   stopPreview()
-  const sample = sampleFor(voice.lang)
+  const sample = previewTextFor(voice)
   if (voice.kind === 'system') {
     const utterance = new SpeechSynthesisUtterance(sample)
     utterance.voice = voice.systemVoice
@@ -90,7 +106,10 @@ export async function previewVoice(voice: AppVoice): Promise<void> {
     window.speechSynthesis.speak(utterance)
     return
   }
-  const blob = await synthesize(voice.meta.id, sample)
+  const blob =
+    voice.kind === 'neural'
+      ? await synthesize(voice.meta.id, sample)
+      : await studioSynthesize(voice.meta.id, 'de', sample)
   stopPreview()
   const audio = new Audio(URL.createObjectURL(blob))
   previewAudio = audio
@@ -103,6 +122,8 @@ export class Speaker {
   private index = 0
   private voice: AppVoice | null = null
   private rate = 1
+  /** Detected language of the current book, used by the studio engine. */
+  private langHint = 'na'
   private state: SpeakerState = 'idle'
   /** Guards against stale async callbacks after cancel/skip/stop. */
   private generation = 0
@@ -118,6 +139,10 @@ export class Speaker {
   setSentences(sentences: string[]): void {
     this.sentences = sentences
     this.discardAudio()
+  }
+
+  setLangHint(lang: string): void {
+    this.langHint = lang
   }
 
   setVoice(voice: AppVoice | null): void {
@@ -169,7 +194,8 @@ export class Speaker {
     }
 
     this.discardAudio()
-    this.setState(this.voice?.kind === 'neural' ? 'loading' : 'playing')
+    const isBlobVoice = this.voice !== null && this.voice.kind !== 'system'
+    this.setState(isBlobVoice ? 'loading' : 'playing')
     this.speakCurrent()
   }
 
@@ -245,8 +271,8 @@ export class Speaker {
       return
     }
     this.events.onSentence?.(this.index)
-    if (this.voice?.kind === 'neural') {
-      void this.speakNeural(text)
+    if (this.voice && this.voice.kind !== 'system') {
+      void this.speakBlob(text)
     } else {
       this.speakSystem(text)
     }
@@ -271,14 +297,27 @@ export class Speaker {
     window.speechSynthesis.speak(utterance)
   }
 
-  private async speakNeural(text: string): Promise<void> {
-    if (this.voice?.kind !== 'neural') return
+  private synthesizeFor(voice: AppVoice, text: string): Promise<Blob> {
+    if (voice.kind === 'neural') return synthesize(voice.meta.id, text)
+    if (voice.kind === 'studio')
+      return studioSynthesize(voice.meta.id, this.langHint, text)
+    return Promise.reject(new Error('system voices do not synthesize blobs'))
+  }
+
+  private prefetchFor(voice: AppVoice, sentences: string[]): void {
+    if (voice.kind === 'neural') prefetch(voice.meta.id, sentences)
+    else if (voice.kind === 'studio')
+      studioPrefetch(voice.meta.id, this.langHint, sentences)
+  }
+
+  private async speakBlob(text: string): Promise<void> {
+    if (!this.voice || this.voice.kind === 'system') return
+    const voice = this.voice
     const generation = this.generation
-    const voiceId = this.voice.meta.id
     this.setState('loading')
     let blob: Blob
     try {
-      blob = await synthesize(voiceId, text)
+      blob = await this.synthesizeFor(voice, text)
     } catch {
       if (generation !== this.generation) return
       this.events.onError?.(
@@ -305,8 +344,8 @@ export class Speaker {
       return
     }
 
-    prefetch(
-      voiceId,
+    this.prefetchFor(
+      voice,
       this.sentences.slice(this.index + 1, this.index + 1 + PREFETCH_AHEAD),
     )
   }

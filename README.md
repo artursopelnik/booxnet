@@ -1,22 +1,28 @@
-# Vorleser
+# Booxnet
 
-Eine Speechify-Alternative als Web-App: PDF hochladen, Stimme auswählen und
-sich das Buch vorlesen lassen – komplett offline und im Look einer nativen
-iOS-App.
+Komplett kostenfreies Text-to-Speech: PDF hochladen, Stimme auswählen und
+sich das Buch vorlesen lassen – über 125 natürlich klingende Stimmen in mehr
+als 40 Sprachen, komplett offline und im Look einer nativen iOS-App.
 
 ## Features
 
 - **PDF-Upload:** PDFs werden lokal im Browser geparst (pdf.js), der Text wird
   pro Seite extrahiert und zusammen mit einem Cover-Thumbnail in IndexedDB
   gespeichert. Es verlässt keine Datei das Gerät.
-- **Vorlesen mit Stimmenauswahl:** Zwei Engines in einer Auswahl:
+- **Vorlesen mit Stimmenauswahl:** Drei Engines in einer Auswahl:
+  - **Studio-Stimmen (Supertonic 3):** 10 Preset-Stimmen in Studioqualität
+    (44,1 kHz), jede spricht 31 Sprachen. Ein einmaliger Download
+    (ca. 404 MB → OPFS), Inferenz via onnxruntime-web (WebGPU, WASM-
+    Fallback) mit Session-Wiederverwendung. Die Buchsprache wird per
+    Stopwort-Heuristik erkannt, unklare Texte laufen im
+    sprachagnostischen Modus (`na`).
+  - **Neuronale Stimmen (Piper):** der komplette Katalog mit 118 Stimmen
+    in über 30 Sprachen, per ONNX/WASM im Browser. Je Stimme ein Download
+    (ca. 28–110 MB → OPFS), danach offline.
   - **Systemstimmen** über die Web Speech API (auf iOS die Apple-Stimmen,
-    auf Android die Google-Stimmen), sofort verfügbar.
-  - **Neuronale Stimmen** (Piper) laufen per ONNX/WASM direkt im Browser –
-    deutlich natürlicher. Einmal herunterladen (ca. 28–110 MB, wird in OPFS
-    gespeichert), danach komplett offline. Kuratierte Auswahl u. a. mit
-    Thorsten, Kerstin, Ramona (Deutsch) sowie Stimmen für EN/FR/ES/IT.
-  Alle Stimmen sind nach Sprache gruppiert und mit Probehören.
+    auf Android die Google-Stimmen), sofort verfügbar, 0 MB.
+  Alle Stimmen mit Suche, Sprachgruppierung und personalisiertem
+  Probehören („Hallo, ich bin Thorsten.").
 - **Reader mit Satz-Highlighting:** Der aktuell gelesene Satz wird markiert
   und automatisch in den sichtbaren Bereich gescrollt. Tippen auf einen Satz
   springt dorthin. Lesegeschwindigkeit 0,5×–2× einstellbar.
@@ -45,6 +51,7 @@ npm run preview   # Build lokal testen (nötig für Service Worker/PWA)
 | pdfjs-dist | Textextraktion und Cover-Rendering aus PDFs |
 | Web Speech API | Sprachausgabe mit Systemstimmen (offline) |
 | @diffusionstudio/vits-web (Piper) | Neuronale Offline-Stimmen via ONNX/WASM |
+| Supertonic 3 (portiert, MIT) | Studio-Stimmen via onnxruntime-web (WebGPU/WASM) |
 | IndexedDB (idb) | Lokale Buch-Bibliothek |
 | vite-plugin-pwa (Workbox) | Offline-Fähigkeit und Installierbarkeit |
 
@@ -64,3 +71,11 @@ npm run preview   # Build lokal testen (nötig für Service Worker/PWA)
   nächsten Sätze werden während der Wiedergabe vorab berechnet, damit es
   keine Lücken gibt. Auf schwächeren Geräten empfiehlt sich eine „low"- oder
   „x_low"-Stimme.
+- **Supertonic 3:** Die Engine ist eine TypeScript-Portierung des
+  MIT-lizenzierten Web-Beispiels aus `supertone-inc/supertonic`; die Modelle
+  (OpenRAIL-M) kommen von `huggingface.co/Supertone/supertonic-3`. Achtung:
+  Supertone hat angekündigt, das Repository zu archivieren (Juli 2026) –
+  die Modelle funktionieren weiter, sollten für den Produktivbetrieb aber
+  perspektivisch selbst gehostet werden. Auf älteren iPhones sind 404 MB
+  und WebGPU ein Thema; dort sind Piper-Stimmen die sichere Wahl.
+- Kokoro wurde bewusst nicht integriert: Es unterstützt kein Deutsch.

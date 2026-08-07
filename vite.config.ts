@@ -28,8 +28,8 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Vorleser – dein PDF, vorgelesen',
-        short_name: 'Vorleser',
+        name: 'Booxnet – dein PDF, vorgelesen',
+        short_name: 'Booxnet',
         description:
           'PDF hochladen, Stimme auswählen und offline vorlesen lassen.',
         lang: 'de',
