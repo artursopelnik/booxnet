@@ -1,23 +1,31 @@
 /**
- * Thin controller around the Web Speech API (speechSynthesis).
+ * Sentence-by-sentence read-aloud engine with two backends:
  *
- * Speaks sentence by sentence: short utterances avoid the Chromium bug where
- * long utterances silently stop, and give us a natural highlight/resume unit.
+ * - 'system': Web Speech API (speechSynthesis). Short utterances avoid the
+ *   Chromium bug where long utterances silently stop.
+ * - 'neural': Piper voices via WASM (see neural.ts). Sentences are
+ *   synthesized to WAV blobs and played through an <audio> element, with
+ *   lookahead prefetch so playback stays gapless.
  */
+import { prefetch, synthesize } from './neural'
+import type { AppVoice } from './voices'
 
 export interface SpeakerEvents {
   onSentence?: (index: number) => void
   onStateChange?: (state: SpeakerState) => void
   onDone?: () => void
+  onError?: (message: string) => void
 }
 
-export type SpeakerState = 'idle' | 'playing' | 'paused'
+export type SpeakerState = 'idle' | 'loading' | 'playing' | 'paused'
 
-const VOICE_KEY = 'vorleser.voiceURI'
+const VOICE_KEY = 'vorleser.voice'
+const LEGACY_VOICE_KEY = 'vorleser.voiceURI'
 const RATE_KEY = 'vorleser.rate'
+const PREFETCH_AHEAD = 2
 
-/** Resolves with the available voices; waits for `voiceschanged` if needed. */
-export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
+/** Resolves with the available system voices; waits for `voiceschanged`. */
+export function loadSystemVoices(): Promise<SpeechSynthesisVoice[]> {
   const synth = window.speechSynthesis
   const voices = synth.getVoices()
   if (voices.length > 0) return Promise.resolve(voices)
@@ -34,12 +42,15 @@ export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   })
 }
 
-export function getSavedVoiceURI(): string | null {
-  return localStorage.getItem(VOICE_KEY)
+export function getSavedVoiceKey(): string | null {
+  const key = localStorage.getItem(VOICE_KEY)
+  if (key) return key
+  const legacy = localStorage.getItem(LEGACY_VOICE_KEY)
+  return legacy ? `system:${legacy}` : null
 }
 
-export function saveVoiceURI(uri: string): void {
-  localStorage.setItem(VOICE_KEY, uri)
+export function saveVoiceKey(key: string): void {
+  localStorage.setItem(VOICE_KEY, key)
 }
 
 export function getSavedRate(): number {
@@ -51,27 +62,53 @@ export function saveRate(rate: number): void {
   localStorage.setItem(RATE_KEY, String(rate))
 }
 
-/** Speaks a single sample sentence, e.g. to preview a voice. */
-export function previewVoice(voice: SpeechSynthesisVoice): void {
-  const synth = window.speechSynthesis
-  synth.cancel()
-  const sample = voice.lang.toLowerCase().startsWith('de')
+function sampleFor(lang: string): string {
+  return lang.toLowerCase().startsWith('de')
     ? 'Hallo! So klinge ich, wenn ich dir dein Buch vorlese.'
     : 'Hello! This is how I sound when I read your book to you.'
-  const utterance = new SpeechSynthesisUtterance(sample)
-  utterance.voice = voice
-  utterance.lang = voice.lang
-  synth.speak(utterance)
+}
+
+let previewAudio: HTMLAudioElement | null = null
+
+function stopPreview(): void {
+  if (previewAudio) {
+    previewAudio.pause()
+    URL.revokeObjectURL(previewAudio.src)
+    previewAudio = null
+  }
+}
+
+/** Speaks a short sample sentence with the given voice. */
+export async function previewVoice(voice: AppVoice): Promise<void> {
+  window.speechSynthesis.cancel()
+  stopPreview()
+  const sample = sampleFor(voice.lang)
+  if (voice.kind === 'system') {
+    const utterance = new SpeechSynthesisUtterance(sample)
+    utterance.voice = voice.systemVoice
+    utterance.lang = voice.lang
+    window.speechSynthesis.speak(utterance)
+    return
+  }
+  const blob = await synthesize(voice.meta.id, sample)
+  stopPreview()
+  const audio = new Audio(URL.createObjectURL(blob))
+  previewAudio = audio
+  audio.onended = () => URL.revokeObjectURL(audio.src)
+  await audio.play()
 }
 
 export class Speaker {
   private sentences: string[] = []
   private index = 0
-  private voice: SpeechSynthesisVoice | null = null
+  private voice: AppVoice | null = null
   private rate = 1
   private state: SpeakerState = 'idle'
-  /** Guards against stale onend callbacks after cancel(). */
+  /** Guards against stale async callbacks after cancel/skip/stop. */
   private generation = 0
+  private audio: HTMLAudioElement | null = null
+  /** Index the paused neural audio belongs to, for seamless resume. */
+  private audioIndex = -1
   private events: SpeakerEvents
 
   constructor(events: SpeakerEvents = {}) {
@@ -80,16 +117,28 @@ export class Speaker {
 
   setSentences(sentences: string[]): void {
     this.sentences = sentences
+    this.discardAudio()
   }
 
-  setVoice(voice: SpeechSynthesisVoice | null): void {
+  setVoice(voice: AppVoice | null): void {
+    const changed = this.voice?.key !== voice?.key
     this.voice = voice
-    if (this.state === 'playing') this.play(this.index)
+    if (changed) {
+      this.discardAudio()
+      if (this.state === 'playing' || this.state === 'loading') {
+        this.play(this.index)
+      }
+    }
   }
 
   setRate(rate: number): void {
     this.rate = rate
-    if (this.state === 'playing') this.play(this.index)
+    if (this.audio) {
+      // Neural audio adjusts live, no restart needed.
+      this.audio.playbackRate = rate
+    } else if (this.state === 'playing') {
+      this.play(this.index)
+    }
   }
 
   getState(): SpeakerState {
@@ -105,55 +154,90 @@ export class Speaker {
     if (from !== undefined) {
       this.index = Math.min(Math.max(from, 0), this.sentences.length - 1)
     }
-    window.speechSynthesis.cancel()
     this.generation++
-    this.setState('playing')
+    window.speechSynthesis.cancel()
+
+    // Resume paused neural audio mid-sentence.
+    if (
+      this.state === 'paused' &&
+      this.audio &&
+      this.audioIndex === this.index
+    ) {
+      this.setState('playing')
+      void this.audio.play().catch(() => this.speakCurrent())
+      return
+    }
+
+    this.discardAudio()
+    this.setState(this.voice?.kind === 'neural' ? 'loading' : 'playing')
     this.speakCurrent()
   }
 
   pause(): void {
-    if (this.state !== 'playing') return
-    // cancel() instead of pause(): resume() is unreliable across engines,
-    // and restarting the current sentence is a better experience anyway.
+    if (this.state !== 'playing' && this.state !== 'loading') return
     this.generation++
     window.speechSynthesis.cancel()
+    if (this.audio) {
+      this.audio.pause()
+    }
     this.setState('paused')
   }
 
   toggle(): void {
-    if (this.state === 'playing') this.pause()
+    if (this.state === 'playing' || this.state === 'loading') this.pause()
     else this.play()
   }
 
   skip(delta: number): void {
-    const target = Math.min(
-      Math.max(this.index + delta, 0),
-      this.sentences.length - 1,
-    )
-    this.index = target
-    this.events.onSentence?.(target)
-    if (this.state === 'playing') this.play(target)
+    this.jumpTo(this.index + delta)
   }
 
   jumpTo(index: number): void {
     this.index = Math.min(Math.max(index, 0), this.sentences.length - 1)
     this.events.onSentence?.(this.index)
-    if (this.state === 'playing') this.play(this.index)
+    if (this.state === 'playing' || this.state === 'loading') {
+      this.play(this.index)
+    } else {
+      this.discardAudio()
+    }
   }
 
   stop(): void {
     this.generation++
     window.speechSynthesis.cancel()
+    this.discardAudio()
     this.setState('idle')
   }
 
+  private discardAudio(): void {
+    if (this.audio) {
+      this.audio.pause()
+      URL.revokeObjectURL(this.audio.src)
+      this.audio = null
+    }
+    this.audioIndex = -1
+  }
+
   private setState(state: SpeakerState): void {
+    if (this.state === state) return
     this.state = state
     this.events.onStateChange?.(state)
   }
 
+  private advance(generation: number): void {
+    if (generation !== this.generation) return
+    if (this.state !== 'playing' && this.state !== 'loading') return
+    if (this.index >= this.sentences.length - 1) {
+      this.discardAudio()
+      this.setState('idle')
+      this.events.onDone?.()
+      return
+    }
+    this.index++
+    this.speakCurrent()
+  }
+
   private speakCurrent(): void {
-    const generation = this.generation
     const text = this.sentences[this.index]
     if (text === undefined) {
       this.setState('idle')
@@ -161,31 +245,69 @@ export class Speaker {
       return
     }
     this.events.onSentence?.(this.index)
+    if (this.voice?.kind === 'neural') {
+      void this.speakNeural(text)
+    } else {
+      this.speakSystem(text)
+    }
+  }
 
+  private speakSystem(text: string): void {
+    const generation = this.generation
+    this.setState('playing')
     const utterance = new SpeechSynthesisUtterance(text)
-    if (this.voice) {
-      utterance.voice = this.voice
+    if (this.voice?.kind === 'system') {
+      utterance.voice = this.voice.systemVoice
       utterance.lang = this.voice.lang
     }
     utterance.rate = this.rate
-
-    const advance = () => {
-      if (generation !== this.generation || this.state !== 'playing') return
-      if (this.index >= this.sentences.length - 1) {
-        this.setState('idle')
-        this.events.onDone?.()
-        return
-      }
-      this.index++
-      this.speakCurrent()
-    }
-    utterance.onend = advance
+    utterance.onend = () => this.advance(generation)
     utterance.onerror = (event) => {
       // 'interrupted'/'canceled' arrive after cancel(); the generation
       // check in advance() filters those. Real errors skip the sentence.
       if (event.error === 'interrupted' || event.error === 'canceled') return
-      advance()
+      this.advance(generation)
     }
     window.speechSynthesis.speak(utterance)
+  }
+
+  private async speakNeural(text: string): Promise<void> {
+    if (this.voice?.kind !== 'neural') return
+    const generation = this.generation
+    const voiceId = this.voice.meta.id
+    this.setState('loading')
+    let blob: Blob
+    try {
+      blob = await synthesize(voiceId, text)
+    } catch {
+      if (generation !== this.generation) return
+      this.events.onError?.(
+        'Die Stimme konnte nicht geladen werden. Prüfe deine Internetverbindung oder lade das Stimmpaket erneut herunter.',
+      )
+      this.setState('paused')
+      return
+    }
+    if (generation !== this.generation) return
+
+    this.discardAudio()
+    const audio = new Audio(URL.createObjectURL(blob))
+    audio.playbackRate = this.rate
+    audio.onended = () => this.advance(generation)
+    audio.onerror = () => this.advance(generation)
+    this.audio = audio
+    this.audioIndex = this.index
+    this.setState('playing')
+    try {
+      await audio.play()
+    } catch {
+      if (generation !== this.generation) return
+      this.setState('paused')
+      return
+    }
+
+    prefetch(
+      voiceId,
+      this.sentences.slice(this.index + 1, this.index + 1 + PREFETCH_AHEAD),
+    )
   }
 }

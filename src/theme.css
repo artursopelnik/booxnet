@@ -92,6 +92,14 @@
   -webkit-box-decoration-break: clone;
 }
 
+/* ---- Voice sheet ---- */
+
+.voice-section-note {
+  padding: 10px 16px 6px;
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+}
+
 /* ---- Player ---- */
 
 .player-toolbar {

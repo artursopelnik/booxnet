@@ -9,9 +9,14 @@ iOS-App.
 - **PDF-Upload:** PDFs werden lokal im Browser geparst (pdf.js), der Text wird
   pro Seite extrahiert und zusammen mit einem Cover-Thumbnail in IndexedDB
   gespeichert. Es verlässt keine Datei das Gerät.
-- **Vorlesen mit Stimmenauswahl:** Sprachausgabe über die Web Speech API.
-  Alle auf dem Gerät verfügbaren Stimmen sind wählbar, nach Sprache gruppiert
-  und mit Probehören. Lokale Stimmen funktionieren offline.
+- **Vorlesen mit Stimmenauswahl:** Zwei Engines in einer Auswahl:
+  - **Systemstimmen** über die Web Speech API (auf iOS die Apple-Stimmen,
+    auf Android die Google-Stimmen), sofort verfügbar.
+  - **Neuronale Stimmen** (Piper) laufen per ONNX/WASM direkt im Browser –
+    deutlich natürlicher. Einmal herunterladen (ca. 28–110 MB, wird in OPFS
+    gespeichert), danach komplett offline. Kuratierte Auswahl u. a. mit
+    Thorsten, Kerstin, Ramona (Deutsch) sowie Stimmen für EN/FR/ES/IT.
+  Alle Stimmen sind nach Sprache gruppiert und mit Probehören.
 - **Reader mit Satz-Highlighting:** Der aktuell gelesene Satz wird markiert
   und automatisch in den sichtbaren Bereich gescrollt. Tippen auf einen Satz
   springt dorthin. Lesegeschwindigkeit 0,5×–2× einstellbar.
@@ -39,6 +44,7 @@ npm run preview   # Build lokal testen (nötig für Service Worker/PWA)
 | Ionic React (iOS-Modus) | Native iOS-Optik und -Navigation |
 | pdfjs-dist | Textextraktion und Cover-Rendering aus PDFs |
 | Web Speech API | Sprachausgabe mit Systemstimmen (offline) |
+| @diffusionstudio/vits-web (Piper) | Neuronale Offline-Stimmen via ONNX/WASM |
 | IndexedDB (idb) | Lokale Buch-Bibliothek |
 | vite-plugin-pwa (Workbox) | Offline-Fähigkeit und Installierbarkeit |
 
@@ -46,7 +52,15 @@ npm run preview   # Build lokal testen (nötig für Service Worker/PWA)
 
 - Gescannte PDFs ohne Textebene enthalten keinen extrahierbaren Text und
   können nicht vorgelesen werden (kein OCR).
-- Welche Stimmen verfügbar sind, bestimmt das Betriebssystem. Auf iOS lassen
-  sich unter *Einstellungen → Bedienungshilfen → Gesprochene Inhalte →
+- Welche Systemstimmen verfügbar sind, bestimmt das Betriebssystem. Auf iOS
+  lassen sich unter *Einstellungen → Bedienungshilfen → Gesprochene Inhalte →
   Stimmen* weitere hochwertige Stimmen herunterladen; als „lokal" markierte
   Stimmen funktionieren ohne Internet.
+- Neuronale Stimmen benötigen einmalig Internet: Das Stimmmodell kommt von
+  Hugging Face (→ OPFS), die WASM-Binaries von jsdelivr/cdnjs (→ Service-
+  Worker-Cache). Ab dann läuft die Synthese vollständig offline auf dem
+  Gerät.
+- Die neuronale Synthese erzeugt pro Satz eine kurze Audiodatei; die
+  nächsten Sätze werden während der Wiedergabe vorab berechnet, damit es
+  keine Lücken gibt. Auf schwächeren Geräten empfiehlt sich eine „low"- oder
+  „x_low"-Stimme.

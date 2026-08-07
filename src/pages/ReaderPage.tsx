@@ -11,6 +11,7 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  useIonToast,
   useIonViewWillLeave,
 } from '@ionic/react'
 import {
@@ -24,31 +25,41 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
+import { storedNeuralVoices } from '../lib/neural'
 import { toSentences } from '../lib/text'
 import {
   getSavedRate,
-  getSavedVoiceURI,
-  loadVoices,
+  getSavedVoiceKey,
+  loadSystemVoices,
   saveRate,
-  saveVoiceURI,
+  saveVoiceKey,
   Speaker,
   type SpeakerState,
 } from '../lib/tts'
+import {
+  NEURAL_VOICES,
+  neuralVoiceToAppVoice,
+  systemVoiceToAppVoice,
+  type AppVoice,
+} from '../lib/voices'
 
 const RATES = [1, 1.25, 1.5, 1.75, 2, 0.5, 0.75]
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>()
   const [book, setBook] = useState<Book | null | undefined>(undefined)
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
-  const [voiceURI, setVoiceURI] = useState<string | null>(getSavedVoiceURI())
+  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [storedNeural, setStoredNeural] = useState<Set<string>>(new Set())
+  const [voiceKey, setVoiceKey] = useState<string | null>(getSavedVoiceKey())
   const [rate, setRate] = useState(getSavedRate())
   const [state, setState] = useState<SpeakerState>('idle')
   const [current, setCurrent] = useState(0)
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
+  const [presentToast] = useIonToast()
 
   const speakerRef = useRef<Speaker | null>(null)
-  const contentRef = useRef<HTMLIonContentElement>(null)
+  const toastRef = useRef(presentToast)
+  toastRef.current = presentToast
 
   const sentences = useMemo(
     () => (book ? toSentences(book.pages) : []),
@@ -59,6 +70,8 @@ export default function ReaderPage() {
     speakerRef.current = new Speaker({
       onSentence: setCurrent,
       onStateChange: setState,
+      onError: (message) =>
+        toastRef.current({ message, duration: 4000, color: 'danger' }),
     })
   }
   const speaker = speakerRef.current
@@ -71,23 +84,38 @@ export default function ReaderPage() {
   }, [id])
 
   useEffect(() => {
-    loadVoices().then(setVoices)
+    loadSystemVoices().then(setSystemVoices)
+    storedNeuralVoices().then(setStoredNeural)
   }, [])
 
-  // Wire the speaker to the current text, voice and rate.
   useEffect(() => {
     speaker.setSentences(sentences.map((s) => s.text))
   }, [speaker, sentences])
 
+  // All voices the user can actually use right now.
+  const availableVoices = useMemo<AppVoice[]>(
+    () => [
+      ...NEURAL_VOICES.filter((meta) => storedNeural.has(meta.id)).map(
+        neuralVoiceToAppVoice,
+      ),
+      ...systemVoices.map(systemVoiceToAppVoice),
+    ],
+    [storedNeural, systemVoices],
+  )
+
   const voice = useMemo(() => {
-    if (voices.length === 0) return null
+    if (availableVoices.length === 0) return null
+    const isGerman = (v: AppVoice) => v.lang.toLowerCase().startsWith('de')
     return (
-      voices.find((v) => v.voiceURI === voiceURI) ??
-      voices.find((v) => v.lang.toLowerCase().startsWith('de')) ??
-      voices.find((v) => v.default) ??
-      voices[0]
+      availableVoices.find((v) => v.key === voiceKey) ??
+      availableVoices.find((v) => v.kind === 'neural' && isGerman(v)) ??
+      availableVoices.find((v) => v.kind === 'system' && isGerman(v)) ??
+      availableVoices.find(
+        (v) => v.kind === 'system' && v.systemVoice.default,
+      ) ??
+      availableVoices[0]
     )
-  }, [voices, voiceURI])
+  }, [availableVoices, voiceKey])
 
   useEffect(() => {
     speaker.setVoice(voice)
@@ -111,7 +139,7 @@ export default function ReaderPage() {
   useEffect(() => () => speaker.stop(), [speaker])
 
   const togglePlayback = () => {
-    if (state === 'playing') speaker.pause()
+    if (state === 'playing' || state === 'loading') speaker.pause()
     else speaker.play(current)
   }
 
@@ -121,9 +149,9 @@ export default function ReaderPage() {
     saveRate(next)
   }
 
-  const selectVoice = (selected: SpeechSynthesisVoice) => {
-    setVoiceURI(selected.voiceURI)
-    saveVoiceURI(selected.voiceURI)
+  const selectVoice = (selected: AppVoice) => {
+    setVoiceKey(selected.key)
+    saveVoiceKey(selected.key)
   }
 
   if (book === undefined) {
@@ -177,7 +205,7 @@ export default function ReaderPage() {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent ref={contentRef} fullscreen className="reader-content">
+      <IonContent fullscreen className="reader-content">
         <article className="reader-text">
           {pages.map((page) =>
             page.sentences.length === 0 ? null : (
@@ -212,7 +240,8 @@ export default function ReaderPage() {
               <IonNote>
                 Satz {Math.min(current + 1, sentences.length)} von{' '}
                 {sentences.length}
-                {voice && ` · ${voice.name}`}
+                {voice &&
+                  ` · ${voice.name}${voice.kind === 'neural' ? ' (neuronal)' : ''}`}
               </IonNote>
             </div>
             <div className="player__controls">
@@ -234,9 +263,20 @@ export default function ReaderPage() {
                 className="player__play"
                 shape="round"
                 onClick={togglePlayback}
-                aria-label={state === 'playing' ? 'Pause' : 'Vorlesen'}
+                aria-label={
+                  state === 'playing' || state === 'loading'
+                    ? 'Pause'
+                    : 'Vorlesen'
+                }
               >
-                <IonIcon slot="icon-only" icon={state === 'playing' ? pause : play} />
+                {state === 'loading' ? (
+                  <IonSpinner name="crescent" />
+                ) : (
+                  <IonIcon
+                    slot="icon-only"
+                    icon={state === 'playing' ? pause : play}
+                  />
+                )}
               </IonButton>
               <IonButton
                 fill="clear"
@@ -260,9 +300,10 @@ export default function ReaderPage() {
 
       <VoiceSheet
         isOpen={voiceSheetOpen}
-        voices={voices}
-        selectedURI={voice?.voiceURI ?? null}
+        systemVoices={systemVoices}
+        selectedKey={voice?.key ?? null}
         onSelect={selectVoice}
+        onStoredChange={setStoredNeural}
         onDismiss={() => setVoiceSheetOpen(false)}
       />
     </IonPage>

@@ -11,6 +11,21 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // The neural TTS engine (Piper via onnxruntime-web) loads its WASM
+        // binaries from CDNs at runtime. Cache them so synthesis works
+        // offline; the voice models themselves are stored in OPFS.
+        runtimeCaching: [
+          {
+            urlPattern:
+              /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tts-wasm',
+              expiration: { maxEntries: 20 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
       manifest: {
         name: 'Vorleser – dein PDF, vorgelesen',
