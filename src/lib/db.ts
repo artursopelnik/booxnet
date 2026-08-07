@@ -1,0 +1,60 @@
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+
+export interface Book {
+  id: string
+  title: string
+  addedAt: number
+  pageCount: number
+  /** Extracted plain text, one entry per PDF page. */
+  pages: string[]
+  /** JPEG data-URL of the first page, used as cover in the library. */
+  cover?: string
+  /** Index of the last read sentence, for resuming. */
+  position: number
+  /** Total number of sentences, cached for the progress display. */
+  sentenceCount: number
+}
+
+interface VorleserDB extends DBSchema {
+  books: {
+    key: string
+    value: Book
+  }
+}
+
+let dbPromise: Promise<IDBPDatabase<VorleserDB>> | null = null
+
+function db() {
+  dbPromise ??= openDB<VorleserDB>('vorleser', 1, {
+    upgrade(database) {
+      database.createObjectStore('books', { keyPath: 'id' })
+    },
+  })
+  return dbPromise
+}
+
+export async function getAllBooks(): Promise<Book[]> {
+  const books = await (await db()).getAll('books')
+  return books.sort((a, b) => b.addedAt - a.addedAt)
+}
+
+export async function getBook(id: string): Promise<Book | undefined> {
+  return (await db()).get('books', id)
+}
+
+export async function putBook(book: Book): Promise<void> {
+  await (await db()).put('books', book)
+}
+
+export async function deleteBook(id: string): Promise<void> {
+  await (await db()).delete('books', id)
+}
+
+export async function savePosition(id: string, position: number): Promise<void> {
+  const database = await db()
+  const book = await database.get('books', id)
+  if (book) {
+    book.position = position
+    await database.put('books', book)
+  }
+}

@@ -1,0 +1,146 @@
+:root {
+  --ion-color-primary: #0a84ff;
+  --ion-color-primary-rgb: 10, 132, 255;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #0974e0;
+  --ion-color-primary-tint: #2390ff;
+}
+
+/* ---- Library ---- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 60vh;
+  padding: 0 32px;
+  gap: 8px;
+}
+
+.empty-state ion-icon {
+  font-size: 64px;
+  color: var(--ion-color-medium);
+}
+
+.empty-state h2 {
+  font-weight: 700;
+}
+
+.empty-state p {
+  color: var(--ion-color-medium);
+  max-width: 34ch;
+}
+
+.book-cover {
+  width: 46px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin: 8px 14px 8px 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.book-cover--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ion-color-light);
+}
+
+.book-cover--placeholder ion-icon {
+  font-size: 24px;
+  color: var(--ion-color-medium);
+}
+
+/* ---- Reader ---- */
+
+.reader-text {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 20px 24px 48px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.15rem;
+  line-height: 1.75;
+}
+
+.page-marker {
+  margin: 28px 0 12px;
+  text-align: center;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ion-color-medium);
+}
+
+.sentence {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sentence--active {
+  background: rgba(10, 132, 255, 0.18);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ---- Voice sheet ---- */
+
+.voice-section-note {
+  padding: 10px 16px 6px;
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+}
+
+/* ---- Player ---- */
+
+.player-toolbar {
+  --padding-top: 6px;
+  --padding-bottom: 6px;
+}
+
+.player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.player__meta {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.8rem;
+  padding: 0 12px;
+}
+
+.player__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.player__play {
+  width: 56px;
+  height: 56px;
+  --border-radius: 50%;
+}
+
+.player__play ion-icon {
+  font-size: 26px;
+}
+
+.player__rate {
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}

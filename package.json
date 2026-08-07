@@ -1,26 +1,33 @@
 {
   "name": "booxnet",
+  "private": true,
+  "version": "0.1.0",
   "type": "module",
-  "version": "1.0.0",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro",
-    "test": "playwright test",
-    "test:screenshots": "playwright test tests/screenshots.spec.ts"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@astrojs/mdx": "^4.3.0",
-    "@astrojs/sitemap": "^3.4.1",
-    "@astrojs/tailwind": "^5.1.4",
-    "@tailwindcss/typography": "^0.5.20",
-    "astro": "^5.10.0",
-    "reading-time": "^1.5.0",
-    "tailwindcss": "^3.4.17"
+    "@diffusionstudio/vits-web": "^1.0.3",
+    "@ionic/react": "^8.4.1",
+    "@ionic/react-router": "^8.4.1",
+    "idb": "^8.0.0",
+    "ionicons": "^7.4.0",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router": "^5.3.4",
+    "react-router-dom": "^5.3.4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1"
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/react-router": "^5.1.20",
+    "@types/react-router-dom": "^5.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3",
+    "vite-plugin-pwa": "^0.21.1"
   }
 }
