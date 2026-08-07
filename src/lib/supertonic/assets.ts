@@ -1,17 +1,23 @@
 /**
- * Download manager for the Supertonic 3 model pack.
+ * Asset management for Supertonic 3.
  *
- * All assets are fetched once from Hugging Face and stored in OPFS, so
- * synthesis works fully offline afterwards. Total size is roughly 400 MB.
+ * The heavy part is the shared *engine* (four ONNX networks + configs,
+ * ~400 MB) – it is downloaded once. The individual voices are tiny style
+ * files (a few hundred KB) and are fetched on demand per voice.
+ *
+ * Every fetch tries the self-hosted mirror under /supertonic/ first (see
+ * scripts/mirror-supertonic.mjs) and only falls back to Hugging Face, so a
+ * mirrored deployment keeps working even if the upstream repository
+ * disappears. Everything is stored in OPFS for offline use.
  */
-import { STUDIO_VOICES } from '../voices'
+import type { StudioVoiceId } from '../voices'
 import { hasAsset, readAsset, removeAllAssets, writeAsset } from './opfs'
 
-export const STUDIO_PACK_SIZE_MB = 404
+export const STUDIO_ENGINE_SIZE_MB = 400
 
 const HF_BASE = 'https://huggingface.co/Supertone/supertonic-3/resolve/main'
 
-const MODEL_ASSETS = [
+const ENGINE_ASSETS = [
   'onnx/tts.json',
   'onnx/unicode_indexer.json',
   'onnx/duration_predictor.onnx',
@@ -20,22 +26,43 @@ const MODEL_ASSETS = [
   'onnx/vocoder.onnx',
 ]
 
-const STYLE_ASSETS = STUDIO_VOICES.map(
-  (voice) => `voice_styles/${voice.id}.json`,
-)
+function styleAsset(voiceId: StudioVoiceId): string {
+  return `voice_styles/${voiceId}.json`
+}
 
-export const ALL_ASSETS = [...MODEL_ASSETS, ...STYLE_ASSETS]
+function mirrorUrl(path: string): string {
+  return `${import.meta.env.BASE_URL}supertonic/${path}`
+}
 
-export async function isStudioInstalled(): Promise<boolean> {
+/** Fetches an asset, preferring the self-hosted mirror over Hugging Face. */
+async function fetchAsset(path: string): Promise<Response> {
   try {
-    const checks = await Promise.all(ALL_ASSETS.map((path) => hasAsset(path)))
+    const local = await fetch(mirrorUrl(path))
+    const type = local.headers.get('Content-Type') ?? ''
+    // A missing mirror file on SPA hosts returns index.html – reject that.
+    if (local.ok && !type.includes('text/html')) return local
+  } catch {
+    // Mirror unreachable – fall through.
+  }
+  const remote = await fetch(`${HF_BASE}/${path}`)
+  if (!remote.ok) {
+    throw new Error(`Download failed for ${path}: HTTP ${remote.status}`)
+  }
+  return remote
+}
+
+export async function isStudioEngineInstalled(): Promise<boolean> {
+  try {
+    const checks = await Promise.all(
+      ENGINE_ASSETS.map((path) => hasAsset(path)),
+    )
     return checks.every(Boolean)
   } catch {
     return false
   }
 }
 
-export async function removeStudioPack(): Promise<void> {
+export async function removeStudioData(): Promise<void> {
   await removeAllAssets()
 }
 
@@ -48,24 +75,40 @@ export async function loadStudioAsset(path: string): Promise<ArrayBuffer> {
 }
 
 /**
- * Downloads all pack assets sequentially with overall progress. Progress is
- * weighted by bytes; sizes come from Content-Length with the known total as
- * fallback.
+ * Makes sure a voice's style file is in OPFS, fetching it if needed.
+ * Style files are only a few hundred KB, so this is near-instant online.
  */
-export async function downloadStudioPack(
+export async function ensureStudioStyle(
+  voiceId: StudioVoiceId,
+): Promise<ArrayBuffer> {
+  const path = styleAsset(voiceId)
+  const cached = await readAsset(path)
+  if (cached) return cached
+  const response = await fetchAsset(path)
+  const data = await response.arrayBuffer()
+  await writeAsset(path, data)
+  return data
+}
+
+/**
+ * Downloads the shared engine sequentially with overall progress. Progress
+ * is weighted by bytes; sizes come from Content-Length with the known total
+ * as fallback. Already-stored files are skipped, so an interrupted download
+ * resumes where it stopped.
+ */
+export async function downloadStudioEngine(
   onProgress: (percent: number) => void,
 ): Promise<void> {
-  const totalEstimate = STUDIO_PACK_SIZE_MB * 1024 * 1024
+  const totalEstimate = STUDIO_ENGINE_SIZE_MB * 1024 * 1024
   let loadedBefore = 0
 
-  for (const [index, path] of ALL_ASSETS.entries()) {
+  for (const [index, path] of ENGINE_ASSETS.entries()) {
     if (await hasAsset(path)) {
-      // Resume: skip files from an earlier, interrupted download.
       continue
     }
-    const response = await fetch(`${HF_BASE}/${path}`)
-    if (!response.ok || !response.body) {
-      throw new Error(`Download failed for ${path}: HTTP ${response.status}`)
+    const response = await fetchAsset(path)
+    if (!response.body) {
+      throw new Error(`Download failed for ${path}: empty body`)
     }
     const contentLength = Number(response.headers.get('Content-Length')) || 0
     const reader = response.body.getReader()
@@ -81,7 +124,7 @@ export async function downloadStudioPack(
         : 0
       const overall =
         (loadedBefore + fileShare * (contentLength || 0)) / totalEstimate
-      const fallback = (index + fileShare) / ALL_ASSETS.length
+      const fallback = (index + fileShare) / ENGINE_ASSETS.length
       onProgress(
         Math.min(99, Math.round((contentLength ? overall : fallback) * 100)),
       )

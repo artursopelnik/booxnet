@@ -89,16 +89,16 @@ export function studioVoiceToAppVoice(meta: StudioVoiceMeta): AppVoice {
  * M1-M5/F1-F5 preset ids.
  */
 export const STUDIO_VOICES: StudioVoiceMeta[] = [
-  { id: 'M1', name: 'Mats', gender: 'm' },
-  { id: 'M2', name: 'Jonas', gender: 'm' },
-  { id: 'M3', name: 'Otto', gender: 'm' },
-  { id: 'M4', name: 'Paul', gender: 'm' },
-  { id: 'M5', name: 'Emil', gender: 'm' },
-  { id: 'F1', name: 'Frida', gender: 'f' },
-  { id: 'F2', name: 'Greta', gender: 'f' },
-  { id: 'F3', name: 'Hanna', gender: 'f' },
-  { id: 'F4', name: 'Ida', gender: 'f' },
-  { id: 'F5', name: 'Klara', gender: 'f' },
+  { id: 'M1', name: 'Alex', gender: 'm' },
+  { id: 'M2', name: 'James', gender: 'm' },
+  { id: 'M3', name: 'Oliver', gender: 'm' },
+  { id: 'M4', name: 'Noah', gender: 'm' },
+  { id: 'M5', name: 'Leon', gender: 'm' },
+  { id: 'F1', name: 'Emma', gender: 'f' },
+  { id: 'F2', name: 'Mia', gender: 'f' },
+  { id: 'F3', name: 'Sophia', gender: 'f' },
+  { id: 'F4', name: 'Lina', gender: 'f' },
+  { id: 'F5', name: 'Clara', gender: 'f' },
 ]
 
 /** Languages Supertonic 3 can synthesize. */

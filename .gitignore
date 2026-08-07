@@ -4,3 +4,5 @@ dev-dist/
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
+# Gespiegelte Supertonic-Modelle (~400 MB) – siehe vendor/supertonic/NOTICE.md
+public/supertonic/

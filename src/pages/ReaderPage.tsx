@@ -27,7 +27,7 @@ import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
 import { detectStudioLang } from '../lib/lang'
 import { storedNeuralVoices } from '../lib/neural'
-import { isStudioInstalled } from '../lib/supertonic/assets'
+import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { toSentences } from '../lib/text'
 import {
   getSavedRate,
@@ -91,7 +91,7 @@ export default function ReaderPage() {
   useEffect(() => {
     loadSystemVoices().then(setSystemVoices)
     storedNeuralVoices().then(setStoredNeural)
-    isStudioInstalled().then(setStudioInstalled)
+    isStudioEngineInstalled().then(setStudioInstalled)
   }, [])
 
   useEffect(() => {

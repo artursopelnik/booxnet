@@ -8,7 +8,7 @@
  * sentence synthesis stays fast.
  */
 import type { StudioVoiceId } from '../voices'
-import { loadStudioAsset } from './assets'
+import { ensureStudioStyle, loadStudioAsset } from './assets'
 
 type Ort = typeof import('onnxruntime-web')
 type OrtSession = import('onnxruntime-web').InferenceSession
@@ -120,7 +120,9 @@ async function getStyle(
 ): Promise<Style> {
   const cached = engine.styles.get(voiceId)
   if (cached) return cached
-  const buffer = await loadStudioAsset(`voice_styles/${voiceId}.json`)
+  // Style files are tiny and fetched on demand the first time a voice is
+  // used; afterwards they live in OPFS like the engine itself.
+  const buffer = await ensureStudioStyle(voiceId)
   const json = JSON.parse(new TextDecoder().decode(buffer)) as {
     style_ttl: { dims: number[]; data: unknown }
     style_dp: { dims: number[]; data: unknown }

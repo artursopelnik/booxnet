@@ -32,10 +32,10 @@ import {
   storedNeuralVoices,
 } from '../lib/neural'
 import {
-  downloadStudioPack,
-  isStudioInstalled,
-  removeStudioPack,
-  STUDIO_PACK_SIZE_MB,
+  downloadStudioEngine,
+  isStudioEngineInstalled,
+  removeStudioData,
+  STUDIO_ENGINE_SIZE_MB,
 } from '../lib/supertonic/assets'
 import { resetStudioEngine } from '../lib/supertonic/engine'
 import { previewVoice } from '../lib/tts'
@@ -116,7 +116,7 @@ export default function VoiceSheet({
   useEffect(() => {
     if (isOpen) {
       storedNeuralVoices().then(setStored)
-      isStudioInstalled().then(setStudioInstalled)
+      isStudioEngineInstalled().then(setStudioInstalled)
     }
   }, [isOpen])
 
@@ -157,13 +157,13 @@ export default function VoiceSheet({
   const startStudioDownload = async () => {
     setStudioProgress(0)
     try {
-      await downloadStudioPack(setStudioProgress)
+      await downloadStudioEngine(setStudioProgress)
       setStudioInstalled(true)
       onStudioChange(true)
     } catch {
       presentToast({
         message:
-          'Download des Studio-Pakets fehlgeschlagen. Prüfe deine Internetverbindung und versuche es erneut – bereits geladene Teile bleiben erhalten.',
+          'Download des Sprachmodells fehlgeschlagen. Prüfe deine Internetverbindung und versuche es erneut – bereits geladene Teile bleiben erhalten.',
         duration: 4000,
         color: 'danger',
       })
@@ -172,8 +172,8 @@ export default function VoiceSheet({
     }
   }
 
-  const deleteStudioPack = async () => {
-    await removeStudioPack()
+  const deleteStudioData = async () => {
+    await removeStudioData()
     resetStudioEngine()
     setStudioInstalled(false)
     onStudioChange(false)
@@ -279,8 +279,10 @@ export default function VoiceSheet({
             </IonItemDivider>
             <div className="voice-section-note">
               10 Stimmen in Studioqualität (44,1 kHz), jede spricht{' '}
-              {STUDIO_LANGS.length} Sprachen. Ein Download für alle Stimmen,
-              danach komplett offline.
+              {STUDIO_LANGS.length} Sprachen. Die Stimmen selbst sind winzig
+              (wenige hundert KB) und laden einzeln – nur das gemeinsame
+              Sprachmodell dahinter wird einmalig heruntergeladen. Danach
+              läuft alles offline.
             </div>
             {!studioInstalled && (
               <IonItem
@@ -293,10 +295,10 @@ export default function VoiceSheet({
               >
                 <IonIcon slot="start" icon={sparklesOutline} color="primary" />
                 <IonLabel>
-                  <h2>Studio-Paket herunterladen</h2>
+                  <h2>Sprachmodell herunterladen</h2>
                   <IonNote>
                     {studioProgress === null
-                      ? `Einmalig ca. ${STUDIO_PACK_SIZE_MB} MB`
+                      ? `Einmalig ca. ${STUDIO_ENGINE_SIZE_MB} MB – schaltet alle 10 Stimmen frei`
                       : `Wird geladen … ${studioProgress} %`}
                   </IonNote>
                   {studioProgress !== null && (
@@ -311,35 +313,39 @@ export default function VoiceSheet({
                 )}
               </IonItem>
             )}
-            {studioInstalled &&
-              studioVoicesFiltered.map((meta) => {
-                const appVoice = studioVoiceToAppVoice(meta)
-                return (
-                  <IonItem
-                    key={meta.id}
-                    button
-                    onClick={() => onSelect(appVoice)}
-                  >
-                    <IonLabel>
-                      <h2>{meta.name}</h2>
-                      <IonNote>
-                        {meta.gender === 'm' ? 'Männlich' : 'Weiblich'} ·
-                        Studio {meta.id} · {STUDIO_LANGS.length} Sprachen ·
-                        offline
-                      </IonNote>
-                    </IonLabel>
-                    {appVoice.key === selectedKey && (
-                      <IonIcon slot="end" color="primary" icon={checkmark} />
-                    )}
-                    {previewButton(appVoice)}
-                  </IonItem>
-                )
-              })}
+            {studioVoicesFiltered.map((meta) => {
+              const appVoice = studioVoiceToAppVoice(meta)
+              return (
+                <IonItem
+                  key={meta.id}
+                  button={studioInstalled}
+                  disabled={!studioInstalled}
+                  onClick={
+                    studioInstalled ? () => onSelect(appVoice) : undefined
+                  }
+                >
+                  <IonLabel>
+                    <h2>{meta.name}</h2>
+                    <IonNote>
+                      {meta.gender === 'm' ? 'Männlich' : 'Weiblich'} · Studio{' '}
+                      {meta.id} · {STUDIO_LANGS.length} Sprachen
+                      {studioInstalled
+                        ? ' · offline'
+                        : ' · benötigt das Sprachmodell'}
+                    </IonNote>
+                  </IonLabel>
+                  {appVoice.key === selectedKey && (
+                    <IonIcon slot="end" color="primary" icon={checkmark} />
+                  )}
+                  {studioInstalled && previewButton(appVoice)}
+                </IonItem>
+              )
+            })}
             {studioInstalled && (
-              <IonItem button onClick={() => void deleteStudioPack()}>
+              <IonItem button onClick={() => void deleteStudioData()}>
                 <IonIcon slot="start" icon={trashOutline} color="medium" />
                 <IonLabel color="medium">
-                  Studio-Paket löschen ({STUDIO_PACK_SIZE_MB} MB freigeben)
+                  Sprachmodell löschen ({STUDIO_ENGINE_SIZE_MB} MB freigeben)
                 </IonLabel>
               </IonItem>
             )}

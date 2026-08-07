@@ -10,12 +10,13 @@ als 40 Sprachen, komplett offline und im Look einer nativen iOS-App.
   pro Seite extrahiert und zusammen mit einem Cover-Thumbnail in IndexedDB
   gespeichert. Es verlässt keine Datei das Gerät.
 - **Vorlesen mit Stimmenauswahl:** Drei Engines in einer Auswahl:
-  - **Studio-Stimmen (Supertonic 3):** 10 Preset-Stimmen in Studioqualität
-    (44,1 kHz), jede spricht 31 Sprachen. Ein einmaliger Download
-    (ca. 404 MB → OPFS), Inferenz via onnxruntime-web (WebGPU, WASM-
-    Fallback) mit Session-Wiederverwendung. Die Buchsprache wird per
-    Stopwort-Heuristik erkannt, unklare Texte laufen im
-    sprachagnostischen Modus (`na`).
+  - **Studio-Stimmen (Supertonic 3):** 10 Preset-Stimmen (Alex, James,
+    Emma, …) in Studioqualität (44,1 kHz), jede spricht 31 Sprachen. Das
+    gemeinsame Sprachmodell wird einmalig geladen (ca. 400 MB → OPFS), die
+    einzelnen Stimmen sind winzige Style-Dateien und laden bei Bedarf.
+    Inferenz via onnxruntime-web (WebGPU, WASM-Fallback) mit Session-
+    Wiederverwendung. Die Buchsprache wird per Stopwort-Heuristik erkannt,
+    unklare Texte laufen im sprachagnostischen Modus (`na`).
   - **Neuronale Stimmen (Piper):** der komplette Katalog mit 118 Stimmen
     in über 30 Sprachen, per ONNX/WASM im Browser. Je Stimme ein Download
     (ca. 28–110 MB → OPFS), danach offline.
@@ -71,11 +72,13 @@ npm run preview   # Build lokal testen (nötig für Service Worker/PWA)
   nächsten Sätze werden während der Wiedergabe vorab berechnet, damit es
   keine Lücken gibt. Auf schwächeren Geräten empfiehlt sich eine „low"- oder
   „x_low"-Stimme.
-- **Supertonic 3:** Die Engine ist eine TypeScript-Portierung des
-  MIT-lizenzierten Web-Beispiels aus `supertone-inc/supertonic`; die Modelle
-  (OpenRAIL-M) kommen von `huggingface.co/Supertone/supertonic-3`. Achtung:
-  Supertone hat angekündigt, das Repository zu archivieren (Juli 2026) –
-  die Modelle funktionieren weiter, sollten für den Produktivbetrieb aber
-  perspektivisch selbst gehostet werden. Auf älteren iPhones sind 404 MB
-  und WebGPU ein Thema; dort sind Piper-Stimmen die sichere Wahl.
+- **Supertonic 3 – Zukunftssicherung:** Supertone hat angekündigt, das
+  Repository zu archivieren (Juli 2026). Deshalb ist der relevante
+  Upstream-Code (MIT) unter `vendor/supertonic/` im Projekt konserviert
+  (siehe `vendor/supertonic/NOTICE.md`), und die Modelle (OpenRAIL-M)
+  lassen sich mit `node scripts/mirror-supertonic.mjs` nach
+  `public/supertonic/` spiegeln – die App nutzt den Spiegel automatisch
+  bevorzugt und fällt nur auf Hugging Face zurück. Auf älteren iPhones
+  sind 400 MB und WebGPU ein Thema; dort sind Piper-Stimmen die sichere
+  Wahl.
 - Kokoro wurde bewusst nicht integriert: Es unterstützt kein Deutsch.
