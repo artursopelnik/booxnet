@@ -7,7 +7,7 @@ import ReaderPage from './pages/ReaderPage'
 export default function App() {
   return (
     <IonApp>
-      <IonReactRouter>
+      <IonReactRouter basename={import.meta.env.BASE_URL}>
         <IonRouterOutlet>
           <Route exact path="/library" component={LibraryPage} />
           <Route exact path="/reader/:id" component={ReaderPage} />
