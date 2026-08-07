@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - claude/speechify-alternative-pdf-ntvtpw
+      # Default-Branch: nach dem Merge des PRs deployt jeder Push hierauf.
+      - claude/booxnet-astro-site-3opvbn
       - main
   workflow_dispatch:
 
