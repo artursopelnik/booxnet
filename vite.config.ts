@@ -44,10 +44,10 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Booxnet – dein PDF, vorgelesen',
+        name: 'Booxnet – dein Buch, vorgelesen',
         short_name: 'Booxnet',
         description:
-          'PDF hochladen, Stimme auswählen und offline vorlesen lassen.',
+          'Buch hochladen, Stimme auswählen und offline vorlesen lassen.',
         lang: 'de',
         display: 'standalone',
         orientation: 'portrait',
