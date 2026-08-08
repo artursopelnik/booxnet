@@ -9,21 +9,17 @@ export interface StudioVoiceMeta {
 }
 
 /**
- * Supertonic 3 preset styles (5 male, 5 female), each speaking all 31
- * languages. The friendly names are our own labels for the official
- * M1-M5/F1-F5 preset ids.
+ * Kuratierte Auswahl aus den Supertonic-3-Presets (offiziell M1-M5 und
+ * F1-F5, jedes spricht alle 31 Sprachen): Zehn Stimmen waren zu viel
+ * Auswahl – es bleiben zwei markante Männer- und zwei Frauenstimmen mit
+ * eigenen Namen. Wer früher eine entfernte Stimme (z. B. M1 "Alex")
+ * gewählt hatte, fällt automatisch auf die erste der Liste zurück.
  */
 export const STUDIO_VOICES: StudioVoiceMeta[] = [
-  { id: 'M1', name: 'Alex', gender: 'm' },
-  { id: 'M2', name: 'James', gender: 'm' },
-  { id: 'M3', name: 'Oliver', gender: 'm' },
-  { id: 'M4', name: 'Noah', gender: 'm' },
-  { id: 'M5', name: 'Leon', gender: 'm' },
-  { id: 'F1', name: 'Emma', gender: 'f' },
-  { id: 'F2', name: 'Mia', gender: 'f' },
-  { id: 'F3', name: 'Sophia', gender: 'f' },
-  { id: 'F4', name: 'Ida', gender: 'f' },
-  { id: 'F5', name: 'Clara', gender: 'f' },
+  { id: 'M2', name: 'Jack', gender: 'm' },
+  { id: 'M4', name: 'Norbert', gender: 'm' },
+  { id: 'F1', name: 'Eva', gender: 'f' },
+  { id: 'F2', name: 'Michaela', gender: 'f' },
 ]
 
 export function studioVoiceById(

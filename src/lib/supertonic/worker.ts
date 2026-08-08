@@ -50,11 +50,11 @@ async function loadEngine(): Promise<Engine> {
   // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers, siehe
   // public/_headers - Netlify setzt sie, GitHub Pages kann das nicht).
   // Without cross-origin isolation forcing threads makes onnxruntime hang
-  // on iOS Safari instead of falling back. Gedeckelt auf 4: mehr Threads
-  // bringen bei diesen Modellen kaum noch Tempo, wuerden aber UI- und
-  // Audio-Threads des Geraets verdraengen.
+  // on iOS Safari instead of falling back. Alle Kerne bis auf einen
+  // (maximal 6): Der freie Kern haelt UI und Audio-Ausgabe fluessig,
+  // oberhalb von 6 Threads bringen diese Modelle kaum noch Tempo.
   ort.env.wasm.numThreads = self.crossOriginIsolated
-    ? Math.min(4, navigator.hardwareConcurrency ?? 4)
+    ? Math.max(1, Math.min(6, (navigator.hardwareConcurrency ?? 4) - 1))
     : 1
   ort.env.wasm.wasmPaths = await resolveOrtWasmPrefix()
 

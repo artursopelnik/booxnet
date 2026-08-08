@@ -80,9 +80,17 @@ export function previewTextFor(voice: StudioVoiceMeta): string {
  * Fertig gerenderte Begrüßungen liegen dauerhaft in OPFS (neben den
  * Modellen, werden mit "Sprachmodell löschen" zusammen entfernt) – das
  * Probehören spielt dann sofort ab statt erst zu rechnen. Bei Änderungen
- * am Vorschautext die Version hochzählen, damit alte Dateien verfallen.
+ * am Vorschautext, an Stimmennamen oder an der Vorschau-Qualität die
+ * Version hochzählen, damit alte Dateien verfallen.
+ * v2: eigene Stimmennamen (Jack, Norbert, Eva, Michaela) + Qualität 6.
  */
-const PREVIEW_CACHE_VERSION = 'v1'
+const PREVIEW_CACHE_VERSION = 'v2'
+
+/**
+ * Die Begrüßung wird nur einmal gerechnet und dauerhaft gespeichert –
+ * hier darf die Qualität deshalb höher sein als beim laufenden Vorlesen.
+ */
+const PREVIEW_SYNTH_STEPS = 6
 
 function previewAssetPath(voice: StudioVoiceMeta): string {
   return `previews/${PREVIEW_CACHE_VERSION}-${voice.id}.wav`
@@ -98,6 +106,7 @@ async function renderPreview(
     previewTextFor(voice),
     BASE_SPEED,
     priority,
+    PREVIEW_SYNTH_STEPS,
   )
   // Persistieren best-effort – das Abspielen wartet nicht darauf.
   void blob
@@ -138,18 +147,6 @@ export function warmVoicePreviews(voices: StudioVoiceMeta[]): void {
 
 let sharedCtx: AudioContext | null = null
 
-/**
- * Alle Quellen spielen über einen MediaStream in ein verstecktes
- * <audio>-Element statt direkt auf ctx.destination: iOS behandelt
- * Medien-Elemente wie Hörbuch-/Musik-Wiedergabe und gibt sie auch bei
- * aktiviertem Lautlos-Schalter aus – direkte Web-Audio-Ausgabe wird vom
- * Schalter dagegen stummgeschaltet ("er liest, aber man hört nichts").
- * Erkennen lässt sich der Schalter aus dem Web nicht, also umgehen wir
- * ihn wie eine richtige Vorlese-App. Fallback: direkte Ausgabe.
- */
-let outputNode: AudioNode | null = null
-let outputElement: HTMLAudioElement | null = null
-
 function getAudioContext(): AudioContext {
   if (!sharedCtx) {
     const Ctor =
@@ -161,47 +158,28 @@ function getAudioContext(): AudioContext {
   return sharedCtx
 }
 
-function getOutput(): AudioNode {
-  const ctx = getAudioContext()
-  if (!outputNode) {
-    try {
-      const destination = ctx.createMediaStreamDestination()
-      const element = document.createElement('audio')
-      element.setAttribute('playsinline', '')
-      element.style.display = 'none'
-      element.srcObject = destination.stream
-      document.body.appendChild(element)
-      outputElement = element
-      outputNode = destination
-    } catch {
-      outputNode = ctx.destination
-    }
-  }
-  return outputNode
-}
-
 /**
+ * Bewusst DIREKTE Web-Audio-Ausgabe: Der Umweg über MediaStream +
+ * <audio>-Element (um den iOS-Lautlos-Schalter wie eine Hörbuch-App zu
+ * umgehen) erzeugte beim Pausieren/Fortsetzen und Stimmenwechsel ein
+ * hängendes Stotter-Geräusch, das erst ein App-Neustart beendete.
+ * Konsequenz: Bei stummgeschaltetem iPhone bleibt die Stimme lautlos –
+ * die Willkommensseite weist darauf hin (Stummschalter aus oder
+ * Kopfhörer nutzen); erkennen lässt sich der Schalter aus dem Web nicht.
+ *
  * Must be called synchronously inside a user gesture once: resumes the
- * context, starts the output element and plays a one-sample silent
- * buffer so iOS marks the pipeline as user-activated.
+ * context and plays a one-sample silent buffer so iOS marks it as
+ * user-activated.
  */
 function unlockAudioContext(): void {
   const ctx = getAudioContext()
   if (ctx.state === 'suspended') {
     void ctx.resume()
   }
-  const output = getOutput()
-  if (outputElement && outputElement.paused) {
-    outputElement.play().catch(() => {
-      // Element-Wiedergabe verweigert – lieber direkt ausgeben als stumm
-      // bleiben (dann gilt allerdings wieder der Lautlos-Schalter).
-      outputNode = getAudioContext().destination
-    })
-  }
   const buffer = ctx.createBuffer(1, 1, 22050)
   const source = ctx.createBufferSource()
   source.buffer = buffer
-  source.connect(output)
+  source.connect(ctx.destination)
   source.start(0)
 }
 
@@ -244,7 +222,7 @@ export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
   if (ctx.state === 'suspended') await ctx.resume()
   const source = ctx.createBufferSource()
   source.buffer = buffer
-  source.connect(getOutput())
+  source.connect(ctx.destination)
   previewSource = source
   source.start()
   await new Promise<void>((resolve) => {
@@ -510,7 +488,7 @@ export class Speaker {
     }
     const source = ctx.createBufferSource()
     source.buffer = buffer
-    source.connect(getOutput())
+    source.connect(ctx.destination)
     source.onended = () => this.advance(generation)
     this.source = source
     this.sourceIndex = this.index

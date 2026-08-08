@@ -6,3 +6,12 @@
 /*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
+
+# Unveraenderliche Dateien duerfen ewig gecacht werden: gehashte
+# Build-Assets und die versionierten onnxruntime-Laufzeitdateien.
+# Spart bei jedem Besuch Revalidierungs-Roundtrips (Lighthouse:
+# "efficient cache policy").
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/ort/*
+  Cache-Control: public, max-age=31536000, immutable

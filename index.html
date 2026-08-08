@@ -13,10 +13,65 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Booxnet" />
+    <meta
+      name="description"
+      content="Bücher als PDF, EPUB oder Textdatei hochladen und offline mit natürlichen Stimmen vorlesen lassen – kostenlos, ohne Konto, ohne Cloud."
+    />
     <title>Booxnet – dein Buch, vorgelesen</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Sofort sichtbarer App-Shell-Splash: malt Logo und Namen, bevor
+         React/Ionic geladen sind (First/Largest Contentful Paint), und
+         wird beim Mount von React ersetzt. Styles inline, damit nichts
+         davon am CSS-Download hängt. -->
+    <div id="root">
+      <style>
+        .boot {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          background: #ffffff;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+            sans-serif;
+        }
+        .boot h1 {
+          margin: 0;
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #111111;
+        }
+        .boot__spin {
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          border: 3px solid #d3ddec;
+          border-top-color: #0b63d6;
+          animation: bootspin 0.9s linear infinite;
+        }
+        @keyframes bootspin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        @media (prefers-color-scheme: dark) {
+          .boot {
+            background: #000000;
+          }
+          .boot h1 {
+            color: #f4f5f8;
+          }
+        }
+      </style>
+      <div class="boot">
+        <img src="/icon.svg" width="64" height="64" alt="" />
+        <h1>Booxnet</h1>
+        <div class="boot__spin" aria-label="Lädt"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

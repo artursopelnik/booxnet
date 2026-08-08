@@ -1,8 +1,27 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Die onnxruntime-Version steckt im Pfad der WASM-Laufzeitdateien
+// (/ort/<version>/...) und im CDN-Fallback: So sind die Dateien sicher
+// unveraenderlich (immutable cachebar, siehe public/_headers), und ein
+// Versions-Upgrade kann nie auf veraltete Cache-Eintraege treffen.
+// (Direkt aus der Datei gelesen – die exports-Map des Pakets gibt
+// package.json nicht frei.)
+const ortVersion = (
+  JSON.parse(
+    readFileSync(
+      new URL('./node_modules/onnxruntime-web/package.json', import.meta.url),
+      'utf8',
+    ),
+  ) as { version: string }
+).version
+
 export default defineConfig({
+  define: {
+    __ORT_VERSION__: JSON.stringify(ortVersion),
+  },
   // GitHub Pages serves the app under /<repo>/ – the workflow sets BASE_PATH.
   base: process.env.BASE_PATH || '/',
   // The TTS worker code-splits (dynamic onnxruntime import), which
@@ -51,7 +70,7 @@ export default defineConfig({
         // models themselves are stored in OPFS.
         runtimeCaching: [
           {
-            urlPattern: /\/ort\/[^/]+\.(wasm|mjs)$/,
+            urlPattern: /\/ort\/.+\.(wasm|mjs)$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'tts-wasm',

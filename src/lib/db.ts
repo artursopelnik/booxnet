@@ -15,6 +15,8 @@ export interface Book {
   position: number
   /** Total number of sentences, cached for the progress display. */
   sentenceCount: number
+  /** Manuelle Sortierposition (Drag-and-drop); fehlt bei alten Büchern. */
+  order?: number
 }
 
 interface VorleserDB extends DBSchema {
@@ -37,7 +39,14 @@ function db() {
 
 export async function getAllBooks(): Promise<Book[]> {
   const books = await (await db()).getAll('books')
-  return books.sort((a, b) => b.addedAt - a.addedAt)
+  // Manuell sortierte Bücher zuerst in ihrer Reihenfolge, der Rest
+  // (Alt-Bestand, Neuimporte) dahinter – neueste oben.
+  return books.sort((a, b) => {
+    if (a.order !== undefined && b.order !== undefined) return a.order - b.order
+    if (a.order !== undefined) return -1
+    if (b.order !== undefined) return 1
+    return b.addedAt - a.addedAt
+  })
 }
 
 export async function getBook(id: string): Promise<Book | undefined> {
@@ -50,6 +59,19 @@ export async function putBook(book: Book): Promise<void> {
 
 export async function deleteBook(id: string): Promise<void> {
   await (await db()).delete('books', id)
+}
+
+/** Persistiert die per Drag-and-drop gewählte Reihenfolge. */
+export async function saveBookOrder(ids: string[]): Promise<void> {
+  const database = await db()
+  const transaction = database.transaction('books', 'readwrite')
+  await Promise.all(
+    ids.map(async (id, index) => {
+      const book = await transaction.store.get(id)
+      if (book) await transaction.store.put({ ...book, order: index })
+    }),
+  )
+  await transaction.done
 }
 
 export async function savePosition(id: string, position: number): Promise<void> {

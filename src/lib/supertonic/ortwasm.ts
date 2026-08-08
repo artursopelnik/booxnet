@@ -10,11 +10,17 @@
  * Läuft im Worker wie im Fenster (nur navigator/fetch, kein DOM).
  */
 
-/** Muss zur installierten onnxruntime-web-Version passen (package.json). */
-export const ORT_CDN = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/'
+/** Zur Build-Zeit injizierte onnxruntime-Version (vite.config.ts). */
+declare const __ORT_VERSION__: string
 
+export const ORT_CDN = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${__ORT_VERSION__}/dist/`
+
+/**
+ * Versionierter Pfad: macht die Dateien unveränderlich (immutable
+ * cachebar) und lässt Upgrades nie auf veraltete Cache-Einträge treffen.
+ */
 function localPrefix(): string {
-  return `${import.meta.env.BASE_URL}ort/`
+  return `${import.meta.env.BASE_URL}ort/${__ORT_VERSION__}/`
 }
 
 /** Laufzeitdateien, die der Worker tatsächlich anfordert (reines WASM). */
