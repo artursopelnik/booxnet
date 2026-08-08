@@ -5,9 +5,11 @@ export interface Book {
   title: string
   addedAt: number
   pageCount: number
-  /** Extracted plain text, one entry per PDF page. */
+  /** Extracted plain text, one entry per page/chapter/section. */
   pages: string[]
-  /** JPEG data-URL of the first page, used as cover in the library. */
+  /** What one `pages` entry represents. Missing on old books ⇒ 'page'. */
+  unit?: 'page' | 'chapter' | 'section'
+  /** JPEG data-URL of the cover (PDF: first page), shown in the library. */
   cover?: string
   /** Index of the last read sentence, for resuming. */
   position: number

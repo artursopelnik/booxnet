@@ -33,6 +33,7 @@ import {
 import { useParams } from 'react-router'
 import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
+import { unitName } from '../lib/importers'
 import { detectStudioLang, langLabel } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { studioPrefetch, studioWarmup } from '../lib/supertonic/client'
@@ -70,23 +71,27 @@ interface PageSentence {
 }
 
 /**
- * One PDF page. Memoized so that a sentence change only re-renders the
- * page that contains the highlight – crucial for large books.
+ * One page/chapter/section. Memoized so that a sentence change only
+ * re-renders the page that contains the highlight – crucial for large books.
  */
 const PageSection = memo(function PageSection({
   pageIndex,
+  unitLabel,
   sentences,
   activeIndex,
   onJump,
 }: {
   pageIndex: number
+  unitLabel: string
   sentences: PageSentence[]
   activeIndex: number
   onJump: (index: number) => void
 }) {
   return (
     <section className="reader-page">
-      <div className="page-marker">Seite {pageIndex + 1}</div>
+      <div className="page-marker">
+        {unitLabel} {pageIndex + 1}
+      </div>
       <p>
         {sentences.map((sentence) => (
           <span
@@ -128,12 +133,14 @@ function estimatePageHeight(sentences: PageSentence[]): number {
  */
 const LazyPage = memo(function LazyPage({
   pageIndex,
+  unitLabel,
   sentences,
   activeIndex,
   forceRender,
   onJump,
 }: {
   pageIndex: number
+  unitLabel: string
   sentences: PageSentence[]
   activeIndex: number
   forceRender: boolean
@@ -167,12 +174,15 @@ const LazyPage = memo(function LazyPage({
       {rendered ? (
         <PageSection
           pageIndex={pageIndex}
+          unitLabel={unitLabel}
           sentences={sentences}
           activeIndex={activeIndex}
           onJump={onJump}
         />
       ) : (
-        <div className="page-marker">Seite {pageIndex + 1}</div>
+        <div className="page-marker">
+          {unitLabel} {pageIndex + 1}
+        </div>
       )}
     </div>
   )
@@ -450,6 +460,7 @@ export default function ReaderPage() {
   }
 
   const activePage = pageOfSentence.get(current) ?? -1
+  const unitLabel = unitName(book.unit)
 
   return (
     <IonPage>
@@ -490,6 +501,7 @@ export default function ReaderPage() {
             <LazyPage
               key={page.pageIndex}
               pageIndex={page.pageIndex}
+              unitLabel={unitLabel}
               sentences={page.sentences}
               activeIndex={page.pageIndex === activePage ? current : -1}
               forceRender={Math.abs(page.pageIndex - activePage) <= RENDER_WINDOW}
