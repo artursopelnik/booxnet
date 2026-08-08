@@ -6,8 +6,14 @@ import {
   IonFooter,
   IonHeader,
   IonIcon,
+  IonItem,
+  IonList,
+  IonModal,
   IonPage,
   IonProgressBar,
+  IonRange,
+  IonSelect,
+  IonSelectOption,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -20,6 +26,7 @@ import {
   play,
   playBack,
   playForward,
+  textOutline,
 } from 'ionicons/icons'
 import {
   memo,
@@ -36,6 +43,16 @@ import { unitName } from '../lib/importers'
 import { detectStudioLang } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { studioPrefetch, studioWarmup } from '../lib/supertonic/client'
+import {
+  FONT_SCALE_MAX,
+  FONT_SCALE_MIN,
+  FONT_SCALE_STEP,
+  getFontScale,
+  getHighlightStyle,
+  saveFontScale,
+  saveHighlightStyle,
+  type HighlightStyle,
+} from '../lib/readerPrefs'
 import { isSpeakable, sanitizeForSpeech, toSentences } from '../lib/text'
 import {
   engineSpeed,
@@ -202,6 +219,11 @@ export default function ReaderPage() {
   const [current, setCurrent] = useState(0)
   const [bookLang, setBookLang] = useState('de')
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
+  const [displayOpen, setDisplayOpen] = useState(false)
+  const [fontScale, setFontScale] = useState(getFontScale())
+  const [highlightStyle, setHighlightStyle] = useState<HighlightStyle>(
+    getHighlightStyle(),
+  )
   const [presentToast] = useIonToast()
 
   const speakerRef = useRef<Speaker | null>(null)
@@ -389,7 +411,7 @@ export default function ReaderPage() {
   // Keyboard control: Space toggles playback, arrow keys skip sentences.
   const keyHandler = useRef<(event: KeyboardEvent) => void>(() => {})
   keyHandler.current = (event: KeyboardEvent) => {
-    if (voiceSheetOpen) return
+    if (voiceSheetOpen || displayOpen) return
     const target = event.target as HTMLElement | null
     if (target?.closest('input, textarea, [contenteditable]')) return
     if (event.code === 'Space') {
@@ -504,13 +526,22 @@ export default function ReaderPage() {
               aria-label="Zurück zur Bibliothek"
             />
           </IonButtons>
-          <IonTitle className="reader-title">{book.title}</IonTitle>
+          {/* Logo links (hinter dem Zurück-Pfeil), rechts die Aktionen. */}
           <img
-            slot="end"
+            slot="start"
             className="brand-mark"
             src={`${import.meta.env.BASE_URL}icon.svg`}
             alt="Booxnet"
           />
+          <IonTitle className="reader-title">{book.title}</IonTitle>
+          <IonButtons slot="end">
+            <IonButton
+              onClick={() => setDisplayOpen(true)}
+              aria-label="Anzeige-Einstellungen"
+            >
+              <IonIcon aria-hidden="true" slot="icon-only" icon={textOutline} />
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
 
@@ -520,7 +551,12 @@ export default function ReaderPage() {
         scrollEvents
         onIonScrollStart={onUserScrollStart}
       >
-        <article className="reader-text">
+        <article
+          className={`reader-text hl-${highlightStyle}`}
+          style={
+            { '--reader-font-scale': fontScale / 100 } as React.CSSProperties
+          }
+        >
           {book.cover && (
             <img
               className="reader-cover"
@@ -614,6 +650,70 @@ export default function ReaderPage() {
         onEngineChange={setEngineInstalled}
         onDismiss={() => setVoiceSheetOpen(false)}
       />
+
+      {/* Anzeige-Einstellungen als halbhohes Sheet: Der Text dahinter
+          bleibt sichtbar, Änderungen wirken sofort als Live-Vorschau. */}
+      <IonModal
+        isOpen={displayOpen}
+        onDidDismiss={() => setDisplayOpen(false)}
+        initialBreakpoint={0.45}
+        breakpoints={[0, 0.45, 0.75]}
+      >
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Anzeige</IonTitle>
+            <IonButtons slot="end">
+              <IonButton strong onClick={() => setDisplayOpen(false)}>
+                Fertig
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <IonList inset>
+            <IonItem>
+              <IonRange
+                aria-label="Schriftgröße"
+                min={FONT_SCALE_MIN}
+                max={FONT_SCALE_MAX}
+                step={FONT_SCALE_STEP}
+                snaps
+                value={fontScale}
+                onIonInput={(event) => {
+                  const value = Number(event.detail.value)
+                  setFontScale(value)
+                  saveFontScale(value)
+                }}
+              >
+                <span slot="start" style={{ fontSize: '0.85rem' }}>
+                  A
+                </span>
+                <span slot="end" style={{ fontSize: '1.5rem' }}>
+                  A
+                </span>
+              </IonRange>
+            </IonItem>
+            <IonItem>
+              <IonSelect
+                label="Markierung"
+                interface="popover"
+                value={highlightStyle}
+                onIonChange={(event) => {
+                  const value = event.detail.value as HighlightStyle
+                  setHighlightStyle(value)
+                  saveHighlightStyle(value)
+                }}
+              >
+                <IonSelectOption value="mark">Hinterlegt</IonSelectOption>
+                <IonSelectOption value="underline">
+                  Unterstrichen
+                </IonSelectOption>
+                <IonSelectOption value="invert">Invertiert</IonSelectOption>
+              </IonSelect>
+            </IonItem>
+          </IonList>
+        </IonContent>
+      </IonModal>
     </IonPage>
   )
 }

@@ -104,7 +104,8 @@ ion-note,
 .brand-mark {
   width: 22px;
   height: 22px;
-  margin-inline-end: 12px;
+  /* Sitzt jetzt links im Header – Abstand zu beiden Nachbarn. */
+  margin-inline: 12px;
   border-radius: 6px;
   display: block;
 }
@@ -129,7 +130,8 @@ ion-note,
   margin: 0 auto;
   padding: 20px 24px 48px;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.15rem;
+  /* Nutzer-Skalierung aus den Anzeige-Einstellungen (ReaderPage). */
+  font-size: calc(1.15rem * var(--reader-font-scale, 1));
   line-height: 1.75;
 }
 
@@ -166,11 +168,31 @@ ion-note,
   -webkit-box-decoration-break: clone;
 }
 
-@media (prefers-color-scheme: dark) {
-  .sentence--active {
-    background: rgba(90, 170, 255, 0.32);
-    box-shadow: 0 0 0 3px rgba(90, 170, 255, 0.32);
-  }
+/* Klassen-basiert statt Media-Query: Dunkel kann auch manuell gewählt
+   sein (lib/theme.ts setzt die Klasse, im Automatik-Modus per System). */
+html.ion-palette-dark .sentence--active {
+  background: rgba(90, 170, 255, 0.32);
+  box-shadow: 0 0 0 3px rgba(90, 170, 255, 0.32);
+}
+
+/* Markierungsstil "Unterstrichen" (Anzeige-Einstellungen im Reader). */
+.reader-text.hl-underline .sentence--active {
+  background: none;
+  box-shadow: none;
+  text-decoration: underline 3px rgba(11, 99, 214, 0.9);
+  text-underline-offset: 5px;
+  text-decoration-skip-ink: none;
+}
+
+html.ion-palette-dark .reader-text.hl-underline .sentence--active {
+  text-decoration-color: rgba(90, 170, 255, 0.95);
+}
+
+/* Markierungsstil "Invertiert": Textfarbe und Hintergrund tauschen. */
+.reader-text.hl-invert .sentence--active {
+  background: var(--ion-text-color, #000000);
+  color: var(--ion-background-color, #ffffff);
+  box-shadow: 0 0 0 3px var(--ion-text-color, #000000);
 }
 
 /* ---- Voice sheet ---- */
