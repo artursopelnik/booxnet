@@ -60,19 +60,53 @@ export function isSpeakable(text: string): boolean {
   return letters >= 2
 }
 
-export interface SentenceRef {
-  /** Page index the sentence belongs to. */
+export interface SentenceSegment {
+  /** Page index this part of the sentence appears on. */
   page: number
   text: string
 }
 
-/** Flattens per-page text into a global, ordered sentence list. */
+export interface SentenceRef {
+  /** Page index the sentence STARTS on. */
+  page: number
+  /** Full sentence text across all segments. */
+  text: string
+  /** Per-page parts – more than one when the sentence crosses a page. */
+  segments: SentenceSegment[]
+}
+
+/** Sentence-final punctuation (optionally followed by closing quotes). */
+const TERMINAL_END = /[.!?…。！？]["')\]»«„“”‚‘’]*$/
+
+/**
+ * Flattens per-page text into a global, ordered sentence list. A sentence
+ * that is cut off by a page break ("… auf dem Saffiansofa. Er" | "drehte
+ * seinen fülligen Leib …") is merged with its continuation on the next
+ * page into ONE sentence with two segments – it is spoken in one go
+ * without the page-break pause and highlighted on both pages. Merging is
+ * deliberately conservative: only when the previous page ends without
+ * sentence-final punctuation, contains real words and the continuation
+ * starts lowercase (typical for a torn sentence, unlike headings).
+ */
 export function toSentences(pages: string[]): SentenceRef[] {
   const result: SentenceRef[] = []
   pages.forEach((pageText, page) => {
-    for (const text of splitSentences(pageText)) {
-      result.push({ page, text })
-    }
+    splitSentences(pageText).forEach((text, index) => {
+      const previous = result[result.length - 1]
+      const continuesPrevious =
+        index === 0 &&
+        previous !== undefined &&
+        previous.segments[previous.segments.length - 1].page === page - 1 &&
+        !TERMINAL_END.test(previous.text) &&
+        isSpeakable(previous.text) &&
+        /^\p{Ll}/u.test(text)
+      if (continuesPrevious) {
+        previous.text = `${previous.text} ${text}`
+        previous.segments.push({ page, text })
+      } else {
+        result.push({ page, text, segments: [{ page, text }] })
+      }
+    })
   })
   return result
 }
