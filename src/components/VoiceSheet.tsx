@@ -137,12 +137,12 @@ export default function VoiceSheet({
     }
   }
 
-  // Selecting a voice makes it introduce itself: "Hallo, ich bin Alex."
+  // Auswählen wechselt NUR die Stimme – die Vorstellung ("Hallo, ich
+  // bin Alex.") spielt ausschließlich über das Ton-Icon rechts. Die
+  // Auto-Vorstellung nervte beim Wechseln und konnte sich mit der
+  // laufenden Wiedergabe gegenseitig aus der Warteschlange werfen.
   const select = (voice: StudioVoiceMeta) => {
     onSelect(voice)
-    if (previewing === null) {
-      void preview(voice)
-    }
   }
 
   return (

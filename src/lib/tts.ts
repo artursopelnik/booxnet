@@ -478,8 +478,12 @@ export class Speaker {
       buffer = await decodeBlob(blob)
     } catch (error) {
       if (generation !== this.generation) return
-      // Verdrängt durch einen neueren Play-Druck – der kümmert sich.
-      if (error instanceof Error && error.name === TTS_CANCELLED_ERROR) return
+      // Verdrängt, obwohl weiterhin gewollt (gleiche Generation): erneut
+      // anfordern statt für immer im Ladezustand hängen zu bleiben.
+      if (error instanceof Error && error.name === TTS_CANCELLED_ERROR) {
+        void this.speakCurrent()
+        return
+      }
       // Die Synthese läuft komplett lokal – ein Timeout heißt "Gerät zu
       // langsam / beschäftigt", nie "Internet weg". Nur wenn wirklich
       // etwas fehlt oder kaputt ist, hilft ein erneuter Modell-Download.
