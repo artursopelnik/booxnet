@@ -75,13 +75,13 @@ export const TTS_CANCELLED_ERROR = 'TtsCancelledError'
 /**
  * Einheitliche Klangqualität für alles: Niedrigere "Schnell-Stufen"
  * (2–3 Schritte) klingen blechern und sind bewusst abgeschafft – lieber
- * ein Moment länger laden als schlecht klingen. 5 statt 6 spart ~17 %
- * Rechenzeit pro Satz und klang im Hörtest weiterhin sauber; wirkt es
- * doch zu dünn, ist 6 der bewährte Rückfallwert. Die Schrittzahl bleibt
- * pro Anfrage übertragbar, damit eine spätere Qualitäts-Einstellung
- * ohne Umbau möglich ist.
+ * ein Moment länger laden als schlecht klingen. 5 und 6 klangen im
+ * Hörtest sauber, 4 ist der aktuelle Testwert (~20 % schneller als 5);
+ * wirkt es zu dünn, sind 5/6 die bewährten Rückfallwerte. Die
+ * Schrittzahl bleibt pro Anfrage übertragbar, damit eine spätere
+ * Qualitäts-Einstellung ohne Umbau möglich ist.
  */
-export const QUALITY_SYNTH_STEPS = 5
+export const QUALITY_SYNTH_STEPS = 4
 
 function request(
   message: Omit<Parameters<Worker['postMessage']>[0], 'id'> &
