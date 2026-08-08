@@ -11,6 +11,7 @@
  * disappears. Everything is stored in OPFS for offline use.
  */
 import { STUDIO_VOICES, type StudioVoiceId } from '../voices'
+import { warmOrtWasmCache } from './ortwasm'
 import {
   assetSize,
   isStorageAvailable,
@@ -173,6 +174,10 @@ export async function downloadStudioEngine(
     }
     storedBytes += await downloadAsset(path, report)
   }
+  // Die Synthese braucht zusätzlich die onnxruntime-WASM-Laufzeit; einmal
+  // anfassen, damit der Service Worker sie cacht und "alles offline"
+  // wirklich stimmt. Best-effort – online klappt die Wiedergabe auch so.
+  await warmOrtWasmCache()
   onProgress(100, Math.round(storedBytes / 1024 / 1024))
 }
 

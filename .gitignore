@@ -6,3 +6,5 @@ dev-dist/
 tsconfig.tsbuildinfo
 # Gespiegelte Supertonic-Modelle (~400 MB) – siehe vendor/supertonic/NOTICE.md
 public/supertonic/
+# onnxruntime-WASM-Binärdateien, kopiert von scripts/copy-ort-wasm.mjs
+public/ort/
