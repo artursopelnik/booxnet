@@ -1,17 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#3b9dff"/>
-      <stop offset="1" stop-color="#0a5fd6"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="114" fill="url(#g)"/>
-  <g fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M150 166h140a44 44 0 0 1 44 44v180a44 44 0 0 0-44-44H150z" fill="#ffffff" fill-opacity="0.12"/>
-    <path d="M334 210a44 44 0 0 1 28-10" opacity="0"/>
-  </g>
-  <g stroke="#ffffff" stroke-width="28" stroke-linecap="round" fill="none">
-    <path d="M368 200c22 34 22 78 0 112"/>
-    <path d="M414 172c38 52 38 116 0 168"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <rect width="48" height="48" rx="12" fill="#0B63D6"/>
+  <rect x="13" y="7" width="6.2" height="34" rx="3.1" fill="#fff"/>
+  <circle cx="27.5" cy="29.5" r="11.8" fill="#fff"/>
+  <path d="M20.5 26 C23 24.3, 25.7 24.3, 27.5 26 C29.3 24.3, 32 24.3, 34.5 26 L34.5 33 C32 31.4, 29.3 31.4, 27.5 33 C25.7 31.4, 23 31.4, 20.5 33 Z" fill="#0B63D6"/>
 </svg>

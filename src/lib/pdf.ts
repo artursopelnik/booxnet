@@ -54,6 +54,7 @@ export async function importPdf(file: File): Promise<Book> {
     addedAt: Date.now(),
     pageCount,
     pages,
+    unit: 'page',
     cover,
     position: 0,
     sentenceCount: toSentences(pages).length,

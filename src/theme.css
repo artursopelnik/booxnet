@@ -1,12 +1,12 @@
 :root {
-  /* 0a84ff fails WCAG AA as text on white (3.2:1) – 0064d2 reaches 4.9:1
-     and stays recognizably "iOS blue". */
-  --ion-color-primary: #0064d2;
-  --ion-color-primary-rgb: 0, 100, 210;
+  /* Brand blue from the Booxnet logo. Passes WCAG AA as text on white
+     (≥4.5:1), unlike the brighter iOS-blue 0a84ff (3.2:1). */
+  --ion-color-primary: #0b63d6;
+  --ion-color-primary-rgb: 11, 99, 214;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #0058b9;
-  --ion-color-primary-tint: #1a74d7;
+  --ion-color-primary-shade: #0a57bc;
+  --ion-color-primary-tint: #2373da;
   /* Muted text with AA contrast on both palettes (≥4.5:1). */
   --booxnet-muted: #545456;
 }
@@ -86,6 +86,19 @@ ion-note,
   color: var(--ion-color-medium);
 }
 
+/* Deliberately unobtrusive one-liner below the app section: no cloud,
+   everything stays on the device. Small but still readable (~11 px). */
+.privacy-note {
+  margin: 4px auto 20px;
+  padding: 0 32px;
+  max-width: 44ch;
+  text-align: center;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--booxnet-muted);
+  opacity: 0.8;
+}
+
 /* ---- Branding ---- */
 
 .brand-mark {
@@ -147,8 +160,8 @@ ion-note,
 }
 
 .sentence--active {
-  background: rgba(0, 100, 210, 0.22);
-  box-shadow: 0 0 0 3px rgba(0, 100, 210, 0.22);
+  background: rgba(11, 99, 214, 0.22);
+  box-shadow: 0 0 0 3px rgba(11, 99, 214, 0.22);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -179,15 +192,6 @@ ion-note,
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.player__meta {
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 0.8rem;
-  padding: 0 12px;
 }
 
 .player__controls {
@@ -223,10 +227,6 @@ ion-note,
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-}
-
-.player__meta {
-  font-size: 0.85rem;
 }
 
 /* Visible keyboard focus on the reading text. */
