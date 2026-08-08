@@ -89,9 +89,27 @@ function request(
   })
 }
 
+const warmedVoices = new Set<string>()
+
+/**
+ * Fire-and-forget warm-up: loading the ~400 MB engine takes long, so it
+ * starts as soon as the reader opens instead of on the first Play press.
+ * The worker queues requests, so a Play during warm-up simply waits for
+ * the already-running engine load instead of starting a second one.
+ */
+export function studioWarmup(voiceId: StudioVoiceId): void {
+  if (warmedVoices.has(voiceId)) return
+  warmedVoices.add(voiceId)
+  request({ type: 'preload', voiceId }).catch(() => {
+    // Warm-up failures surface when playback actually starts.
+    warmedVoices.delete(voiceId)
+  })
+}
+
 /** Drops the loaded engine, e.g. after the model pack was deleted. */
 export function resetStudioEngine(): void {
   cache.clear()
+  warmedVoices.clear()
   if (worker) {
     worker.terminate()
     worker = null

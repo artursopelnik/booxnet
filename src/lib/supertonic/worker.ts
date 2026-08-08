@@ -366,12 +366,18 @@ interface SynthesizeRequest {
   speed: number
 }
 
+interface PreloadRequest {
+  id: number
+  type: 'preload'
+  voiceId: StudioVoiceId
+}
+
 interface ResetRequest {
   id: number
   type: 'reset'
 }
 
-type Request = SynthesizeRequest | ResetRequest
+type Request = SynthesizeRequest | PreloadRequest | ResetRequest
 
 // Requests are processed strictly one at a time: parallel denoising loops
 // would fight over CPU/GPU without finishing any sentence sooner.
@@ -383,6 +389,20 @@ self.onmessage = (event: MessageEvent<Request>) => {
     if (request.type === 'reset') {
       enginePromise = null
       self.postMessage({ id: request.id, ok: true })
+      return
+    }
+    if (request.type === 'preload') {
+      try {
+        const engine = await getEngine()
+        await getStyle(engine, request.voiceId)
+        self.postMessage({ id: request.id, ok: true })
+      } catch (error) {
+        self.postMessage({
+          id: request.id,
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
       return
     }
     try {
