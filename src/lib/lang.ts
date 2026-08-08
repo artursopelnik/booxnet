@@ -4,9 +4,11 @@ import { STUDIO_LANGS } from './voices'
  * Language detection for the studio engine.
  *
  * Non-Latin scripts are recognized directly (high precision, zero cost);
- * Latin-script languages use tiny stopword lists. 'na' (Supertonic's
- * language-agnostic mode) is the safe fallback for everything unclear.
+ * Latin-script languages use tiny stopword lists. The app currently targets
+ * German readers, so unclear text falls back to 'de' – German pronunciation
+ * rules beat Supertonic's language-agnostic guess ('na') for our audience.
  */
+const FALLBACK_LANG = 'de'
 const STOPWORDS: Record<string, string[]> = {
   de: ['der', 'die', 'das', 'und', 'ist', 'nicht', 'ein', 'eine', 'mit', 'auf', 'für', 'sich', 'auch', 'werden', 'aber'],
   en: ['the', 'and', 'is', 'not', 'with', 'that', 'this', 'for', 'are', 'was', 'have', 'from', 'they', 'which', 'been'],
@@ -47,16 +49,16 @@ export function detectStudioLang(text: string): string {
   if (byScript) {
     return (STUDIO_LANGS as readonly string[]).includes(byScript)
       ? byScript
-      : 'na'
+      : FALLBACK_LANG
   }
 
   const words = sample
     .toLowerCase()
     .split(/[^\p{L}]+/u)
     .filter(Boolean)
-  if (words.length < 10) return 'na'
+  if (words.length < 10) return FALLBACK_LANG
 
-  let bestLang = 'na'
+  let bestLang = FALLBACK_LANG
   let bestScore = 0
   for (const [lang, stopwords] of Object.entries(STOPWORDS)) {
     const set = new Set(stopwords)
@@ -69,11 +71,11 @@ export function detectStudioLang(text: string): string {
       bestLang = lang
     }
   }
-  // Require a clear signal, otherwise let the model decide.
-  if (bestScore / words.length < 0.04) return 'na'
+  // Require a clear signal, otherwise assume German.
+  if (bestScore / words.length < 0.04) return FALLBACK_LANG
   return (STUDIO_LANGS as readonly string[]).includes(bestLang)
     ? bestLang
-    : 'na'
+    : FALLBACK_LANG
 }
 
 /** German label for a detected language, for the reader status line. */

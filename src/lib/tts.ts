@@ -124,8 +124,8 @@ export class Speaker {
   private index = 0
   private voice: StudioVoiceMeta | null = null
   private rate = 1
-  /** Detected language of the current book. */
-  private langHint = 'na'
+  /** Detected language of the current book; German until detection ran. */
+  private langHint = 'de'
   private state: SpeakerState = 'idle'
   /** Guards against stale async callbacks after pause/skip/stop. */
   private generation = 0

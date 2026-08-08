@@ -114,7 +114,7 @@ export default function ReaderPage() {
   const [rate, setRate] = useState(getSavedRate())
   const [state, setState] = useState<SpeakerState>('idle')
   const [current, setCurrent] = useState(0)
-  const [bookLang, setBookLang] = useState('na')
+  const [bookLang, setBookLang] = useState('de')
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   const [presentToast] = useIonToast()
 
