@@ -5,6 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   // GitHub Pages serves the app under /<repo>/ – the workflow sets BASE_PATH.
   base: process.env.BASE_PATH || '/',
+  // The TTS worker code-splits (dynamic onnxruntime import), which
+  // requires ES module workers.
+  worker: { format: 'es' },
   plugins: [
     react(),
     VitePWA({
@@ -13,13 +16,12 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        // The neural TTS engine (Piper via onnxruntime-web) loads its WASM
-        // binaries from CDNs at runtime. Cache them so synthesis works
-        // offline; the voice models themselves are stored in OPFS.
+        // onnxruntime-web loads its WASM binaries from a CDN at runtime.
+        // Cache them so synthesis works offline; the voice models
+        // themselves are stored in OPFS.
         runtimeCaching: [
           {
-            urlPattern:
-              /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)\/.*/,
+            urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'tts-wasm',

@@ -1,15 +1,14 @@
 /**
- * Sentence-by-sentence read-aloud engine with two backends:
+ * Sentence-by-sentence read-aloud engine on top of the Supertonic studio
+ * voices. Sentences are synthesized in a Web Worker (the UI never blocks),
+ * played through an <audio> element, prefetched ahead of playback, and
+ * separated by a natural pause so the reading breathes at sentence ends.
  *
- * - 'system': Web Speech API (speechSynthesis). Short utterances avoid the
- *   Chromium bug where long utterances silently stop.
- * - 'neural': Piper voices via WASM (see neural.ts). Sentences are
- *   synthesized to WAV blobs and played through an <audio> element, with
- *   lookahead prefetch so playback stays gapless.
+ * Speed is passed to the engine natively (it stretches phoneme durations)
+ * instead of speeding up the audio afterwards – no chipmunk artifacts.
  */
-import { prefetch, synthesize } from './neural'
-import { studioPrefetch, studioSynthesize } from './supertonic/engine'
-import type { AppVoice } from './voices'
+import { studioPrefetch, studioSynthesize } from './supertonic/client'
+import type { StudioVoiceMeta } from './voices'
 
 export interface SpeakerEvents {
   onSentence?: (index: number) => void
@@ -21,37 +20,26 @@ export interface SpeakerEvents {
 export type SpeakerState = 'idle' | 'loading' | 'playing' | 'paused'
 
 const VOICE_KEY = 'vorleser.voice'
-const LEGACY_VOICE_KEY = 'vorleser.voiceURI'
 const RATE_KEY = 'vorleser.rate'
 const PREFETCH_AHEAD = 2
+/** Pause between sentences at 1× speed. */
+const SENTENCE_PAUSE_MS = 350
+/** Supertonic's recommended neutral speed. */
+const BASE_SPEED = 1.05
 
-/** Resolves with the available system voices; waits for `voiceschanged`. */
-export function loadSystemVoices(): Promise<SpeechSynthesisVoice[]> {
-  const synth = window.speechSynthesis
-  const voices = synth.getVoices()
-  if (voices.length > 0) return Promise.resolve(voices)
-  return new Promise((resolve) => {
-    let settled = false
-    const finish = () => {
-      if (settled) return
-      settled = true
-      resolve(synth.getVoices())
-    }
-    synth.addEventListener('voiceschanged', finish, { once: true })
-    // Some browsers never fire voiceschanged – don't hang forever.
-    setTimeout(finish, 1500)
-  })
+/** Maps the user rate (0.5–2) to the engine's supported speed range. */
+export function engineSpeed(rate: number): number {
+  return Math.min(2, Math.max(0.7, Math.round(rate * BASE_SPEED * 100) / 100))
 }
 
-export function getSavedVoiceKey(): string | null {
+export function getSavedVoiceId(): string | null {
   const key = localStorage.getItem(VOICE_KEY)
-  if (key) return key
-  const legacy = localStorage.getItem(LEGACY_VOICE_KEY)
-  return legacy ? `system:${legacy}` : null
+  // Stored as "studio:<id>"; older system/neural keys fall through to null.
+  return key?.startsWith('studio:') ? key.slice('studio:'.length) : null
 }
 
-export function saveVoiceKey(key: string): void {
-  localStorage.setItem(VOICE_KEY, key)
+export function saveVoiceId(id: string): void {
+  localStorage.setItem(VOICE_KEY, `studio:${id}`)
 }
 
 export function getSavedRate(): number {
@@ -63,25 +51,9 @@ export function saveRate(rate: number): void {
   localStorage.setItem(RATE_KEY, String(rate))
 }
 
-/** First name of a voice, for the personalized preview sentence. */
-function firstName(voice: AppVoice): string {
-  return voice.name.split(/[\s(·]/)[0] || voice.name
-}
-
-/** Builds the "Hallo, ich bin Thorsten." preview sentence per language. */
-export function previewTextFor(voice: AppVoice): string {
-  const name = firstName(voice)
-  // Studio voices are multilingual – greet in the app language.
-  const lang = voice.lang === 'multi' ? 'de' : voice.lang.toLowerCase()
-  if (lang.startsWith('de'))
-    return `Hallo, ich bin ${name}. So klinge ich, wenn ich dir dein Buch vorlese.`
-  if (lang.startsWith('fr'))
-    return `Bonjour, je suis ${name}. Voici ma voix quand je te fais la lecture.`
-  if (lang.startsWith('es'))
-    return `¡Hola! Soy ${name}. Así sueno cuando te leo tu libro.`
-  if (lang.startsWith('it'))
-    return `Ciao, sono ${name}. Questa è la mia voce quando ti leggo il tuo libro.`
-  return `Hi, I'm ${name}. This is how I sound when I read your book to you.`
+/** Builds the "Hallo, ich bin Alex." preview sentence. */
+export function previewTextFor(voice: StudioVoiceMeta): string {
+  return `Hallo, ich bin ${voice.name}. So klinge ich, wenn ich dir dein Buch vorlese.`
 }
 
 let previewAudio: HTMLAudioElement | null = null
@@ -95,21 +67,14 @@ function stopPreview(): void {
 }
 
 /** Speaks a short personalized sample sentence with the given voice. */
-export async function previewVoice(voice: AppVoice): Promise<void> {
-  window.speechSynthesis.cancel()
+export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
   stopPreview()
-  const sample = previewTextFor(voice)
-  if (voice.kind === 'system') {
-    const utterance = new SpeechSynthesisUtterance(sample)
-    utterance.voice = voice.systemVoice
-    utterance.lang = voice.lang
-    window.speechSynthesis.speak(utterance)
-    return
-  }
-  const blob =
-    voice.kind === 'neural'
-      ? await synthesize(voice.meta.id, sample)
-      : await studioSynthesize(voice.meta.id, 'de', sample)
+  const blob = await studioSynthesize(
+    voice.id,
+    'de',
+    previewTextFor(voice),
+    BASE_SPEED,
+  )
   stopPreview()
   const audio = new Audio(URL.createObjectURL(blob))
   previewAudio = audio
@@ -120,16 +85,17 @@ export async function previewVoice(voice: AppVoice): Promise<void> {
 export class Speaker {
   private sentences: string[] = []
   private index = 0
-  private voice: AppVoice | null = null
+  private voice: StudioVoiceMeta | null = null
   private rate = 1
-  /** Detected language of the current book, used by the studio engine. */
+  /** Detected language of the current book. */
   private langHint = 'na'
   private state: SpeakerState = 'idle'
-  /** Guards against stale async callbacks after cancel/skip/stop. */
+  /** Guards against stale async callbacks after pause/skip/stop. */
   private generation = 0
   private audio: HTMLAudioElement | null = null
-  /** Index the paused neural audio belongs to, for seamless resume. */
+  /** Index the paused audio belongs to, for seamless mid-sentence resume. */
   private audioIndex = -1
+  private pauseTimer: ReturnType<typeof setTimeout> | null = null
   private events: SpeakerEvents
 
   constructor(events: SpeakerEvents = {}) {
@@ -145,8 +111,8 @@ export class Speaker {
     this.langHint = lang
   }
 
-  setVoice(voice: AppVoice | null): void {
-    const changed = this.voice?.key !== voice?.key
+  setVoice(voice: StudioVoiceMeta | null): void {
+    const changed = this.voice?.id !== voice?.id
     this.voice = voice
     if (changed) {
       this.discardAudio()
@@ -157,12 +123,14 @@ export class Speaker {
   }
 
   setRate(rate: number): void {
+    if (this.rate === rate) return
     this.rate = rate
-    if (this.audio) {
-      // Neural audio adjusts live, no restart needed.
-      this.audio.playbackRate = rate
-    } else if (this.state === 'playing') {
+    // Speed is baked into the synthesis, so the current sentence restarts
+    // with the new tempo when playing.
+    if (this.state === 'playing' || this.state === 'loading') {
       this.play(this.index)
+    } else {
+      this.discardAudio()
     }
   }
 
@@ -175,14 +143,14 @@ export class Speaker {
   }
 
   play(from?: number): void {
-    if (this.sentences.length === 0) return
+    if (this.sentences.length === 0 || !this.voice) return
     if (from !== undefined) {
       this.index = Math.min(Math.max(from, 0), this.sentences.length - 1)
     }
     this.generation++
-    window.speechSynthesis.cancel()
+    this.clearPauseTimer()
 
-    // Resume paused neural audio mid-sentence.
+    // Resume paused audio mid-sentence.
     if (
       this.state === 'paused' &&
       this.audio &&
@@ -194,18 +162,15 @@ export class Speaker {
     }
 
     this.discardAudio()
-    const isBlobVoice = this.voice !== null && this.voice.kind !== 'system'
-    this.setState(isBlobVoice ? 'loading' : 'playing')
-    this.speakCurrent()
+    this.setState('loading')
+    void this.speakCurrent()
   }
 
   pause(): void {
     if (this.state !== 'playing' && this.state !== 'loading') return
     this.generation++
-    window.speechSynthesis.cancel()
-    if (this.audio) {
-      this.audio.pause()
-    }
+    this.clearPauseTimer()
+    this.audio?.pause()
     this.setState('paused')
   }
 
@@ -230,9 +195,16 @@ export class Speaker {
 
   stop(): void {
     this.generation++
-    window.speechSynthesis.cancel()
+    this.clearPauseTimer()
     this.discardAudio()
     this.setState('idle')
+  }
+
+  private clearPauseTimer(): void {
+    if (this.pauseTimer !== null) {
+      clearTimeout(this.pauseTimer)
+      this.pauseTimer = null
+    }
   }
 
   private discardAudio(): void {
@@ -259,69 +231,36 @@ export class Speaker {
       this.events.onDone?.()
       return
     }
-    this.index++
-    this.speakCurrent()
+    // Natural breathing pause at the sentence end, scaled with the tempo.
+    this.pauseTimer = setTimeout(() => {
+      this.pauseTimer = null
+      if (generation !== this.generation) return
+      if (this.state !== 'playing' && this.state !== 'loading') return
+      this.index++
+      void this.speakCurrent()
+    }, SENTENCE_PAUSE_MS / this.rate)
   }
 
-  private speakCurrent(): void {
+  private async speakCurrent(): Promise<void> {
+    const voice = this.voice
     const text = this.sentences[this.index]
-    if (text === undefined) {
+    if (!voice || text === undefined) {
       this.setState('idle')
       this.events.onDone?.()
       return
     }
     this.events.onSentence?.(this.index)
-    if (this.voice && this.voice.kind !== 'system') {
-      void this.speakBlob(text)
-    } else {
-      this.speakSystem(text)
-    }
-  }
-
-  private speakSystem(text: string): void {
     const generation = this.generation
-    this.setState('playing')
-    const utterance = new SpeechSynthesisUtterance(text)
-    if (this.voice?.kind === 'system') {
-      utterance.voice = this.voice.systemVoice
-      utterance.lang = this.voice.lang
-    }
-    utterance.rate = this.rate
-    utterance.onend = () => this.advance(generation)
-    utterance.onerror = (event) => {
-      // 'interrupted'/'canceled' arrive after cancel(); the generation
-      // check in advance() filters those. Real errors skip the sentence.
-      if (event.error === 'interrupted' || event.error === 'canceled') return
-      this.advance(generation)
-    }
-    window.speechSynthesis.speak(utterance)
-  }
+    const speed = engineSpeed(this.rate)
 
-  private synthesizeFor(voice: AppVoice, text: string): Promise<Blob> {
-    if (voice.kind === 'neural') return synthesize(voice.meta.id, text)
-    if (voice.kind === 'studio')
-      return studioSynthesize(voice.meta.id, this.langHint, text)
-    return Promise.reject(new Error('system voices do not synthesize blobs'))
-  }
-
-  private prefetchFor(voice: AppVoice, sentences: string[]): void {
-    if (voice.kind === 'neural') prefetch(voice.meta.id, sentences)
-    else if (voice.kind === 'studio')
-      studioPrefetch(voice.meta.id, this.langHint, sentences)
-  }
-
-  private async speakBlob(text: string): Promise<void> {
-    if (!this.voice || this.voice.kind === 'system') return
-    const voice = this.voice
-    const generation = this.generation
     this.setState('loading')
     let blob: Blob
     try {
-      blob = await this.synthesizeFor(voice, text)
+      blob = await studioSynthesize(voice.id, this.langHint, text, speed)
     } catch {
       if (generation !== this.generation) return
       this.events.onError?.(
-        'Die Stimme konnte nicht geladen werden. Prüfe deine Internetverbindung oder lade das Stimmpaket erneut herunter.',
+        'Die Stimme konnte nicht geladen werden. Prüfe deine Internetverbindung oder lade das Sprachmodell erneut herunter.',
       )
       this.setState('paused')
       return
@@ -330,7 +269,6 @@ export class Speaker {
 
     this.discardAudio()
     const audio = new Audio(URL.createObjectURL(blob))
-    audio.playbackRate = this.rate
     audio.onended = () => this.advance(generation)
     audio.onerror = () => this.advance(generation)
     this.audio = audio
@@ -344,9 +282,11 @@ export class Speaker {
       return
     }
 
-    this.prefetchFor(
-      voice,
+    studioPrefetch(
+      voice.id,
+      this.langHint,
       this.sentences.slice(this.index + 1, this.index + 1 + PREFETCH_AHEAD),
+      speed,
     )
   }
 }

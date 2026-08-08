@@ -24,12 +24,7 @@ import { add, bookOutline, trashOutline } from 'ionicons/icons'
 import { useRef, useState } from 'react'
 import { deleteBook, getAllBooks, putBook, type Book } from '../lib/db'
 import { importPdf } from '../lib/pdf'
-import { VOICE_STATS } from '../lib/voices'
-
-// "über 125 Stimmen in mehr als 40 Sprachen" – rounded down so the copy
-// stays honest as the catalogs evolve.
-const VOICE_COUNT = Math.floor(VOICE_STATS.voices / 5) * 5
-const LANGUAGE_COUNT = Math.floor(VOICE_STATS.languages / 10) * 10
+import { STUDIO_LANGS, STUDIO_VOICES } from '../lib/voices'
 
 export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([])
@@ -100,10 +95,10 @@ export default function LibraryPage() {
             <IonIcon icon={bookOutline} />
             <h2>Noch keine Bücher</h2>
             <p>
-              Komplett kostenfreies Text-to-Speech: Booxnet bietet über{' '}
-              {VOICE_COUNT} natürlich klingende Vorlesestimmen in mehr als{' '}
-              {LANGUAGE_COUNT} Sprachen – so kannst du dir Artikel, PDFs und
-              E-Books in deiner Sprache vorlesen lassen, auch offline.
+              Komplett kostenfreies Text-to-Speech: Booxnet liest dir PDFs
+              und E-Books mit {STUDIO_VOICES.length} natürlich klingenden
+              Studio-Stimmen in {STUDIO_LANGS.length} Sprachen vor – komplett
+              offline auf deinem Gerät.
             </p>
             <IonButton onClick={() => fileInput.current?.click()}>
               PDF hochladen

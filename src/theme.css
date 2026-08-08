@@ -67,6 +67,13 @@
   line-height: 1.75;
 }
 
+/* Off-screen pages are skipped during layout/paint – keeps scrolling
+   smooth even for books with hundreds of pages. */
+.reader-page {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
 .page-marker {
   margin: 28px 0 12px;
   text-align: center;

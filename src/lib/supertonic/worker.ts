@@ -1,11 +1,12 @@
 /**
- * Supertonic 3 inference engine (TypeScript port of the MIT-licensed web
- * example from github.com/supertone-inc/supertonic).
+ * Supertonic 3 inference worker (TypeScript port of the MIT-licensed web
+ * example from github.com/supertone-inc/supertonic, preserved in
+ * vendor/supertonic/).
  *
- * Four ONNX models (duration predictor, text encoder, vector estimator,
- * vocoder) run via onnxruntime-web — WebGPU when available, WASM otherwise.
- * Unlike the Piper path, sessions are created once and reused, so per-
- * sentence synthesis stays fast.
+ * Runs entirely off the main thread so the UI never freezes during
+ * synthesis. Four ONNX models (duration predictor, text encoder, vector
+ * estimator, vocoder) run via onnxruntime-web — WebGPU when available,
+ * WASM otherwise. Sessions are created once and reused.
  */
 import type { StudioVoiceId } from '../voices'
 import { ensureStudioStyle, loadStudioAsset } from './assets'
@@ -16,7 +17,6 @@ type OrtTensor = import('onnxruntime-web').Tensor
 
 const ONNX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/'
 const TOTAL_STEPS = 8
-const BASE_SPEED = 1.05
 const SILENCE_SECONDS = 0.3
 
 interface Cfgs {
@@ -42,12 +42,6 @@ interface Engine {
 
 let enginePromise: Promise<Engine> | null = null
 
-/** Drops the loaded engine, e.g. after the pack was deleted. */
-export function resetStudioEngine(): void {
-  enginePromise = null
-  cache.clear()
-}
-
 async function loadOrt(): Promise<{ ort: Ort; providers: string[] }> {
   if ('gpu' in navigator) {
     try {
@@ -72,9 +66,7 @@ async function loadEngine(): Promise<Engine> {
     loadStudioAsset('onnx/unicode_indexer.json'),
   ])
   const cfgs = JSON.parse(new TextDecoder().decode(cfgsBuf)) as Cfgs
-  const indexer = JSON.parse(
-    new TextDecoder().decode(indexerBuf),
-  ) as number[]
+  const indexer = JSON.parse(new TextDecoder().decode(indexerBuf)) as number[]
 
   const options = { executionProviders: providers }
   const createSession = async (path: string) => {
@@ -224,6 +216,7 @@ async function inferChunk(
   text: string,
   lang: string,
   style: Style,
+  speed: number,
 ): Promise<Float32Array> {
   const { ort, cfgs } = engine
 
@@ -243,14 +236,13 @@ async function inferChunk(
     [1, 1, processed.length],
   )
 
-  // Predict duration.
+  // Predict duration; the speed factor stretches/compresses it natively.
   const dpOut = await engine.dp.run({
     text_ids: textIds,
     style_dp: style.dp,
     text_mask: textMask,
   })
-  const duration =
-    Number((dpOut.duration.data as Float32Array)[0]) / BASE_SPEED
+  const duration = Number((dpOut.duration.data as Float32Array)[0]) / speed
 
   // Encode text.
   const encOut = await engine.textEnc.run({
@@ -300,7 +292,7 @@ async function inferChunk(
   return new Float32Array(vocoderOut.wav_tts.data as Float32Array)
 }
 
-function toWavBlob(audio: Float32Array, sampleRate: number): Blob {
+function toWav(audio: Float32Array, sampleRate: number): ArrayBuffer {
   const dataSize = audio.length * 2
   const buffer = new ArrayBuffer(44 + dataSize)
   const view = new DataView(buffer)
@@ -326,78 +318,81 @@ function toWavBlob(audio: Float32Array, sampleRate: number): Blob {
     const clamped = Math.max(-1, Math.min(1, audio[i]))
     view.setInt16(44 + i * 2, Math.floor(clamped * 32767), true)
   }
-  return new Blob([buffer], { type: 'audio/wav' })
+  return buffer
 }
 
-// Synthesis runs are serialized: parallel denoising loops would fight over
-// CPU/GPU and increase peak memory without finishing any sentence sooner.
-let queue: Promise<unknown> = Promise.resolve()
-
-function enqueue<T>(task: () => Promise<T>): Promise<T> {
-  const result = queue.then(task, task)
-  queue = result.catch(() => undefined)
-  return result
-}
-
-const MAX_CACHED_SENTENCES = 24
-const cache = new Map<string, Promise<Blob>>()
-
-/** Synthesizes one sentence, memoized per voice+language+text. */
-export function studioSynthesize(
+async function synthesize(
   voiceId: StudioVoiceId,
   lang: string,
   text: string,
-): Promise<Blob> {
-  const key = `${voiceId} ${lang} ${text}`
-  const hit = cache.get(key)
-  if (hit) {
-    cache.delete(key)
-    cache.set(key, hit)
-    return hit
+  speed: number,
+): Promise<ArrayBuffer> {
+  const engine = await getEngine()
+  const style = await getStyle(engine, voiceId)
+  const chunks = chunkText(text, lang)
+  const parts: Float32Array[] = []
+  for (const chunk of chunks) {
+    parts.push(await inferChunk(engine, chunk, lang, style, speed))
   }
-  const promise = enqueue(async () => {
-    const engine = await getEngine()
-    const style = await getStyle(engine, voiceId)
-    const chunks = chunkText(text, lang)
-    const parts: Float32Array[] = []
-    for (const chunk of chunks) {
-      parts.push(await inferChunk(engine, chunk, lang, style))
-    }
-    const sampleRate = engine.cfgs.ae.sample_rate
-    const silence = Math.floor(SILENCE_SECONDS * sampleRate)
-    const total =
-      parts.reduce((sum, part) => sum + part.length, 0) +
-      silence * Math.max(0, parts.length - 1)
-    const audio = new Float32Array(total)
-    let offset = 0
-    parts.forEach((part, i) => {
-      if (i > 0) offset += silence
-      audio.set(part, offset)
-      offset += part.length
-    })
-    return toWavBlob(audio, sampleRate)
-  }).catch((error) => {
-    cache.delete(key)
-    throw error
+  const sampleRate = engine.cfgs.ae.sample_rate
+  const silence = Math.floor(SILENCE_SECONDS * sampleRate)
+  const total =
+    parts.reduce((sum, part) => sum + part.length, 0) +
+    silence * Math.max(0, parts.length - 1)
+  const audio = new Float32Array(total)
+  let offset = 0
+  parts.forEach((part, i) => {
+    if (i > 0) offset += silence
+    audio.set(part, offset)
+    offset += part.length
   })
-  cache.set(key, promise)
-  while (cache.size > MAX_CACHED_SENTENCES) {
-    const oldest = cache.keys().next().value
-    if (oldest === undefined) break
-    cache.delete(oldest)
-  }
-  return promise
+  return toWav(audio, sampleRate)
 }
 
-/** Fire-and-forget warm-up of upcoming sentences. */
-export function studioPrefetch(
-  voiceId: StudioVoiceId,
-  lang: string,
-  sentences: string[],
-): void {
-  for (const text of sentences) {
-    studioSynthesize(voiceId, lang, text).catch(() => {
-      // Prefetch failures surface when the sentence is actually played.
-    })
+interface SynthesizeRequest {
+  id: number
+  type: 'synthesize'
+  voiceId: StudioVoiceId
+  lang: string
+  text: string
+  speed: number
+}
+
+interface ResetRequest {
+  id: number
+  type: 'reset'
+}
+
+type Request = SynthesizeRequest | ResetRequest
+
+// Requests are processed strictly one at a time: parallel denoising loops
+// would fight over CPU/GPU without finishing any sentence sooner.
+let queue: Promise<unknown> = Promise.resolve()
+
+self.onmessage = (event: MessageEvent<Request>) => {
+  const request = event.data
+  const task = async () => {
+    if (request.type === 'reset') {
+      enginePromise = null
+      self.postMessage({ id: request.id, ok: true })
+      return
+    }
+    try {
+      const wav = await synthesize(
+        request.voiceId,
+        request.lang,
+        request.text,
+        request.speed,
+      )
+      // Transfer the buffer – no copy on the way back.
+      self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })
+    } catch (error) {
+      self.postMessage({
+        id: request.id,
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
+  queue = queue.then(task, task)
 }
