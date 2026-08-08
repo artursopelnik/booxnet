@@ -17,6 +17,7 @@ import {
   isStorageAvailable,
   readAsset,
   removeAllAssets,
+  removeAsset,
   writeAsset,
   writeAssetStream,
 } from './opfs'
@@ -116,6 +117,11 @@ const INT8_REMOTE_CANDIDATES = [
   'onnx/vector_estimator_int8.onnx',
   'vector_estimator_int8.onnx',
 ]
+
+/** Gibt die ~65 MB des Experiments frei, ohne das Sprachmodell zu löschen. */
+export async function removeInt8VectorEstimator(): Promise<void> {
+  await removeAsset(INT8_VECTOR_ESTIMATOR_PATH)
+}
 
 export async function isInt8VariantInstalled(): Promise<boolean> {
   try {

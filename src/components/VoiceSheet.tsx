@@ -33,6 +33,7 @@ import {
   INT8_VECTOR_ESTIMATOR_SIZE_MB,
   isInt8VariantInstalled,
   isStudioEngineInstalled,
+  removeInt8VectorEstimator,
   removeStudioData,
   STUDIO_ENGINE_SIZE_MB,
   StudioDownloadError,
@@ -245,6 +246,16 @@ export default function VoiceSheet({
     })
   }
 
+  /** Gibt die 65 MB des abgeschalteten Experiments wieder frei. */
+  const discardInt8 = async () => {
+    await removeInt8VectorEstimator()
+    setInt8Installed(false)
+    presentToast({
+      message: `${INT8_VECTOR_ESTIMATOR_SIZE_MB} MB freigegeben. Das normale Sprachmodell bleibt erhalten.`,
+      duration: 3000,
+    })
+  }
+
   const preview = async (voice: StudioVoiceMeta) => {
     setPreviewing(voice.id)
     try {
@@ -407,6 +418,23 @@ export default function VoiceSheet({
                 aria-label="Schnelleres Rechenmodell verwenden"
               />
             </IonItem>
+            {/* Das Experiment abgeschaltet zu lassen soll nicht bedeuten,
+                dass 65 MB ungenutzt liegen bleiben – ohne diese Zeile
+                ginge das nur ueber das Loeschen des ganzen Sprachmodells. */}
+            {int8Installed && !int8Enabled && int8Progress === null && (
+              <IonItem button onClick={() => void discardInt8()}>
+                <IonIcon
+                  aria-hidden="true"
+                  slot="start"
+                  icon={trashOutline}
+                  color="medium"
+                />
+                <IonLabel color="medium" className="ion-text-wrap">
+                  Experiment-Modell löschen (
+                  {INT8_VECTOR_ESTIMATOR_SIZE_MB} MB freigeben)
+                </IonLabel>
+              </IonItem>
+            )}
             <IonItem lines="none">
               <IonLabel className="ion-text-wrap">
                 <h2>Technische Details</h2>

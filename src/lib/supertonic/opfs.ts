@@ -110,6 +110,15 @@ export async function writeAssetStream(
   return total
 }
 
+/** Entfernt eine einzelne Datei; fehlt sie bereits, passiert nichts. */
+export async function removeAsset(path: string): Promise<void> {
+  try {
+    await (await dir()).removeEntry(fileName(path))
+  } catch {
+    // Schon weg.
+  }
+}
+
 export async function removeAllAssets(): Promise<void> {
   try {
     const root = await navigator.storage.getDirectory()
