@@ -72,6 +72,17 @@ export const TTS_TIMEOUT_ERROR = 'TtsTimeoutError'
 /** Marks requests displaced by a newer Play press – never user-visible. */
 export const TTS_CANCELLED_ERROR = 'TtsCancelledError'
 
+/**
+ * Adaptive Qualität: Schnell muss die Synthese nur sein, wenn der Nutzer
+ * aktiv wartet (Satz angetippt, Play gedrückt, Puffer leer) – dort gilt
+ * die niedrige Schrittzahl für einen Sofort-Start. Sätze, die im
+ * Hintergrund vorausberechnet werden, während der aktuelle noch spielt,
+ * haben Zeit und rechnen in guter Qualität. So klingt fast alles, was
+ * man hört, ordentlich, ohne die Reaktionszeit zu opfern.
+ */
+export const FAST_SYNTH_STEPS = 3
+export const QUALITY_SYNTH_STEPS = 6
+
 function request(
   message: Omit<Parameters<Worker['postMessage']>[0], 'id'> &
     Record<string, unknown>,
@@ -162,7 +173,10 @@ const cache = new Map<string, CacheEntry>()
  * Synthesizes one sentence, memoized per voice+language+speed+text.
  * With `priority` (the sentence is being played right now) it overtakes
  * queued prefetches in the worker; if the sentence is already queued as a
- * prefetch, that request is bumped to the front instead.
+ * prefetch, that request is bumped to the front instead. Der Cache-Key
+ * ignoriert die Schrittzahl bewusst: Ein bereits (hochwertig)
+ * vorausberechneter Satz wird beim Antippen wiederverwendet statt
+ * schnell-schlechter neu gerechnet.
  */
 export function studioSynthesize(
   voiceId: StudioVoiceId,
@@ -170,6 +184,7 @@ export function studioSynthesize(
   text: string,
   speed: number,
   priority = false,
+  steps: number = QUALITY_SYNTH_STEPS,
 ): Promise<Blob> {
   const key = `${voiceId} ${lang} ${speed} ${text}`
   const hit = cache.get(key)
@@ -182,7 +197,7 @@ export function studioSynthesize(
     return hit.promise
   }
   const { id, promise } = request(
-    { type: 'synthesize', voiceId, lang, text, speed, priority },
+    { type: 'synthesize', voiceId, lang, text, speed, steps, priority },
     priority ? PLAY_TIMEOUT_MS : PREFETCH_TIMEOUT_MS,
   )
   const entry: CacheEntry = {
@@ -209,7 +224,7 @@ export function studioSynthesize(
   return entry.promise
 }
 
-/** Fire-and-forget warm-up of upcoming sentences. */
+/** Fire-and-forget warm-up of upcoming sentences, in good quality. */
 export function studioPrefetch(
   voiceId: StudioVoiceId,
   lang: string,
@@ -217,7 +232,14 @@ export function studioPrefetch(
   speed: number,
 ): void {
   for (const text of sentences) {
-    studioSynthesize(voiceId, lang, text, speed).catch(() => {
+    studioSynthesize(
+      voiceId,
+      lang,
+      text,
+      speed,
+      false,
+      QUALITY_SYNTH_STEPS,
+    ).catch(() => {
       // Prefetch failures surface when the sentence is actually played.
     })
   }
