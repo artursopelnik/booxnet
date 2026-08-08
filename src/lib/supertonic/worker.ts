@@ -162,9 +162,10 @@ async function loadEngine(allowWebGpu: boolean): Promise<Engine> {
     gpu,
     // With GPU acceleration the default quality tier stays fast. On plain
     // WASM (single-threaded without cross-origin isolation, e.g. GitHub
-    // Pages on iPhones) every step costs real seconds per sentence – the
-    // lowest tier keeps sentence-to-sentence gaps bearable.
-    steps: gpu ? 8 : 4,
+    // Pages on iPhones) every step costs real seconds per sentence –
+    // 2 is Supertonic's documented minimum; below that the denoiser
+    // produces mush, while the fixed per-sentence cost stays anyway.
+    steps: gpu ? 8 : 2,
   }
 }
 
