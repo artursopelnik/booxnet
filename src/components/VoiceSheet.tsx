@@ -38,9 +38,9 @@ import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
 
 const DOWNLOAD_ERRORS: Record<StudioDownloadFailure, string> = {
   storage:
-    'Dein Browser erlaubt hier keinen Speicher für das Sprachmodell – das passiert vor allem in privaten Fenstern. Öffne Booxnet in einem normalen Fenster und lade es dort herunter.',
+    'Dein Browser erlaubt hier keinen Speicher für das Sprachmodell, das passiert vor allem in privaten Fenstern. Öffne Booxnet in einem normalen Fenster und lade es dort herunter.',
   quota:
-    `Auf deinem Gerät ist zu wenig Speicherplatz für das Sprachmodell frei (ca. ${STUDIO_ENGINE_SIZE_MB} MB). Schaffe etwas Platz und versuche es dann erneut – bereits geladene Teile bleiben erhalten.`,
+    `Auf deinem Gerät ist zu wenig Speicherplatz für das Sprachmodell frei (ca. ${STUDIO_ENGINE_SIZE_MB} MB). Schaffe etwas Platz und versuche es dann erneut. Bereits geladene Teile bleiben erhalten.`,
   network:
     'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal. Bereits geladene Teile bleiben erhalten.',
 }
@@ -176,7 +176,7 @@ export default function VoiceSheet({
                   {storageBlocked
                     ? 'Hier nicht möglich: Dein Browser blockiert den Speicher dafür (z. B. im privaten Fenster). Bitte in einem normalen Fenster öffnen.'
                     : progress === null
-                      ? `Einmalig ca. ${STUDIO_ENGINE_SIZE_MB} MB – schaltet alle 10 Stimmen frei`
+                      ? `Einmalig ca. ${STUDIO_ENGINE_SIZE_MB} MB, schaltet alle 10 Stimmen frei`
                       : `Wird geladen … ${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB. Lass die App dabei geöffnet.`}
                 </IonNote>
                 {progress !== null && (

@@ -6,7 +6,6 @@ import {
   IonFooter,
   IonHeader,
   IonIcon,
-  IonNote,
   IonPage,
   IonProgressBar,
   IonSpinner,
@@ -34,7 +33,7 @@ import { useParams } from 'react-router'
 import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
 import { unitName } from '../lib/importers'
-import { detectStudioLang, langLabel } from '../lib/lang'
+import { detectStudioLang } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { studioPrefetch, studioWarmup } from '../lib/supertonic/client'
 import { isSpeakable, sanitizeForSpeech, toSentences } from '../lib/text'
@@ -517,13 +516,6 @@ export default function ReaderPage() {
         )}
         <IonToolbar className="player-toolbar">
           <div className="player">
-            <div className="player__meta">
-              <IonNote aria-live="polite">
-                {state === 'loading'
-                  ? 'Stimme wird vorbereitet …'
-                  : `Satz ${Math.min(current + 1, sentences.length)} von ${sentences.length} · ${voice.name} · ${langLabel(bookLang)}`}
-              </IonNote>
-            </div>
             <div className="player__controls">
               <IonButton
                 fill="clear"

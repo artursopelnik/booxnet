@@ -23,8 +23,9 @@ import {
 } from '../lib/pwa'
 
 /**
- * "App"-Bereich der Bibliothek: zum Home-Bildschirm hinzufügen und die
- * PWA per Knopfdruck auf die neuste Version bringen.
+ * "App"-Bereich der Bibliothek: genau EIN Eintrag. Solange die App noch
+ * nicht installiert ist, "Zum Home-Bildschirm hinzufügen"; danach (bzw. wo
+ * keine Installation möglich ist) der Update-Eintrag.
  */
 export default function AppSection() {
   const [installMethod, setInstallMethod] = useState<InstallMethod>(() =>
@@ -63,7 +64,7 @@ export default function AppSection() {
     if (!registration) {
       presentToast({
         message:
-          'Update-Prüfung hier nicht möglich – die App läuft ohne Service Worker (z. B. im privaten Fenster).',
+          'Update-Prüfung hier nicht möglich, denn die App läuft ohne Service Worker (z. B. im privaten Fenster).',
         duration: 4000,
         color: 'warning',
       })
@@ -111,7 +112,7 @@ export default function AppSection() {
   return (
     <>
       <IonList inset>
-        {installMethod !== null && (
+        {installMethod !== null ? (
           <IonItem button onClick={() => void install()}>
             <IonIcon
               aria-hidden="true"
@@ -123,31 +124,32 @@ export default function AppSection() {
               <h2>Zum Home-Bildschirm hinzufügen</h2>
             </IonLabel>
           </IonItem>
+        ) : (
+          <IonItem
+            button={!checking}
+            onClick={
+              checking
+                ? undefined
+                : hasUpdate
+                  ? () => void updateServiceWorker(true)
+                  : () => void checkForUpdate()
+            }
+          >
+            <IonIcon
+              aria-hidden="true"
+              slot="start"
+              icon={hasUpdate ? rocketOutline : refreshOutline}
+              color={hasUpdate ? 'primary' : 'medium'}
+            />
+            <IonLabel>
+              <h2>
+                {hasUpdate ? 'Update installieren' : 'Nach Update suchen'}
+              </h2>
+              {hasUpdate && <IonNote>Tippen zum Neuladen</IonNote>}
+            </IonLabel>
+            {checking && <IonSpinner slot="end" name="crescent" />}
+          </IonItem>
         )}
-        <IonItem
-          button={!checking}
-          onClick={
-            checking
-              ? undefined
-              : hasUpdate
-                ? () => void updateServiceWorker(true)
-                : () => void checkForUpdate()
-          }
-        >
-          <IonIcon
-            aria-hidden="true"
-            slot="start"
-            icon={hasUpdate ? rocketOutline : refreshOutline}
-            color={hasUpdate ? 'primary' : 'medium'}
-          />
-          <IonLabel>
-            <h2>
-              {hasUpdate ? 'Update installieren' : 'Nach Update suchen'}
-            </h2>
-            {hasUpdate && <IonNote>Tippen zum Neuladen</IonNote>}
-          </IonLabel>
-          {checking && <IonSpinner slot="end" name="crescent" />}
-        </IonItem>
       </IonList>
       <IonAlert
         isOpen={showIosHelp}

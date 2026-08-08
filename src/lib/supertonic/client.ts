@@ -68,7 +68,7 @@ function request(
         pending.delete(id)
         reject(
           new Error(
-            'Zeitüberschreitung bei der Sprachsynthese – bitte erneut versuchen.',
+            'Zeitüberschreitung bei der Sprachsynthese, bitte erneut versuchen.',
           ),
         )
       },

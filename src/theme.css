@@ -194,15 +194,6 @@ ion-note,
   align-items: center;
 }
 
-.player__meta {
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 0.8rem;
-  padding: 0 12px;
-}
-
 .player__controls {
   display: flex;
   align-items: center;
@@ -236,10 +227,6 @@ ion-note,
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-}
-
-.player__meta {
-  font-size: 0.85rem;
 }
 
 /* Visible keyboard focus on the reading text. */

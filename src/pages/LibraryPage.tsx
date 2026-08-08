@@ -105,7 +105,7 @@ export default function LibraryPage() {
             <h2>Noch keine Bücher</h2>
             <p>
               Lade ein PDF, EPUB oder eine Textdatei hoch und lass es dir
-              vorlesen – kostenlos und komplett offline auf deinem Gerät.
+              vorlesen. Kostenlos und komplett offline auf deinem Gerät.
             </p>
             <IonButton onClick={() => fileInput.current?.click()}>
               Buch hochladen
@@ -152,7 +152,7 @@ export default function LibraryPage() {
         <AppSection />
 
         <p className="privacy-note">
-          Kein Upload in die Cloud – Bücher und Sprachmodelle bleiben nur im
+          Kein Upload in die Cloud. Bücher und Sprachmodelle bleiben nur im
           Speicher deines Geräts.
         </p>
 
