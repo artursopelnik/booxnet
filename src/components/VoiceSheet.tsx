@@ -182,13 +182,6 @@ export default function VoiceSheet({
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <div className="voice-section-note">
-          Nach einem einmaligen Download werden alle Stimmen komplett
-          offline auf deinem Gerät vorgelesen.{' '}
-          {typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated
-            ? `Turbo aktiv: Die Stimme rechnet mit bis zu ${Math.min(4, navigator.hardwareConcurrency ?? 4)} Prozessorkernen.`
-            : 'Diese Adresse erlaubt nur einen Prozessorkern – über die Netlify-Adresse rechnet die Stimme mehrkernig.'}
-        </div>
         <IonList inset>
           {!installed && (
             <IonItem

@@ -1,4 +1,5 @@
 import {
+  IonAlert,
   IonButton,
   IonContent,
   IonIcon,
@@ -27,6 +28,12 @@ import {
   STUDIO_ENGINE_SIZE_MB,
   StudioDownloadError,
 } from '../lib/supertonic/assets'
+import {
+  getInstallMethod,
+  onInstallChange,
+  promptInstall,
+  type InstallMethod,
+} from '../lib/pwa'
 import { isStorageAvailable } from '../lib/supertonic/opfs'
 import { warmVoicePreviews } from '../lib/tts'
 import { STUDIO_VOICES } from '../lib/voices'
@@ -53,8 +60,26 @@ export default function WelcomePage() {
     mb: number
   } | null>(null)
   const [storageBlocked, setStorageBlocked] = useState(false)
+  const [installMethod, setInstallMethod] = useState<InstallMethod>(() =>
+    getInstallMethod(),
+  )
+  const [showIosHelp, setShowIosHelp] = useState(false)
   const router = useIonRouter()
   const [presentToast] = useIonToast()
+
+  useEffect(
+    () => onInstallChange(() => setInstallMethod(getInstallMethod())),
+    [],
+  )
+
+  // Wie in der Bibliothek: nativer Install-Dialog, auf iOS die Anleitung.
+  const install = async () => {
+    if (installMethod === 'ios-instructions') {
+      setShowIosHelp(true)
+      return
+    }
+    await promptInstall()
+  }
 
   const finish = () => {
     markWelcomeSeen()
@@ -115,8 +140,8 @@ export default function WelcomePage() {
           <h1>Willkommen bei Booxnet</h1>
           <p>
             Deine kostenlose Vorlese-App: Lade ein Buch als PDF, EPUB oder
-            Textdatei hoch und lass es dir mit natürlichen Stimmen vorlesen –
-            ohne Konto, ohne Cloud. Alles bleibt auf deinem Gerät.
+            Textdatei hoch und lass es dir mit natürlichen Stimmen vorlesen.
+            Ohne Konto, ohne Cloud. Alles bleibt auf deinem Gerät.
           </p>
 
           <IonList inset>
@@ -130,7 +155,10 @@ export default function WelcomePage() {
                 <IonSelectOption value="de">Deutsch</IonSelectOption>
               </IonSelect>
             </IonItem>
-            <IonItem>
+            <IonItem
+              button={installMethod !== null}
+              onClick={installMethod !== null ? () => void install() : undefined}
+            >
               <IonIcon
                 aria-hidden="true"
                 slot="start"
@@ -138,12 +166,12 @@ export default function WelcomePage() {
                 color="primary"
               />
               <IonLabel>
-                <h2>Als App aufs Handy</h2>
-                <IonNote>
-                  Booxnet ist eine Web-App (PWA): zum Home-Bildschirm
-                  hinzugefügt lässt sie sich bequem aktualisieren, und alle
-                  Funktionen sind zu 100 % offline nutzbar.
-                </IonNote>
+                <h2>
+                  {installMethod !== null
+                    ? 'Zum Home-Bildschirm hinzufügen'
+                    : 'Als App aufs Handy'}
+                </h2>
+                <IonNote>Aktualisiert sich selbst, läuft 100 % offline.</IonNote>
               </IonLabel>
             </IonItem>
             <IonItem>
@@ -156,9 +184,8 @@ export default function WelcomePage() {
               <IonLabel>
                 <h2>Ton an!</h2>
                 <IonNote>
-                  Ist dein Gerät stummgeschaltet, bleibt die Vorlesestimme
-                  lautlos. Schalte die Stummschaltung aus oder verbinde
-                  Kopfhörer.
+                  Stummschaltung aus oder Kopfhörer verbinden – sonst bleibt
+                  die Stimme lautlos.
                 </IonNote>
               </IonLabel>
             </IonItem>
@@ -173,10 +200,10 @@ export default function WelcomePage() {
                 <h2>Einmaliger Download</h2>
                 <IonNote>
                   {storageBlocked
-                    ? 'Hier nicht möglich: Dein Browser blockiert den Speicher dafür (z. B. im privaten Fenster). Bitte in einem normalen Fenster öffnen.'
+                    ? 'Im privaten Fenster nicht möglich – bitte normales Fenster nutzen.'
                     : progress === null
-                      ? `Sprachmodelle, Rechen-Engine und Stimmen-Vorstellungen (ca. ${STUDIO_ENGINE_SIZE_MB} MB) – danach liest Booxnet komplett offline vor.`
-                      : `Wird geladen … ${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB. Lass die App dabei geöffnet.`}
+                      ? `Ca. ${STUDIO_ENGINE_SIZE_MB} MB – alle Stimmen, für immer offline.`
+                      : `${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB … App geöffnet lassen.`}
                 </IonNote>
                 {progress !== null && (
                   <IonProgressBar
@@ -201,6 +228,15 @@ export default function WelcomePage() {
             Später – erst mal umschauen
           </IonButton>
         </div>
+        <IonAlert
+          isOpen={showIosHelp}
+          onDidDismiss={() => setShowIosHelp(false)}
+          header="Zum Home-Bildschirm"
+          message={
+            'Auf dem iPhone/iPad geht das nur über Safari selbst: Tippe unten auf das Teilen-Symbol (Quadrat mit Pfeil nach oben) und wähle dann „Zum Home-Bildschirm". Danach startet Booxnet wie eine App.'
+          }
+          buttons={['Verstanden']}
+        />
       </IonContent>
     </IonPage>
   )

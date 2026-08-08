@@ -1,5 +1,6 @@
 import {
   IonButton,
+  IonButtons,
   IonContent,
   IonFab,
   IonFabButton,
@@ -14,18 +15,36 @@ import {
   IonNote,
   IonPage,
   IonProgressBar,
+  IonReorder,
+  IonReorderGroup,
   IonTitle,
   IonToolbar,
+  useIonActionSheet,
+  useIonAlert,
   useIonRouter,
   useIonToast,
   useIonViewWillEnter,
+  type ItemReorderEventDetail,
 } from '@ionic/react'
-import { add, bookOutline, trashOutline } from 'ionicons/icons'
+import {
+  add,
+  bookOutline,
+  contrastOutline,
+  createOutline,
+  trashOutline,
+} from 'ionicons/icons'
 import { useRef, useState } from 'react'
 import AppSection from '../components/AppSection'
-import { deleteBook, getAllBooks, putBook, type Book } from '../lib/db'
+import {
+  deleteBook,
+  getAllBooks,
+  putBook,
+  saveBookOrder,
+  type Book,
+} from '../lib/db'
 import { ACCEPTED_FILES, importBook, unitCount } from '../lib/importers'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
+import { getTheme, setTheme, THEME_LABELS, type ThemeChoice } from '../lib/theme'
 import { markWelcomeSeen, WELCOME_SEEN_KEY } from './WelcomePage'
 
 export default function LibraryPage() {
@@ -34,6 +53,8 @@ export default function LibraryPage() {
   const fileInput = useRef<HTMLInputElement>(null)
   const router = useIonRouter()
   const [presentToast] = useIonToast()
+  const [presentAlert] = useIonAlert()
+  const [presentActionSheet] = useIonActionSheet()
 
   const refresh = () => {
     getAllBooks().then(setBooks)
@@ -95,11 +116,76 @@ export default function LibraryPage() {
     refresh()
   }
 
+  const rename = (book: Book) => {
+    void presentAlert({
+      header: 'Titel ändern',
+      inputs: [
+        {
+          name: 'title',
+          type: 'text',
+          value: book.title,
+          attributes: { maxlength: 200 },
+        },
+      ],
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Speichern',
+          handler: (data: { title?: string }) => {
+            const title = (data.title ?? '').trim()
+            if (title && title !== book.title) {
+              void putBook({ ...book, title }).then(refresh)
+            }
+          },
+        },
+      ],
+    })
+  }
+
+  // Drag-and-drop-Reihenfolge sofort anzeigen und dauerhaft speichern.
+  const onReorder = (event: CustomEvent<ItemReorderEventDetail>) => {
+    const reordered = event.detail.complete(books) as Book[]
+    setBooks(reordered)
+    void saveBookOrder(reordered.map((book) => book.id))
+  }
+
+  const chooseTheme = () => {
+    const current = getTheme()
+    const option = (choice: ThemeChoice) => ({
+      text: THEME_LABELS[choice] + (current === choice ? ' ✓' : ''),
+      handler: () => setTheme(choice),
+    })
+    void presentActionSheet({
+      header: 'Darstellung',
+      buttons: [
+        option('auto'),
+        option('light'),
+        option('dark'),
+        option('eink'),
+        { text: 'Abbrechen', role: 'cancel' },
+      ],
+    })
+  }
+
+  /** Schließt die Wisch-Optionen, bevor ein Dialog aufgeht. */
+  const closeSliding = (event: React.MouseEvent) => {
+    void (
+      (event.target as HTMLElement).closest('ion-item-sliding') as
+        | (HTMLElement & { close(): Promise<void> })
+        | null
+    )?.close()
+  }
+
   return (
     <IonPage>
       <IonHeader translucent>
         <IonToolbar>
           <IonTitle>Bibliothek</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={chooseTheme} aria-label="Darstellung ändern">
+              <IonIcon aria-hidden="true" slot="icon-only" icon={contrastOutline} />
+            </IonButton>
+          </IonButtons>
           <img
             slot="end"
             className="brand-mark"
@@ -132,47 +218,61 @@ export default function LibraryPage() {
         )}
 
         <IonList inset={books.length > 0}>
-          {books.map((book) => {
-            const progress =
-              book.sentenceCount > 0 ? book.position / book.sentenceCount : 0
-            return (
-              <IonItemSliding key={book.id}>
-                <IonItem
-                  button
-                  detail
-                  onClick={() => router.push(`/reader/${book.id}`)}
-                >
-                  {book.cover ? (
-                    <img className="book-cover" src={book.cover} alt="" />
-                  ) : (
-                    <div className="book-cover book-cover--placeholder">
-                      <IonIcon aria-hidden="true" icon={bookOutline} />
-                    </div>
-                  )}
-                  <IonLabel>
-                    <h2>{book.title}</h2>
-                    <IonNote>
-                      {unitCount(book.unit, book.pageCount)}
-                      {progress > 0 && ` · ${Math.round(progress * 100)} % gehört`}
-                    </IonNote>
-                  </IonLabel>
-                </IonItem>
-                <IonItemOptions side="end">
-                  <IonItemOption color="danger" onClick={() => remove(book)}>
-                    <IonIcon aria-hidden="true" slot="icon-only" icon={trashOutline} />
-                  </IonItemOption>
-                </IonItemOptions>
-              </IonItemSliding>
-            )
-          })}
+          <IonReorderGroup
+            disabled={books.length < 2}
+            onIonItemReorder={onReorder}
+          >
+            {books.map((book) => {
+              const progress =
+                book.sentenceCount > 0 ? book.position / book.sentenceCount : 0
+              return (
+                <IonItemSliding key={book.id}>
+                  <IonItem
+                    button
+                    detail={false}
+                    onClick={() => router.push(`/reader/${book.id}`)}
+                  >
+                    {book.cover ? (
+                      <img className="book-cover" src={book.cover} alt="" />
+                    ) : (
+                      <div className="book-cover book-cover--placeholder">
+                        <IonIcon aria-hidden="true" icon={bookOutline} />
+                      </div>
+                    )}
+                    <IonLabel>
+                      <h2>{book.title}</h2>
+                      <IonNote>
+                        {unitCount(book.unit, book.pageCount)}
+                        {progress > 0 &&
+                          ` · ${Math.round(progress * 100)} % gehört`}
+                      </IonNote>
+                    </IonLabel>
+                    <IonReorder slot="end" />
+                  </IonItem>
+                  <IonItemOptions side="end">
+                    <IonItemOption
+                      onClick={(event) => {
+                        closeSliding(event)
+                        rename(book)
+                      }}
+                    >
+                      <IonIcon
+                        aria-hidden="true"
+                        slot="icon-only"
+                        icon={createOutline}
+                      />
+                    </IonItemOption>
+                    <IonItemOption color="danger" onClick={() => remove(book)}>
+                      <IonIcon aria-hidden="true" slot="icon-only" icon={trashOutline} />
+                    </IonItemOption>
+                  </IonItemOptions>
+                </IonItemSliding>
+              )
+            })}
+          </IonReorderGroup>
         </IonList>
 
         <AppSection />
-
-        <p className="privacy-note">
-          Kein Upload in die Cloud. Bücher und Sprachmodelle bleiben nur im
-          Speicher deines Geräts.
-        </p>
 
         <input
           ref={fileInput}
