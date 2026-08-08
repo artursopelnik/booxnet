@@ -17,15 +17,11 @@ const SOURCE = new URL('../node_modules/onnxruntime-web/dist', import.meta.url)
   .pathname
 const TARGET = new URL('../public/ort', import.meta.url).pathname
 
+// Nur die reine WASM-Variante – die App nutzt bewusst kein WebGPU
+// (Speicherabstürze auf iPhones), daher entfallen die jsep-Dateien.
 const FILES = [
   'ort-wasm-simd-threaded.wasm',
   'ort-wasm-simd-threaded.mjs',
-  'ort-wasm-simd-threaded.jsep.wasm',
-  'ort-wasm-simd-threaded.jsep.mjs',
-  'ort-wasm-simd-threaded.jspi.wasm',
-  'ort-wasm-simd-threaded.jspi.mjs',
-  'ort-wasm-simd-threaded.asyncify.wasm',
-  'ort-wasm-simd-threaded.asyncify.mjs',
 ]
 
 // Reste älterer onnxruntime-Versionen nicht mit ausliefern.

@@ -13,32 +13,6 @@ interface WorkerResponse {
   error?: string
   /** True, wenn ein neuerer Play-Druck die Anfrage verdrängt hat. */
   cancelled?: boolean
-  /** Steuernachrichten ohne Anfrage-Bezug, z. B. 'gpuFallback'. */
-  kind?: string
-}
-
-/**
- * Merkt sich dauerhaft, dass der GPU-Pfad auf diesem Gerät hängt oder
- * scheitert – künftige Sitzungen starten dann direkt mit WASM, statt den
- * Fehlversuch (samt Deadline) jedes Mal zu wiederholen. Ein Löschen des
- * Sprachmodells setzt das zurück und gibt der GPU eine neue Chance.
- */
-const FORCE_WASM_KEY = 'vorleser.forceWasm'
-
-function allowWebGpu(): boolean {
-  try {
-    return localStorage.getItem(FORCE_WASM_KEY) === null
-  } catch {
-    return true
-  }
-}
-
-function rememberGpuFallback(): void {
-  try {
-    localStorage.setItem(FORCE_WASM_KEY, '1')
-  } catch {
-    // Ohne Speicher gilt der Fallback nur für diese Sitzung (im Worker).
-  }
 }
 
 let worker: Worker | null = null
@@ -54,11 +28,7 @@ function getWorker(): Worker {
       type: 'module',
     })
     worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-      const { id, ok, wav, error, cancelled, kind } = event.data
-      if (kind === 'gpuFallback') {
-        rememberGpuFallback()
-        return
-      }
+      const { id, ok, wav, error, cancelled } = event.data
       const entry = pending.get(id)
       if (!entry) return
       pending.delete(id)
@@ -86,12 +56,11 @@ function getWorker(): Worker {
 
 /**
  * First synthesis after app start loads ~400 MB of sessions; give it time.
- * The headroom also covers the one-time in-worker GPU fallback (deadline
- * plus WASM rebuild). The watchdog guarantees the UI can never hang
- * forever on a dead worker. Background prefetches get extra headroom: on
- * slow devices they queue up, and a false timeout only causes repeat work.
+ * The watchdog guarantees the UI can never hang forever on a dead worker.
+ * Background prefetches get extra headroom: on slow devices they queue
+ * up, and a false timeout only causes repeat work.
  */
-const FIRST_TIMEOUT_MS = 300_000
+const FIRST_TIMEOUT_MS = 180_000
 const PLAY_TIMEOUT_MS = 90_000
 const PREFETCH_TIMEOUT_MS = 300_000
 let firstRequestDone = false
@@ -156,25 +125,18 @@ export function studioWarmup(voiceId: StudioVoiceId): void {
   }
   if (warmedVoices.has(voiceId)) return
   warmedVoices.add(voiceId)
-  request(
-    { type: 'preload', voiceId, allowWebGpu: allowWebGpu() },
-    PREFETCH_TIMEOUT_MS,
-  ).promise.catch(() => {
-    // Warm-up failures surface when playback actually starts.
-    warmedVoices.delete(voiceId)
-  })
+  request({ type: 'preload', voiceId }, PREFETCH_TIMEOUT_MS).promise.catch(
+    () => {
+      // Warm-up failures surface when playback actually starts.
+      warmedVoices.delete(voiceId)
+    },
+  )
 }
 
 /** Drops the loaded engine, e.g. after the model pack was deleted. */
 export function resetStudioEngine(): void {
   cache.clear()
   warmedVoices.clear()
-  // Neues Sprachmodell = neue Chance für den GPU-Pfad.
-  try {
-    localStorage.removeItem(FORCE_WASM_KEY)
-  } catch {
-    // Kein Speicher, nichts zurückzusetzen.
-  }
   if (worker) {
     worker.terminate()
     worker = null
@@ -220,15 +182,7 @@ export function studioSynthesize(
     return hit.promise
   }
   const { id, promise } = request(
-    {
-      type: 'synthesize',
-      voiceId,
-      lang,
-      text,
-      speed,
-      priority,
-      allowWebGpu: allowWebGpu(),
-    },
+    { type: 'synthesize', voiceId, lang, text, speed, priority },
     priority ? PLAY_TIMEOUT_MS : PREFETCH_TIMEOUT_MS,
   )
   const entry: CacheEntry = {
