@@ -44,6 +44,11 @@ interface Props {
   /** Notifies the reader that the engine was installed or removed. */
   onEngineChange: (installed: boolean) => void
   onDismiss: () => void
+  /**
+   * Begrüßungen nur vorrendern, wenn die Wiedergabe ruht – laufende
+   * lange Renderings würden sonst jeden Play-Druck blockieren.
+   */
+  canWarmPreviews?: boolean
 }
 
 export default function VoiceSheet({
@@ -52,6 +57,7 @@ export default function VoiceSheet({
   onSelect,
   onEngineChange,
   onDismiss,
+  canWarmPreviews = true,
 }: Props) {
   const [installed, setInstalled] = useState(false)
   const [storageBlocked, setStorageBlocked] = useState(false)
@@ -69,8 +75,8 @@ export default function VoiceSheet({
         setInstalled(ok)
         // Fehlende Begrüßungen im Hintergrund fertig rendern, damit das
         // Probehören sofort abspielt statt erst zu rechnen – die gerade
-        // ausgewählte Stimme zuerst.
-        if (ok) {
+        // ausgewählte Stimme zuerst, und nur wenn die Wiedergabe ruht.
+        if (ok && canWarmPreviews) {
           warmVoicePreviews([
             ...STUDIO_VOICES.filter((voice) => voice.id === selectedId),
             ...STUDIO_VOICES.filter((voice) => voice.id !== selectedId),
