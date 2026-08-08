@@ -13,6 +13,7 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  useIonAlert,
   useIonToast,
 } from '@ionic/react'
 import {
@@ -60,6 +61,7 @@ export default function VoiceSheet({
   } | null>(null)
   const [previewing, setPreviewing] = useState<string | null>(null)
   const [presentToast] = useIonToast()
+  const [presentAlert] = useIonAlert()
 
   useEffect(() => {
     if (isOpen) {
@@ -117,6 +119,23 @@ export default function VoiceSheet({
     resetStudioEngine()
     setInstalled(false)
     onEngineChange(false)
+  }
+
+  // Ein versehentlicher Tipper darf nicht 400 MB wegwerfen – erst fragen.
+  const confirmDelete = () => {
+    void presentAlert({
+      header: 'Sprachmodell löschen?',
+      message:
+        'Alle Stimmen und Begrüßungen werden von diesem Gerät entfernt. Zum Vorlesen musst du die ca. 400 MB danach erneut herunterladen.',
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Löschen',
+          role: 'destructive',
+          handler: () => void deleteData(),
+        },
+      ],
+    })
   }
 
   const preview = async (voice: StudioVoiceMeta) => {
@@ -240,7 +259,7 @@ export default function VoiceSheet({
             </IonItem>
           ))}
           {installed && (
-            <IonItem button onClick={() => void deleteData()}>
+            <IonItem button onClick={confirmDelete}>
               <IonIcon aria-hidden="true" slot="start" icon={trashOutline} color="medium" />
               <IonLabel color="medium">
                 Sprachmodell löschen ({STUDIO_ENGINE_SIZE_MB} MB freigeben)

@@ -17,6 +17,7 @@ import {
   cloudDownloadOutline,
   phonePortraitOutline,
   sparklesOutline,
+  volumeHighOutline,
 } from 'ionicons/icons'
 import { useEffect, useState } from 'react'
 import {
@@ -142,6 +143,22 @@ export default function WelcomePage() {
                   Booxnet ist eine Web-App (PWA): zum Home-Bildschirm
                   hinzugefügt lässt sie sich bequem aktualisieren, und alle
                   Funktionen sind zu 100 % offline nutzbar.
+                </IonNote>
+              </IonLabel>
+            </IonItem>
+            <IonItem>
+              <IonIcon
+                aria-hidden="true"
+                slot="start"
+                icon={volumeHighOutline}
+                color="primary"
+              />
+              <IonLabel>
+                <h2>Ton an!</h2>
+                <IonNote>
+                  Ist dein Gerät stummgeschaltet, bleibt die Vorlesestimme
+                  lautlos. Schalte die Stummschaltung aus oder verbinde
+                  Kopfhörer.
                 </IonNote>
               </IonLabel>
             </IonItem>
