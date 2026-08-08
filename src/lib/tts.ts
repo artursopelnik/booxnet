@@ -36,7 +36,11 @@ export interface SentenceInput {
 
 const VOICE_KEY = 'vorleser.voice'
 const RATE_KEY = 'vorleser.rate'
-const PREFETCH_AHEAD = 4
+// Tiefer Puffer: Auch wenn das Gerät zwischendurch langsamer rechnet
+// (z. B. thermisch gedrosselt nach längerem Hören) oder mehrere kurze
+// Sätze schnell hintereinander abgespielt werden, reißt der Vorrat nicht
+// ab. Kostet nur wenige MB Arbeitsspeicher (~0,5 MB pro Satz).
+const PREFETCH_AHEAD = 8
 /** Pause between sentences at 1× speed. */
 const SENTENCE_PAUSE_MS = 350
 /** Supertonic's recommended neutral speed. */
