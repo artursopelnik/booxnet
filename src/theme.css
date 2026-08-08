@@ -96,13 +96,6 @@ ion-note,
   display: block;
 }
 
-.brand-mark--large {
-  width: 28px;
-  height: 28px;
-  margin-inline-end: 16px;
-  align-self: center;
-}
-
 /* ---- Reader ---- */
 
 /* Long book titles must not collide with the back chevron / brand mark. */
@@ -154,9 +147,17 @@ ion-note,
 }
 
 .sentence--active {
-  background: rgba(0, 100, 210, 0.18);
+  background: rgba(0, 100, 210, 0.22);
+  box-shadow: 0 0 0 3px rgba(0, 100, 210, 0.22);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sentence--active {
+    background: rgba(90, 170, 255, 0.32);
+    box-shadow: 0 0 0 3px rgba(90, 170, 255, 0.32);
+  }
 }
 
 /* ---- Voice sheet ---- */

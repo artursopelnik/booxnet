@@ -40,6 +40,26 @@ export function splitSentences(text: string): string[] {
   return mergeFalseSplits(parts.filter(Boolean))
 }
 
+/**
+ * Strips characters the voice would stumble over (PDF artifacts, ornaments,
+ * stray symbols) while keeping letters, digits and natural punctuation.
+ */
+export function sanitizeForSpeech(text: string): string {
+  return text
+    .replace(/[^\p{L}\p{N}\s.,;:!?'"()\[\]«»„“”‚‘’\-–—…%€$&+°#*\/]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Whether a fragment is worth reading aloud. Pure page numbers, separator
+ * ornaments ("* * *") and symbol runs are skipped automatically.
+ */
+export function isSpeakable(text: string): boolean {
+  const letters = text.match(/\p{L}/gu)?.length ?? 0
+  return letters >= 2
+}
+
 export interface SentenceRef {
   /** Page index the sentence belongs to. */
   page: number

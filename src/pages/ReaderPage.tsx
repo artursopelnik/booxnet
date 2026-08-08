@@ -8,6 +8,7 @@ import {
   IonIcon,
   IonNote,
   IonPage,
+  IonProgressBar,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -34,8 +35,10 @@ import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
 import { detectStudioLang, langLabel } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
-import { toSentences } from '../lib/text'
+import { studioPrefetch, studioWarmup } from '../lib/supertonic/client'
+import { isSpeakable, sanitizeForSpeech, toSentences } from '../lib/text'
 import {
+  engineSpeed,
   getSavedRate,
   getSavedVoiceId,
   saveRate,
@@ -104,6 +107,77 @@ const PageSection = memo(function PageSection({
   )
 })
 
+/** Pages around the reading position that are always fully rendered. */
+const RENDER_WINDOW = 5
+
+/** Rough page height from its text, so placeholders keep the scrollbar
+ * honest before the real content mounts. */
+function estimatePageHeight(sentences: PageSentence[]): number {
+  const chars = sentences.reduce((sum, s) => sum + s.text.length, 0)
+  // ~45 characters per line at the reader's font size, ~32 px line height,
+  // plus the page marker block.
+  return Math.max(160, Math.round((chars / 45) * 32 + 80))
+}
+
+/**
+ * Mounts a page's sentence spans only when it is near the viewport or
+ * inside the render window around the reading position. Books with
+ * hundreds of pages would otherwise build tens of thousands of DOM nodes
+ * up front and make opening a book crawl on phones. Once rendered, a page
+ * stays rendered so scrolling back never causes layout jumps.
+ */
+const LazyPage = memo(function LazyPage({
+  pageIndex,
+  sentences,
+  activeIndex,
+  forceRender,
+  onJump,
+}: {
+  pageIndex: number
+  sentences: PageSentence[]
+  activeIndex: number
+  forceRender: boolean
+  onJump: (index: number) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [nearViewport, setNearViewport] = useState(false)
+
+  useEffect(() => {
+    if (nearViewport) return
+    const element = ref.current
+    if (!element) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setNearViewport(true)
+        }
+      },
+      { rootMargin: '1500px 0px' },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [nearViewport])
+
+  const rendered = nearViewport || forceRender
+  return (
+    <div
+      ref={ref}
+      style={rendered ? undefined : { minHeight: estimatePageHeight(sentences) }}
+    >
+      {rendered ? (
+        <PageSection
+          pageIndex={pageIndex}
+          sentences={sentences}
+          activeIndex={activeIndex}
+          onJump={onJump}
+        />
+      ) : (
+        <div className="page-marker">Seite {pageIndex + 1}</div>
+      )}
+    </div>
+  )
+})
+
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>()
   const [book, setBook] = useState<Book | null | undefined>(undefined)
@@ -114,7 +188,7 @@ export default function ReaderPage() {
   const [rate, setRate] = useState(getSavedRate())
   const [state, setState] = useState<SpeakerState>('idle')
   const [current, setCurrent] = useState(0)
-  const [bookLang, setBookLang] = useState('na')
+  const [bookLang, setBookLang] = useState('de')
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   const [presentToast] = useIonToast()
 
@@ -175,9 +249,10 @@ export default function ReaderPage() {
     isStudioEngineInstalled().then(setEngineInstalled)
   }, [])
 
-  // What the voice actually speaks: a subtle <breath> expression tag at
-  // page starts (natively supported by Supertonic 3), longer pauses at
-  // page breaks, and punctuation-aware pauses make the reading human.
+  // What the voice actually speaks: sanitized text (no PDF artifacts), a
+  // subtle <breath> expression tag at page starts (natively supported by
+  // Supertonic 3), longer pauses at page breaks, punctuation-aware pauses.
+  // Fragments without real words (page numbers, ornaments) are skipped.
   const speakItems = useMemo(
     () =>
       sentences.map((sentence, index) => {
@@ -186,9 +261,12 @@ export default function ReaderPage() {
         const startsPage =
           previous !== undefined && previous.page !== sentence.page
         const endsPage = next !== undefined && next.page !== sentence.page
+        const clean = sanitizeForSpeech(sentence.text)
+        const speakable = isSpeakable(clean)
         return {
-          text: startsPage ? `<breath> ${sentence.text}` : sentence.text,
+          text: startsPage && speakable ? `<breath> ${clean}` : clean,
           pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),
+          skip: !speakable,
         }
       }),
     [sentences],
@@ -208,9 +286,31 @@ export default function ReaderPage() {
   const voice: StudioVoiceMeta =
     studioVoiceById(voiceId) ?? STUDIO_VOICES[0]
 
+  // Warm the engine (and the selected voice's style) as soon as the reader
+  // opens – loading ~400 MB of sessions takes long, and doing it here makes
+  // the first press on Play feel instant instead of frozen.
+  useEffect(() => {
+    if (engineInstalled) {
+      studioWarmup(voice.id)
+    }
+  }, [engineInstalled, voice.id])
+
   useEffect(() => {
     speaker.setVoice(voice)
   }, [speaker, voice])
+
+  // Warm up the engine and the first sentences as soon as the reader is
+  // open – tapping Play then starts quickly instead of on a cold engine.
+  useEffect(() => {
+    if (!engineInstalled || speakItems.length === 0) return
+    const first = speakItems
+      .filter((item) => !item.skip)
+      .slice(0, 2)
+      .map((item) => item.text)
+    if (first.length > 0) {
+      studioPrefetch(voice.id, bookLang, first, engineSpeed(rate))
+    }
+  }, [engineInstalled, speakItems, voice.id, bookLang, rate])
 
   useEffect(() => {
     speaker.setRate(rate)
@@ -288,21 +388,16 @@ export default function ReaderPage() {
       return
     }
     if (!engineInstalled) {
-      // Re-check OPFS – the state can be stale (e.g. download finished in
-      // a second tab). Only the confirmed-missing case opens the sheet.
-      void isStudioEngineInstalled().then((installed) => {
-        setEngineInstalled(installed)
-        if (installed) {
-          speaker.play(current)
-        } else {
-          toastRef.current({
-            message: 'Lade zuerst das Sprachmodell herunter (einmalig).',
-            duration: 3000,
-            color: 'warning',
-          })
-          setVoiceSheetOpen(true)
-        }
+      // React instantly – never make the play button wait on OPFS, which
+      // can be slow on iOS. The sheet opens right away; a background
+      // re-check corrects stale state (e.g. download finished elsewhere).
+      setVoiceSheetOpen(true)
+      toastRef.current({
+        message: 'Lade zuerst einmalig das Sprachmodell herunter.',
+        duration: 3000,
+        color: 'warning',
       })
+      void isStudioEngineInstalled().then(setEngineInstalled)
       return
     }
     speaker.play(current)
@@ -392,11 +487,12 @@ export default function ReaderPage() {
             />
           )}
           {pages.map((page) => (
-            <PageSection
+            <LazyPage
               key={page.pageIndex}
               pageIndex={page.pageIndex}
               sentences={page.sentences}
               activeIndex={page.pageIndex === activePage ? current : -1}
+              forceRender={Math.abs(page.pageIndex - activePage) <= RENDER_WINDOW}
               onJump={jumpTo}
             />
           ))}
@@ -404,12 +500,16 @@ export default function ReaderPage() {
       </IonContent>
 
       <IonFooter translucent>
+        {state === 'loading' && (
+          <IonProgressBar type="indeterminate" aria-label="Stimme lädt" />
+        )}
         <IonToolbar className="player-toolbar">
           <div className="player">
             <div className="player__meta">
-              <IonNote>
-                Satz {Math.min(current + 1, sentences.length)} von{' '}
-                {sentences.length} · {voice.name} · {langLabel(bookLang)}
+              <IonNote aria-live="polite">
+                {state === 'loading'
+                  ? 'Stimme wird vorbereitet …'
+                  : `Satz ${Math.min(current + 1, sentences.length)} von ${sentences.length} · ${voice.name} · ${langLabel(bookLang)}`}
               </IonNote>
             </div>
             <div className="player__controls">

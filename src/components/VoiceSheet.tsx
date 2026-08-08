@@ -34,19 +34,15 @@ import {
 import { resetStudioEngine } from '../lib/supertonic/client'
 import { isStorageAvailable } from '../lib/supertonic/opfs'
 import { previewVoice } from '../lib/tts'
-import {
-  STUDIO_LANGS,
-  STUDIO_VOICES,
-  type StudioVoiceMeta,
-} from '../lib/voices'
+import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
 
 const DOWNLOAD_ERRORS: Record<StudioDownloadFailure, string> = {
   storage:
     'Dein Browser erlaubt hier keinen Speicher für das Sprachmodell – das passiert vor allem in privaten Fenstern. Öffne Booxnet in einem normalen Fenster und lade es dort herunter.',
   quota:
-    `Nicht genug freier Browser-Speicher für das Sprachmodell (ca. ${STUDIO_ENGINE_SIZE_MB} MB). Gib Speicherplatz frei (z. B. Website-Daten anderer Seiten löschen) und versuche es erneut – bereits geladene Teile bleiben erhalten.`,
+    `Auf deinem Gerät ist zu wenig Speicherplatz für das Sprachmodell frei (ca. ${STUDIO_ENGINE_SIZE_MB} MB). Schaffe etwas Platz und versuche es dann erneut – bereits geladene Teile bleiben erhalten.`,
   network:
-    'Download des Sprachmodells fehlgeschlagen. Prüfe deine Internetverbindung und versuche es erneut – bereits geladene Teile bleiben erhalten.',
+    'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal. Bereits geladene Teile bleiben erhalten.',
 }
 
 interface Props {
@@ -67,7 +63,10 @@ export default function VoiceSheet({
 }: Props) {
   const [installed, setInstalled] = useState(false)
   const [storageBlocked, setStorageBlocked] = useState(false)
-  const [progress, setProgress] = useState<number | null>(null)
+  const [progress, setProgress] = useState<{
+    percent: number
+    mb: number
+  } | null>(null)
   const [previewing, setPreviewing] = useState<string | null>(null)
   const [presentToast] = useIonToast()
 
@@ -79,9 +78,19 @@ export default function VoiceSheet({
   }, [isOpen])
 
   const startDownload = async () => {
-    setProgress(0)
+    setProgress({ percent: 0, mb: 0 })
+    // Keep the screen on: if it locks, iOS suspends the tab and the
+    // download dies mid-file. Best-effort – not all browsers support it.
+    let wakeLock: WakeLockSentinel | null = null
     try {
-      await downloadStudioEngine(setProgress)
+      wakeLock = (await navigator.wakeLock?.request('screen')) ?? null
+    } catch {
+      // Wake lock unavailable – the hint text still asks to keep the app open.
+    }
+    try {
+      await downloadStudioEngine((percent, mb) =>
+        setProgress({ percent, mb }),
+      )
       setInstalled(true)
       onEngineChange(true)
     } catch (error) {
@@ -93,6 +102,7 @@ export default function VoiceSheet({
         color: 'danger',
       })
     } finally {
+      void wakeLock?.release().catch(() => {})
       setProgress(null)
     }
   }
@@ -136,7 +146,7 @@ export default function VoiceSheet({
     >
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Stimme auswählen</IonTitle>
+          <IonTitle>Stimmen</IonTitle>
           <IonButtons slot="end">
             <IonButton strong onClick={onDismiss}>
               Fertig
@@ -146,9 +156,8 @@ export default function VoiceSheet({
       </IonHeader>
       <IonContent>
         <div className="voice-section-note">
-          10 Stimmen in Studioqualität (44,1 kHz), jede spricht{' '}
-          {STUDIO_LANGS.length} Sprachen. Einmal das Sprachmodell laden,
-          danach läuft alles komplett offline auf deinem Gerät.
+          Nach einem einmaligen Download werden alle Stimmen komplett
+          offline auf deinem Gerät vorgelesen.
         </div>
         <IonList inset>
           {!installed && (
@@ -168,11 +177,11 @@ export default function VoiceSheet({
                     ? 'Hier nicht möglich: Dein Browser blockiert den Speicher dafür (z. B. im privaten Fenster). Bitte in einem normalen Fenster öffnen.'
                     : progress === null
                       ? `Einmalig ca. ${STUDIO_ENGINE_SIZE_MB} MB – schaltet alle 10 Stimmen frei`
-                      : `Wird geladen … ${progress} %`}
+                      : `Wird geladen … ${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB. Lass die App dabei geöffnet.`}
                 </IonNote>
                 {progress !== null && (
                   <IonProgressBar
-                    value={progress / 100}
+                    value={progress.percent / 100}
                     style={{ marginTop: 6 }}
                   />
                 )}
@@ -192,9 +201,8 @@ export default function VoiceSheet({
               <IonLabel>
                 <h2>{voice.name}</h2>
                 <IonNote>
-                  {voice.gender === 'm' ? 'Männlich' : 'Weiblich'} · Studio{' '}
-                  {voice.id}
-                  {installed ? ' · offline' : ' · benötigt das Sprachmodell'}
+                  {voice.gender === 'm' ? 'Männlich' : 'Weiblich'}
+                  {!installed && ' · benötigt das Sprachmodell'}
                 </IonNote>
               </IonLabel>
               {voice.id === selectedId && (

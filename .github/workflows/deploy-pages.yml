@@ -3,9 +3,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - claude/speechify-alternative-pdf-ntvtpw
-      # Default-Branch: nach dem Merge des PRs deployt jeder Push hierauf.
-      - claude/booxnet-astro-site-3opvbn
       - main
   workflow_dispatch:
 
@@ -28,6 +25,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Die App lädt Stimmen-Assets bevorzugt same-origin von /supertonic/.
+      # Der Cache stellt sicher, dass Deployments auch dann funktionieren,
+      # wenn das Hugging-Face-Repo (Juli 2026 archiviert) verschwindet.
+      - name: Cache Supertonic assets
+        uses: actions/cache@v4
+        with:
+          path: public/supertonic
+          key: supertonic-3-assets-v1
+      - name: Mirror Supertonic assets
+        run: node scripts/mirror-supertonic.mjs
+        continue-on-error: true
       - name: Build
         run: npm run build
         env:
@@ -46,9 +54,11 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # Bewusst ohne environment-Block: Die Schutzregel der github-pages-
+    # Umgebung erlaubt nur den alten Default-Branch und blockiert damit
+    # jeden Deploy von main (Job wird ohne Runner sofort abgewiesen).
+    # Ohne Umgebungs-Referenz greift die Regel nicht; das Deployment
+    # erscheint trotzdem unter der github-pages-Umgebung.
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4

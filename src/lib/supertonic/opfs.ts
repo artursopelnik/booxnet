@@ -63,6 +63,53 @@ export async function hasAsset(path: string): Promise<boolean> {
   }
 }
 
+/** Size of a stored asset in bytes, or -1 if it doesn't exist. */
+export async function assetSize(path: string): Promise<number> {
+  try {
+    const handle = await (await dir()).getFileHandle(fileName(path))
+    return (await handle.getFile()).size
+  } catch {
+    return -1
+  }
+}
+
+/**
+ * Streams a body into OPFS without buffering the whole file in memory –
+ * essential for the ~200 MB models on memory-tight mobile devices. The
+ * file is only committed on a complete stream; on any error (or when
+ * fewer than minBytes arrive) the write is aborted and nothing persists.
+ */
+export async function writeAssetStream(
+  path: string,
+  stream: ReadableStream<Uint8Array<ArrayBuffer>>,
+  onChunk: (bytes: number) => void,
+  minBytes = 0,
+): Promise<number> {
+  const handle = await (await dir()).getFileHandle(fileName(path), {
+    create: true,
+  })
+  const writable = await handle.createWritable()
+  const reader = stream.getReader()
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      await writable.write(value)
+      total += value.byteLength
+      onChunk(value.byteLength)
+    }
+    if (minBytes > 0 && total < minBytes) {
+      throw new Error(`Truncated download for ${path}: ${total}/${minBytes}`)
+    }
+  } catch (error) {
+    await writable.abort().catch(() => {})
+    throw error
+  }
+  await writable.close()
+  return total
+}
+
 export async function removeAllAssets(): Promise<void> {
   try {
     const root = await navigator.storage.getDirectory()

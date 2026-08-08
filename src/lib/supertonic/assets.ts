@@ -10,13 +10,14 @@
  * mirrored deployment keeps working even if the upstream repository
  * disappears. Everything is stored in OPFS for offline use.
  */
-import type { StudioVoiceId } from '../voices'
+import { STUDIO_VOICES, type StudioVoiceId } from '../voices'
 import {
-  hasAsset,
+  assetSize,
   isStorageAvailable,
   readAsset,
   removeAllAssets,
   writeAsset,
+  writeAssetStream,
 } from './opfs'
 
 export const STUDIO_ENGINE_SIZE_MB = 400
@@ -32,16 +33,6 @@ export class StudioDownloadError extends Error {
     super(message)
     this.name = 'StudioDownloadError'
   }
-}
-
-function classifyWriteError(error: unknown, path: string): StudioDownloadError {
-  if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-    return new StudioDownloadError('quota', `Quota exceeded storing ${path}`)
-  }
-  return new StudioDownloadError(
-    'storage',
-    `Storage rejected ${path}: ${error instanceof Error ? error.message : String(error)}`,
-  )
 }
 
 const HF_BASE = 'https://huggingface.co/Supertone/supertonic-3/resolve/main'
@@ -83,7 +74,7 @@ async function fetchAsset(path: string): Promise<Response> {
 export async function isStudioEngineInstalled(): Promise<boolean> {
   try {
     const checks = await Promise.all(
-      ENGINE_ASSETS.map((path) => hasAsset(path)),
+      ENGINE_ASSETS.map(async (path) => (await assetSize(path)) > 0),
     )
     return checks.every(Boolean)
   } catch {
@@ -120,29 +111,38 @@ export async function ensureStudioStyle(
 }
 
 /**
- * Downloads the shared engine sequentially with overall progress. Progress
- * is weighted by bytes; sizes come from Content-Length with the known total
- * as fallback. Already-stored files are skipped, so an interrupted download
- * resumes where it stopped.
+ * Downloads the shared engine plus all ten voice styles sequentially with
+ * byte-weighted overall progress. Files stream directly into OPFS – no
+ * full-file buffering, which matters for the ~200 MB models on memory-tight
+ * mobile devices. Already-stored files are skipped and incomplete files are
+ * never committed, so an interrupted download resumes where it stopped.
  *
  * Fails fast with a typed StudioDownloadError before fetching anything when
  * the browser refuses OPFS (private windows) or the quota clearly cannot
  * hold a fresh download – no point streaming 400 MB that can't be stored.
  */
 export async function downloadStudioEngine(
-  onProgress: (percent: number) => void,
+  onProgress: (percent: number, loadedMB: number) => void,
 ): Promise<void> {
-  const totalEstimate = STUDIO_ENGINE_SIZE_MB * 1024 * 1024
-
   if (!(await isStorageAvailable())) {
     throw new StudioDownloadError('storage', 'OPFS unavailable')
   }
-  const stored = await Promise.all(ENGINE_ASSETS.map((path) => hasAsset(path)))
-  if (stored.every(Boolean)) {
-    onProgress(100)
-    return
+  // Ask the browser not to evict the ~400 MB store under storage pressure –
+  // without this, Safari may silently wipe OPFS after a few days.
+  try {
+    await navigator.storage.persist?.()
+  } catch {
+    // Persistence is best-effort.
   }
-  if (!stored.some(Boolean)) {
+
+  const assets = [
+    ...ENGINE_ASSETS,
+    ...STUDIO_VOICES.map((voice) => styleAsset(voice.id)),
+  ]
+  const totalEstimate = STUDIO_ENGINE_SIZE_MB * 1024 * 1024
+  const sizes = await Promise.all(assets.map((path) => assetSize(path)))
+
+  if (!sizes.some((size) => size > 0)) {
     const estimate = await navigator.storage.estimate?.().catch(() => undefined)
     if (estimate?.quota != null) {
       const free = estimate.quota - (estimate.usage ?? 0)
@@ -155,55 +155,67 @@ export async function downloadStudioEngine(
     }
   }
 
-  let loadedBefore = 0
-  for (const [index, path] of ENGINE_ASSETS.entries()) {
-    if (stored[index]) {
+  let storedBytes = 0
+  const report = (fileBytes: number) => {
+    const loaded = storedBytes + fileBytes
+    onProgress(
+      Math.min(99, Math.round((loaded / totalEstimate) * 100)),
+      Math.round(loaded / 1024 / 1024),
+    )
+  }
+
+  for (const [index, path] of assets.entries()) {
+    const existing = sizes[index]
+    if (existing > 0) {
+      storedBytes += existing
+      report(0)
       continue
     }
-    let response: Response
-    let contentLength: number
-    const chunks: Uint8Array[] = []
-    let loaded = 0
+    storedBytes += await downloadAsset(path, report)
+  }
+  onProgress(100, Math.round(storedBytes / 1024 / 1024))
+}
+
+const DOWNLOAD_ATTEMPTS = 3
+
+/** Downloads one asset with retries, reporting in-file progress bytes. */
+async function downloadAsset(
+  path: string,
+  onBytes: (fileBytes: number) => void,
+): Promise<number> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < DOWNLOAD_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)))
+    }
+    let fileBytes = 0
     try {
-      response = await fetchAsset(path)
+      const response = await fetchAsset(path)
       if (!response.body) {
         throw new Error(`Download failed for ${path}: empty body`)
       }
-      contentLength = Number(response.headers.get('Content-Length')) || 0
-      const reader = response.body.getReader()
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        chunks.push(value)
-        loaded += value.byteLength
-        const fileShare = contentLength
-          ? Math.min(loaded / contentLength, 1)
-          : 0
-        const overall =
-          (loadedBefore + fileShare * (contentLength || 0)) / totalEstimate
-        const fallback = (index + fileShare) / ENGINE_ASSETS.length
-        onProgress(
-          Math.min(99, Math.round((contentLength ? overall : fallback) * 100)),
-        )
-      }
-    } catch (error) {
-      throw new StudioDownloadError(
-        'network',
-        error instanceof Error ? error.message : String(error),
+      const contentLength = Number(response.headers.get('Content-Length')) || 0
+      return await writeAssetStream(
+        path,
+        response.body,
+        (bytes) => {
+          fileBytes += bytes
+          onBytes(fileBytes)
+        },
+        contentLength,
       )
-    }
-    const data = new Uint8Array(loaded)
-    let offset = 0
-    for (const chunk of chunks) {
-      data.set(chunk, offset)
-      offset += chunk.byteLength
-    }
-    try {
-      await writeAsset(path, data)
     } catch (error) {
-      throw classifyWriteError(error, path)
+      lastError = error
+      onBytes(0)
+      // A full store won't fix itself by retrying – tell the user directly.
+      if ((error as DOMException | null)?.name === 'QuotaExceededError') {
+        throw new StudioDownloadError('quota', `Quota exceeded storing ${path}`)
+      }
     }
-    loadedBefore += loaded
   }
-  onProgress(100)
+  console.error(`Supertonic download failed for ${path}:`, lastError)
+  throw new StudioDownloadError(
+    'network',
+    lastError instanceof Error ? lastError.message : String(lastError),
+  )
 }
