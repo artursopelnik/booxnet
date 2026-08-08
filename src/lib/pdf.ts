@@ -32,7 +32,7 @@ export async function importPdf(file: File): Promise<Book> {
   let cover: string | undefined
   try {
     const page = await doc.getPage(1)
-    const viewport = page.getViewport({ scale: 240 / page.getViewport({ scale: 1 }).width })
+    const viewport = page.getViewport({ scale: 440 / page.getViewport({ scale: 1 }).width })
     const canvas = document.createElement('canvas')
     canvas.width = Math.ceil(viewport.width)
     canvas.height = Math.ceil(viewport.height)

@@ -86,7 +86,37 @@ ion-note,
   color: var(--ion-color-medium);
 }
 
+/* ---- Branding ---- */
+
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  margin-inline-end: 12px;
+  border-radius: 6px;
+  display: block;
+}
+
+.brand-mark--large {
+  width: 28px;
+  height: 28px;
+  margin-inline-end: 16px;
+  align-self: center;
+}
+
 /* ---- Reader ---- */
+
+/* Long book titles must not collide with the back chevron / brand mark. */
+.reader-title {
+  padding-inline: 56px;
+}
+
+.reader-cover {
+  display: block;
+  margin: 12px auto 24px;
+  width: min(55%, 220px);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
 
 .reader-text {
   max-width: 42rem;

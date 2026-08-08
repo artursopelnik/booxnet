@@ -63,19 +63,50 @@ export function previewTextFor(voice: StudioVoiceMeta): string {
   return `Hallo, ich bin ${voice.name}. So klinge ich, wenn ich dir dein Buch vorlese.`
 }
 
+/**
+ * iOS Safari only allows audio started from a user gesture. Because our
+ * audio arrives after an async synthesis step, we "unlock" a persistent
+ * <audio> element with a silent clip synchronously inside the tap and then
+ * reuse that same element for every sentence – once unlocked, it may keep
+ * playing programmatically.
+ */
+const SILENT_WAV =
+  'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA=='
+
+function unlockAudio(element: HTMLAudioElement): void {
+  element.muted = true
+  element.src = SILENT_WAV
+  void element.play().catch(() => {})
+  element.muted = false
+}
+
+function setBlobSrc(element: HTMLAudioElement, blob: Blob): void {
+  if (element.src.startsWith('blob:')) {
+    URL.revokeObjectURL(element.src)
+  }
+  element.src = URL.createObjectURL(blob)
+}
+
 let previewAudio: HTMLAudioElement | null = null
+let previewUnlocked = false
 
 function stopPreview(): void {
-  if (previewAudio) {
+  if (previewAudio && !previewAudio.paused) {
     previewAudio.pause()
-    URL.revokeObjectURL(previewAudio.src)
-    previewAudio = null
   }
 }
 
-/** Speaks a short personalized sample sentence with the given voice. */
+/**
+ * Speaks a short personalized sample sentence with the given voice.
+ * Must be called from a user gesture (tap on the voice row).
+ */
 export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
   stopPreview()
+  previewAudio ??= new Audio()
+  if (!previewUnlocked) {
+    unlockAudio(previewAudio)
+    previewUnlocked = true
+  }
   const blob = await studioSynthesize(
     voice.id,
     'de',
@@ -83,10 +114,8 @@ export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
     BASE_SPEED,
   )
   stopPreview()
-  const audio = new Audio(URL.createObjectURL(blob))
-  previewAudio = audio
-  audio.onended = () => URL.revokeObjectURL(audio.src)
-  await audio.play()
+  setBlobSrc(previewAudio, blob)
+  await previewAudio.play()
 }
 
 export class Speaker {
@@ -100,7 +129,9 @@ export class Speaker {
   private state: SpeakerState = 'idle'
   /** Guards against stale async callbacks after pause/skip/stop. */
   private generation = 0
-  private audio: HTMLAudioElement | null = null
+  /** One persistent element, unlocked once via user gesture (iOS Safari). */
+  private audioEl: HTMLAudioElement | null = null
+  private unlocked = false
   /** Index the paused audio belongs to, for seamless mid-sentence resume. */
   private audioIndex = -1
   private pauseTimer: ReturnType<typeof setTimeout> | null = null
@@ -159,18 +190,26 @@ export class Speaker {
     this.generation++
     this.clearPauseTimer()
 
+    // Unlock synchronously inside the user gesture – the actual sentence
+    // audio arrives only after async synthesis, which iOS would block.
+    const element = this.ensureAudioElement()
+    if (!this.unlocked) {
+      unlockAudio(element)
+      this.unlocked = true
+    }
+
     // Resume paused audio mid-sentence.
     if (
       this.state === 'paused' &&
-      this.audio &&
-      this.audioIndex === this.index
+      this.audioIndex === this.index &&
+      element.src.startsWith('blob:')
     ) {
       this.setState('playing')
-      void this.audio.play().catch(() => this.speakCurrent())
+      void element.play().catch(() => this.speakCurrent())
       return
     }
 
-    this.discardAudio()
+    this.stopAudio()
     this.setState('loading')
     void this.speakCurrent()
   }
@@ -179,7 +218,7 @@ export class Speaker {
     if (this.state !== 'playing' && this.state !== 'loading') return
     this.generation++
     this.clearPauseTimer()
-    this.audio?.pause()
+    this.audioEl?.pause()
     this.setState('paused')
   }
 
@@ -216,13 +255,28 @@ export class Speaker {
     }
   }
 
-  private discardAudio(): void {
-    if (this.audio) {
-      this.audio.pause()
-      URL.revokeObjectURL(this.audio.src)
-      this.audio = null
+  private ensureAudioElement(): HTMLAudioElement {
+    if (!this.audioEl) {
+      this.audioEl = new Audio()
+      this.audioEl.preload = 'auto'
+    }
+    return this.audioEl
+  }
+
+  /** Stops playback but keeps the (unlocked) element for reuse. */
+  private stopAudio(): void {
+    if (this.audioEl) {
+      this.audioEl.pause()
     }
     this.audioIndex = -1
+  }
+
+  private discardAudio(): void {
+    this.stopAudio()
+    if (this.audioEl?.src.startsWith('blob:')) {
+      URL.revokeObjectURL(this.audioEl.src)
+      this.audioEl.removeAttribute('src')
+    }
   }
 
   private setState(state: SpeakerState): void {
@@ -280,15 +334,17 @@ export class Speaker {
     }
     if (generation !== this.generation) return
 
-    this.discardAudio()
-    const audio = new Audio(URL.createObjectURL(blob))
-    audio.onended = () => this.advance(generation)
-    audio.onerror = () => this.advance(generation)
-    this.audio = audio
+    const element = this.ensureAudioElement()
+    element.pause()
+    element.onended = () => this.advance(generation)
+    element.onerror = () => {
+      if (generation === this.generation) this.advance(generation)
+    }
+    setBlobSrc(element, blob)
     this.audioIndex = this.index
     this.setState('playing')
     try {
-      await audio.play()
+      await element.play()
     } catch {
       if (generation !== this.generation) return
       this.setState('paused')

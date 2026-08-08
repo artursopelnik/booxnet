@@ -59,7 +59,12 @@ async function loadOrt(): Promise<{ ort: Ort; providers: string[] }> {
 async function loadEngine(): Promise<Engine> {
   const { ort, providers } = await loadOrt()
   ort.env.allowLocalModels = false
-  ort.env.wasm.numThreads = navigator.hardwareConcurrency ?? 4
+  // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers).
+  // Without cross-origin isolation - e.g. on GitHub Pages - forcing
+  // threads makes onnxruntime hang on iOS Safari instead of falling back.
+  ort.env.wasm.numThreads = self.crossOriginIsolated
+    ? (navigator.hardwareConcurrency ?? 4)
+    : 1
   ort.env.wasm.wasmPaths = ONNX_CDN
 
   const [cfgsBuf, indexerBuf] = await Promise.all([

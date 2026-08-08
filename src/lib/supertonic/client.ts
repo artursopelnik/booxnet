@@ -49,13 +49,42 @@ function getWorker(): Worker {
   return worker
 }
 
+/**
+ * First synthesis after app start loads ~400 MB of sessions; give it time.
+ * The watchdog guarantees the UI can never hang forever on a dead worker.
+ */
+const FIRST_TIMEOUT_MS = 180_000
+const TIMEOUT_MS = 60_000
+let firstRequestDone = false
+
 function request(
   message: Omit<Parameters<Worker['postMessage']>[0], 'id'> &
     Record<string, unknown>,
 ): Promise<Blob> {
   const id = nextId++
   return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject })
+    const timeout = setTimeout(
+      () => {
+        pending.delete(id)
+        reject(
+          new Error(
+            'Zeitüberschreitung bei der Sprachsynthese – bitte erneut versuchen.',
+          ),
+        )
+      },
+      firstRequestDone ? TIMEOUT_MS : FIRST_TIMEOUT_MS,
+    )
+    pending.set(id, {
+      resolve: (blob) => {
+        clearTimeout(timeout)
+        firstRequestDone = true
+        resolve(blob)
+      },
+      reject: (error) => {
+        clearTimeout(timeout)
+        reject(error)
+      },
+    })
     getWorker().postMessage({ ...message, id })
   })
 }
