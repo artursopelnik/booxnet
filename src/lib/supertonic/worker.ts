@@ -13,7 +13,11 @@
  * Sessions are created once and reused.
  */
 import type { StudioVoiceId } from '../voices'
-import { ensureStudioStyle, loadStudioAsset } from './assets'
+import {
+  ensureStudioStyle,
+  INT8_VECTOR_ESTIMATOR_PATH,
+  loadStudioAsset,
+} from './assets'
 import { assetSize } from './opfs'
 import { resolveOrtWasmPrefix } from './ortwasm'
 
@@ -61,7 +65,33 @@ function reportEngineProgress(value: number): void {
   })
 }
 
-async function loadEngine(): Promise<Engine> {
+/**
+ * Experimentier-Schalter für die Graph-Optimierung beim Session-Aufbau
+ * (localStorage 'vorleser.ortopt', vom Client mitgeschickt): 'all'
+ * (Standard) optimiert am stärksten, kostet aber beim Aufbau am meisten
+ * Zeit; 'basic'/'disabled' bauen schneller auf, rechnen dafür ggf.
+ * langsamer. Die Diagnose-Logs unten liefern die Messwerte zum Vergleich.
+ */
+export type OrtOptLevel = 'all' | 'extended' | 'basic' | 'disabled'
+
+function toOrtOptLevel(value: unknown): OrtOptLevel {
+  return value === 'extended' || value === 'basic' || value === 'disabled'
+    ? value
+    : 'all'
+}
+
+/** Engine-Variante: Standard (fp32) oder experimentelles int8-Rechenmodell. */
+type EngineVariant = 'standard' | 'int8'
+
+function toVariant(value: unknown): EngineVariant {
+  return value === 'int8' ? 'int8' : 'standard'
+}
+
+async function loadEngine(
+  ortOpt: OrtOptLevel,
+  variant: EngineVariant,
+): Promise<Engine> {
+  const startedAt = Date.now()
   reportEngineProgress(0)
   const ort = (await import('onnxruntime-web/wasm')) as Ort
   // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers, siehe
@@ -73,6 +103,15 @@ async function loadEngine(): Promise<Engine> {
   ort.env.wasm.numThreads = self.crossOriginIsolated
     ? Math.max(1, Math.min(6, (navigator.hardwareConcurrency ?? 4) - 1))
     : 1
+  // Diagnose: Ohne Cross-Origin-Isolation (COOP/COEP-Header fehlen oder
+  // gingen im Service-Worker-Cache verloren) läuft die Engine EINKERNIG –
+  // das wäre der wahre Schuldige hinter "quälend langsam".
+  console.info(
+    `[booxnet-tts] Threads: ${ort.env.wasm.numThreads}` +
+      ` (crossOriginIsolated=${self.crossOriginIsolated === true},` +
+      ` Kerne=${navigator.hardwareConcurrency ?? '?'},` +
+      ` Optimierung=${ortOpt})`,
+  )
   ort.env.wasm.wasmPaths = await resolveOrtWasmPrefix()
 
   const [cfgsBuf, indexerBuf] = await Promise.all([
@@ -88,10 +127,15 @@ async function loadEngine(): Promise<Engine> {
   // Modelle beim Kaltstart, hält aber höchstens zwei Modellpuffer
   // gleichzeitig im Speicher – alle vier parallel würde auf
   // speicherknappen iPhones das Seiten-Aus riskieren.
+  // Experimentelle int8-Variante nur nutzen, wenn sie auch wirklich
+  // heruntergeladen wurde – sonst still beim Standard bleiben.
+  const useInt8 =
+    variant === 'int8' && (await assetSize(INT8_VECTOR_ESTIMATOR_PATH)) > 0
+  let activeVariant: EngineVariant = useInt8 ? 'int8' : 'standard'
   const modelPaths = [
     'onnx/duration_predictor.onnx',
     'onnx/text_encoder.onnx',
-    'onnx/vector_estimator.onnx',
+    useInt8 ? INT8_VECTOR_ESTIMATOR_PATH : 'onnx/vector_estimator.onnx',
     'onnx/vocoder.onnx',
   ]
   const sizes = await Promise.all(modelPaths.map((path) => assetSize(path)))
@@ -110,17 +154,62 @@ async function loadEngine(): Promise<Engine> {
     if (i + 1 < modelPaths.length) {
       nextBuffer = loadStudioAsset(modelPaths[i + 1])
     }
-    sessions.push(
-      await ort.InferenceSession.create(new Uint8Array(buffer), {
+    const sessionStart = Date.now()
+    let session: OrtSession
+    try {
+      session = await ort.InferenceSession.create(new Uint8Array(buffer), {
         executionProviders: ['wasm'],
-      }),
+        graphOptimizationLevel: ortOpt,
+      })
+    } catch (error) {
+      // Die int8-Variante ist eine Community-Quantisierung: Nicht jede
+      // onnxruntime-Fassung führt alle quantisierten Operationen aus.
+      // Statt das Vorlesen komplett scheitern zu lassen, still auf das
+      // Original zurückfallen – die UI meldet das als tatsächlich
+      // geladene Variante zurück.
+      if (modelPaths[i] !== INT8_VECTOR_ESTIMATOR_PATH) throw error
+      console.warn(
+        '[booxnet-tts] int8-Rechenmodell nicht ladbar, nutze Standard:',
+        error,
+      )
+      activeVariant = 'standard'
+      modelPaths[i] = 'onnx/vector_estimator.onnx'
+      session = await ort.InferenceSession.create(
+        new Uint8Array(await loadStudioAsset(modelPaths[i])),
+        { executionProviders: ['wasm'], graphOptimizationLevel: ortOpt },
+      )
+    }
+    sessions.push(session)
+    // Diagnose: Welches Modell frisst die Ladezeit? (Session-Aufbau ohne
+    // die parallel laufende OPFS-Lesezeit.)
+    console.info(
+      `[booxnet-tts] ${modelPaths[i]}: Session in ` +
+        `${((Date.now() - sessionStart) / 1000).toFixed(1)} s` +
+        ` (${Math.round(Math.max(0, sizes[i]) / 1024 / 1024)} MB)`,
     )
     step(sizes[i])
   }
   const [dp, textEnc, vectorEst, vocoder] = sessions
 
   reportEngineProgress(1)
-  console.info('[booxnet-tts] Engine bereit: WASM')
+  const loadSeconds = (Date.now() - startedAt) / 1000
+  console.info(
+    `[booxnet-tts] Engine bereit: WASM, Variante ${activeVariant}, gesamt ` +
+      `${loadSeconds.toFixed(1)} s`,
+  )
+  // Eckdaten an die UI: Am Handy gibt es keine Browser-Konsole, die
+  // Stimmen-Auswahl zeigt sie stattdessen unter "Technische Details".
+  self.postMessage({
+    type: 'engine-stats',
+    stats: {
+      threads: ort.env.wasm.numThreads,
+      isolated: self.crossOriginIsolated === true,
+      cores: navigator.hardwareConcurrency ?? null,
+      loadSeconds,
+      variant: activeVariant,
+      variantRequested: variant,
+    },
+  })
   return {
     ort,
     cfgs,
@@ -133,8 +222,13 @@ async function loadEngine(): Promise<Engine> {
   }
 }
 
-function getEngine(): Promise<Engine> {
-  enginePromise ??= loadEngine().catch((error) => {
+function getEngine(
+  ortOpt: OrtOptLevel,
+  variant: EngineVariant,
+): Promise<Engine> {
+  // Die erste Anfrage bestimmt Optimierungsstufe und Variante; ein
+  // Wechsel greift erst nach einem Engine-Reset bzw. App-Neustart.
+  enginePromise ??= loadEngine(ortOpt, variant).catch((error) => {
     enginePromise = null
     // Sonst bliebe der Fortschrittsbalken beim nächsten Versuch auf dem
     // alten Stand stehen.
@@ -459,12 +553,20 @@ interface SynthesizeRequest {
    * Stimmwechsel/Tipper dürfen keine Berechnungs-Schlange auftürmen.
    */
   channel?: string
+  /** Experimentier-Schalter für die Graph-Optimierung (siehe oben). */
+  ortOpt?: string
+  /** Engine-Variante: 'standard' (fp32) oder 'int8' (experimentell). */
+  variant?: string
 }
 
 interface PreloadRequest {
   id: number
   type: 'preload'
   voiceId: StudioVoiceId
+  /** Experimentier-Schalter für die Graph-Optimierung (siehe oben). */
+  ortOpt?: string
+  /** Engine-Variante: 'standard' (fp32) oder 'int8' (experimentell). */
+  variant?: string
 }
 
 interface ResetRequest {
@@ -514,7 +616,10 @@ async function handle(
     return
   }
   try {
-    const engine = await getEngine()
+    const engine = await getEngine(
+      toOrtOptLevel(request.ortOpt),
+      toVariant(request.variant),
+    )
     if (request.type === 'preload') {
       await getStyle(engine, request.voiceId)
       self.postMessage({ id: request.id, ok: true })
@@ -544,6 +649,7 @@ async function handle(
               value: Math.max(0, Math.min(1, value)),
             })
     reportSynth?.(0)
+    const synthStart = Date.now()
     const wav = await synthesize(
       engine,
       request.voiceId,
@@ -554,6 +660,19 @@ async function handle(
       () => runningTask?.aborted === true,
       reportSynth,
     )
+    // Messwerte für die Diagnose-Anzeige: Rechenzeit gegen erzeugte
+    // Tonlänge (16-Bit-Mono nach dem 44-Byte-WAV-Kopf). Ein Verhältnis
+    // unter 1 heißt: schneller als Echtzeit, der Vorrat wächst.
+    if (reportSynth) {
+      self.postMessage({
+        type: 'synth-stats',
+        stats: {
+          computeSeconds: (Date.now() - synthStart) / 1000,
+          audioSeconds:
+            (wav.byteLength - 44) / 2 / engine.cfgs.ae.sample_rate,
+        },
+      })
+    }
     // Transfer the buffer – no copy on the way back.
     self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })
   } catch (error) {

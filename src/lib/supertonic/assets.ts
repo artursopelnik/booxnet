@@ -97,6 +97,104 @@ export async function isStudioEngineInstalled(): Promise<boolean> {
   }
 }
 
+/**
+ * Experimentelle int8-Variante des Rechenmodells (vector_estimator):
+ * Community-Quantisierung aus Reza2kn/supertonic-3-litert, per
+ * onnxruntime-Dynamikquantisierung direkt aus dem Original erzeugt –
+ * 65 statt 257 MB und auf CPUs potenziell schneller. Wird zusätzlich
+ * zur fp32-Fassung gespeichert, damit das Zurückschalten sofort geht;
+ * "Sprachmodell löschen" entfernt beide zusammen.
+ */
+export const INT8_VECTOR_ESTIMATOR_PATH = 'onnx/vector_estimator_int8.onnx'
+export const INT8_VECTOR_ESTIMATOR_SIZE_MB = 65
+
+const INT8_HF_BASE =
+  'https://huggingface.co/Reza2kn/supertonic-3-litert/resolve/main'
+
+/** Mögliche Ablageorte im Community-Repo – der erste Treffer gewinnt. */
+const INT8_REMOTE_CANDIDATES = [
+  'onnx/vector_estimator_int8.onnx',
+  'vector_estimator_int8.onnx',
+]
+
+export async function isInt8VariantInstalled(): Promise<boolean> {
+  try {
+    return (await assetSize(INT8_VECTOR_ESTIMATOR_PATH)) > 0
+  } catch {
+    return false
+  }
+}
+
+export async function downloadInt8VectorEstimator(
+  onProgress: (percent: number, loadedMB: number) => void,
+): Promise<void> {
+  if (!(await isStorageAvailable())) {
+    throw new StudioDownloadError('storage', 'OPFS unavailable')
+  }
+  if (await isInt8VariantInstalled()) {
+    onProgress(100, INT8_VECTOR_ESTIMATOR_SIZE_MB)
+    return
+  }
+  const totalEstimate = INT8_VECTOR_ESTIMATOR_SIZE_MB * 1024 * 1024
+  let lastError: unknown
+  for (const candidate of INT8_REMOTE_CANDIDATES) {
+    try {
+      // Erst der eigene Mirror (gleiche Ablage-Konvention wie die
+      // übrigen Engine-Dateien), dann das Community-Repo auf Hugging Face.
+      let response: Response | null = null
+      try {
+        const local = await fetch(mirrorUrl(candidate))
+        const type = local.headers.get('Content-Type') ?? ''
+        if (local.ok && !type.includes('text/html')) response = local
+      } catch {
+        // Mirror nicht erreichbar – Hugging Face versuchen.
+      }
+      if (!response) {
+        const remote = await fetch(`${INT8_HF_BASE}/${candidate}`)
+        if (!remote.ok) {
+          throw new Error(
+            `Download failed for ${candidate}: HTTP ${remote.status}`,
+          )
+        }
+        response = remote
+      }
+      if (!response.body) {
+        throw new Error(`Download failed for ${candidate}: empty body`)
+      }
+      const contentLength =
+        Number(response.headers.get('Content-Length')) || 0
+      let loaded = 0
+      await writeAssetStream(
+        INT8_VECTOR_ESTIMATOR_PATH,
+        response.body,
+        (bytes) => {
+          loaded += bytes
+          onProgress(
+            Math.min(99, Math.round((loaded / totalEstimate) * 100)),
+            Math.round(loaded / 1024 / 1024),
+          )
+        },
+        contentLength,
+      )
+      onProgress(100, Math.round(loaded / 1024 / 1024))
+      return
+    } catch (error) {
+      lastError = error
+      if ((error as DOMException | null)?.name === 'QuotaExceededError') {
+        throw new StudioDownloadError(
+          'quota',
+          'Quota exceeded storing int8 variant',
+        )
+      }
+      // Nächsten Kandidaten-Pfad versuchen.
+    }
+  }
+  throw new StudioDownloadError(
+    'network',
+    lastError instanceof Error ? lastError.message : String(lastError),
+  )
+}
+
 export async function removeStudioData(): Promise<void> {
   await removeAllAssets()
 }

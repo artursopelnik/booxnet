@@ -213,6 +213,15 @@ html.ion-palette-dark .reader-text.hl-underline .sentence--active {
   color: var(--ion-color-medium);
 }
 
+/* Messwerte-Block in der Stimmen-Auswahl (Diagnose ohne Browser-Konsole). */
+.engine-diagnostics {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ion-color-medium);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Player ---- */
 
 .player-toolbar {
