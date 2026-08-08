@@ -10,12 +10,21 @@
  *
  * Läuft automatisch vor `npm run dev` und `npm run build`.
  */
-import { copyFile, mkdir, rm } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const SOURCE = new URL('../node_modules/onnxruntime-web/dist', import.meta.url)
   .pathname
-const TARGET = new URL('../public/ort', import.meta.url).pathname
+const ROOT = new URL('../public/ort', import.meta.url).pathname
+// Versionierter Zielordner – muss zu localPrefix() in ortwasm.ts passen
+// (die Version wird dort ueber vite.config.ts injiziert).
+const { version } = JSON.parse(
+  await readFile(
+    new URL('../node_modules/onnxruntime-web/package.json', import.meta.url),
+    'utf8',
+  ),
+)
+const TARGET = join(ROOT, version)
 
 // Nur die reine WASM-Variante – die App nutzt bewusst kein WebGPU
 // (Speicherabstürze auf iPhones), daher entfallen die jsep-Dateien.
@@ -25,9 +34,9 @@ const FILES = [
 ]
 
 // Reste älterer onnxruntime-Versionen nicht mit ausliefern.
-await rm(TARGET, { recursive: true, force: true })
+await rm(ROOT, { recursive: true, force: true })
 await mkdir(TARGET, { recursive: true })
 for (const file of FILES) {
   await copyFile(join(SOURCE, file), join(TARGET, file))
-  console.log(`✓ ort/${file}`)
+  console.log(`✓ ort/${version}/${file}`)
 }
