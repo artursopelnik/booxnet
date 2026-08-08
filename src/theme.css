@@ -104,7 +104,8 @@ ion-note,
 .brand-mark {
   width: 22px;
   height: 22px;
-  margin-inline-end: 12px;
+  /* Sitzt jetzt links im Header – Abstand zu beiden Nachbarn. */
+  margin-inline: 12px;
   border-radius: 6px;
   display: block;
 }

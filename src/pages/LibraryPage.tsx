@@ -180,18 +180,19 @@ export default function LibraryPage() {
     <IonPage>
       <IonHeader translucent>
         <IonToolbar>
+          {/* Logo links, rechts die Aktionen (Darstellung etc.). */}
+          <img
+            slot="start"
+            className="brand-mark"
+            src={`${import.meta.env.BASE_URL}icon.svg`}
+            alt="Booxnet"
+          />
           <IonTitle>Bibliothek</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={chooseTheme} aria-label="Darstellung ändern">
               <IonIcon aria-hidden="true" slot="icon-only" icon={contrastOutline} />
             </IonButton>
           </IonButtons>
-          <img
-            slot="end"
-            className="brand-mark"
-            src={`${import.meta.env.BASE_URL}icon.svg`}
-            alt="Booxnet"
-          />
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>

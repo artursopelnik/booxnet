@@ -19,7 +19,7 @@ export const STUDIO_VOICES: StudioVoiceMeta[] = [
   { id: 'M2', name: 'Jack', gender: 'm' },
   { id: 'M4', name: 'Norbert', gender: 'm' },
   { id: 'F1', name: 'Eva', gender: 'f' },
-  { id: 'F2', name: 'Michaela', gender: 'f' },
+  { id: 'F2', name: 'Martina', gender: 'f' },
 ]
 
 export function studioVoiceById(

@@ -82,9 +82,9 @@ export function previewTextFor(voice: StudioVoiceMeta): string {
  * Probehören spielt dann sofort ab statt erst zu rechnen. Bei Änderungen
  * am Vorschautext, an Stimmennamen oder an der Vorschau-Qualität die
  * Version hochzählen, damit alte Dateien verfallen.
- * v2: eigene Stimmennamen (Jack, Norbert, Eva, Michaela) + Qualität 6.
+ * v3: F2 heißt Martina statt Michaela.
  */
-const PREVIEW_CACHE_VERSION = 'v2'
+const PREVIEW_CACHE_VERSION = 'v3'
 
 /**
  * Die Begrüßung wird nur einmal gerechnet und dauerhaft gespeichert –

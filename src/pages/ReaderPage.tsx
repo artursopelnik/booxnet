@@ -526,6 +526,13 @@ export default function ReaderPage() {
               aria-label="Zurück zur Bibliothek"
             />
           </IonButtons>
+          {/* Logo links (hinter dem Zurück-Pfeil), rechts die Aktionen. */}
+          <img
+            slot="start"
+            className="brand-mark"
+            src={`${import.meta.env.BASE_URL}icon.svg`}
+            alt="Booxnet"
+          />
           <IonTitle className="reader-title">{book.title}</IonTitle>
           <IonButtons slot="end">
             <IonButton
@@ -535,12 +542,6 @@ export default function ReaderPage() {
               <IonIcon aria-hidden="true" slot="icon-only" icon={textOutline} />
             </IonButton>
           </IonButtons>
-          <img
-            slot="end"
-            className="brand-mark"
-            src={`${import.meta.env.BASE_URL}icon.svg`}
-            alt="Booxnet"
-          />
         </IonToolbar>
       </IonHeader>
 
