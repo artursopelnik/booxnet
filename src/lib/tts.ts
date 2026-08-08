@@ -19,6 +19,13 @@ export interface SpeakerEvents {
 
 export type SpeakerState = 'idle' | 'loading' | 'playing' | 'paused'
 
+/** One unit of speech plus the pause that follows it. */
+export interface SentenceInput {
+  text: string
+  /** Pause after this sentence at 1× speed; defaults to SENTENCE_PAUSE_MS. */
+  pauseAfter?: number
+}
+
 const VOICE_KEY = 'vorleser.voice'
 const RATE_KEY = 'vorleser.rate'
 const PREFETCH_AHEAD = 2
@@ -84,6 +91,7 @@ export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
 
 export class Speaker {
   private sentences: string[] = []
+  private pauses: number[] = []
   private index = 0
   private voice: StudioVoiceMeta | null = null
   private rate = 1
@@ -102,8 +110,9 @@ export class Speaker {
     this.events = events
   }
 
-  setSentences(sentences: string[]): void {
-    this.sentences = sentences
+  setSentences(items: SentenceInput[]): void {
+    this.sentences = items.map((item) => item.text)
+    this.pauses = items.map((item) => item.pauseAfter ?? SENTENCE_PAUSE_MS)
     this.discardAudio()
   }
 
@@ -231,14 +240,18 @@ export class Speaker {
       this.events.onDone?.()
       return
     }
-    // Natural breathing pause at the sentence end, scaled with the tempo.
+    // Natural pause at the sentence end: per-sentence length (longer at
+    // paragraph/page breaks), scaled with the tempo, with a little jitter
+    // so the rhythm doesn't feel metronomic.
+    const base = this.pauses[this.index] ?? SENTENCE_PAUSE_MS
+    const jitter = 0.85 + Math.random() * 0.3
     this.pauseTimer = setTimeout(() => {
       this.pauseTimer = null
       if (generation !== this.generation) return
       if (this.state !== 'playing' && this.state !== 'loading') return
       this.index++
       void this.speakCurrent()
-    }, SENTENCE_PAUSE_MS / this.rate)
+    }, (base * jitter) / this.rate)
   }
 
   private async speakCurrent(): Promise<void> {

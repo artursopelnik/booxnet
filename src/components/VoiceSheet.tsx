@@ -104,6 +104,14 @@ export default function VoiceSheet({
     }
   }
 
+  // Selecting a voice makes it introduce itself: "Hallo, ich bin Alex."
+  const select = (voice: StudioVoiceMeta) => {
+    onSelect(voice)
+    if (previewing === null) {
+      void preview(voice)
+    }
+  }
+
   return (
     <IonModal
       isOpen={isOpen}
@@ -158,7 +166,7 @@ export default function VoiceSheet({
               key={voice.id}
               button={installed}
               disabled={!installed}
-              onClick={installed ? () => onSelect(voice) : undefined}
+              onClick={installed ? () => select(voice) : undefined}
             >
               <IonLabel>
                 <h2>{voice.name}</h2>

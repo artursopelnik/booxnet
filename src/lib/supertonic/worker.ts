@@ -16,7 +16,6 @@ type OrtSession = import('onnxruntime-web').InferenceSession
 type OrtTensor = import('onnxruntime-web').Tensor
 
 const ONNX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/'
-const TOTAL_STEPS = 8
 const SILENCE_SECONDS = 0.3
 
 interface Cfgs {
@@ -38,6 +37,8 @@ interface Engine {
   vectorEst: OrtSession
   vocoder: OrtSession
   styles: Map<StudioVoiceId, Style>
+  /** Denoising steps (5–12): more = better quality, slower synthesis. */
+  steps: number
 }
 
 let enginePromise: Promise<Engine> | null = null
@@ -95,6 +96,8 @@ async function loadEngine(): Promise<Engine> {
     vectorEst,
     vocoder,
     styles: new Map(),
+    // With GPU acceleration the higher quality tier stays fast enough.
+    steps: providers.includes('webgpu') ? 10 : 8,
   }
 }
 
@@ -267,12 +270,12 @@ async function inferChunk(
   )
   const totalStep = new ort.Tensor(
     'float32',
-    new Float32Array([TOTAL_STEPS]),
+    new Float32Array([engine.steps]),
     [1],
   )
 
   // Denoising loop.
-  for (let step = 0; step < TOTAL_STEPS; step++) {
+  for (let step = 0; step < engine.steps; step++) {
     const out = await engine.vectorEst.run({
       noisy_latent: new ort.Tensor('float32', xt, [1, latentDim, latentLen]),
       text_emb: textEmb,

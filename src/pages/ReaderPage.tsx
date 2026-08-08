@@ -164,9 +164,28 @@ export default function ReaderPage() {
     isStudioEngineInstalled().then(setEngineInstalled)
   }, [])
 
+  // What the voice actually speaks: a subtle <breath> expression tag at
+  // page starts (natively supported by Supertonic 3) and longer pauses at
+  // page breaks make the reading sound more human.
+  const speakItems = useMemo(
+    () =>
+      sentences.map((sentence, index) => {
+        const previous = sentences[index - 1]
+        const next = sentences[index + 1]
+        const startsPage =
+          previous !== undefined && previous.page !== sentence.page
+        const endsPage = next !== undefined && next.page !== sentence.page
+        return {
+          text: startsPage ? `<breath> ${sentence.text}` : sentence.text,
+          pauseAfter: endsPage ? 750 : 350,
+        }
+      }),
+    [sentences],
+  )
+
   useEffect(() => {
-    speaker.setSentences(sentences.map((s) => s.text))
-  }, [speaker, sentences])
+    speaker.setSentences(speakItems)
+  }, [speaker, speakItems])
 
   useEffect(() => {
     if (!book) return

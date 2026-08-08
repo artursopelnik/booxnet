@@ -21,10 +21,14 @@ offline und im Look einer nativen iOS-App.
   Worker – die Oberfläche bleibt beim Vorlesen und Scrollen flüssig.
   Off-Screen-Seiten werden per `content-visibility` vom Layout
   ausgenommen, Seiten rendern memoisiert.
-- **Natürlicher Lesefluss:** Pausen an Satzenden (tempo-skaliert), das
-  Lesetempo (0,5×–2×) wird nativ in der Synthese umgesetzt statt das Audio
-  zu beschleunigen, und über Zeilenumbrüche getrennte Wörter
-  („Bei-spiel") werden beim PDF-Import wieder zusammengefügt.
+- **Natürlicher Lesefluss:** Pausen an Satzenden mit leichtem Zufalls-
+  Jitter (kein metronomischer Gleichtakt), längere Pausen an
+  Seitenwechseln, hörbare Atmer an Absatzanfängen über Supertonics
+  `<breath>`-Expression-Tag, höhere Denoising-Qualität bei WebGPU. Das
+  Lesetempo (0,5×–2×) wird nativ in der Synthese umgesetzt statt das
+  Audio zu beschleunigen, und über Zeilenumbrüche getrennte Wörter
+  („Bei-spiel") werden beim PDF-Import wieder zusammengefügt. Beim
+  Auswählen stellt sich jede Stimme selbst vor („Hallo, ich bin Alex.").
 - **Reader mit Satz-Highlighting:** Der aktuell gelesene Satz wird markiert
   und automatisch in den sichtbaren Bereich gescrollt. Tippen auf einen Satz
   springt dorthin. Lesegeschwindigkeit 0,5×–2× einstellbar.
