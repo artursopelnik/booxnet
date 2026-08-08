@@ -185,6 +185,7 @@ export function studioSynthesize(
   speed: number,
   priority = false,
   steps: number = QUALITY_SYNTH_STEPS,
+  channel: 'speech' | 'preview' = 'speech',
 ): Promise<Blob> {
   const key = `${voiceId} ${lang} ${speed} ${text}`
   const hit = cache.get(key)
@@ -197,7 +198,7 @@ export function studioSynthesize(
     return hit.promise
   }
   const { id, promise } = request(
-    { type: 'synthesize', voiceId, lang, text, speed, steps, priority },
+    { type: 'synthesize', voiceId, lang, text, speed, steps, priority, channel },
     priority ? PLAY_TIMEOUT_MS : PREFETCH_TIMEOUT_MS,
   )
   const entry: CacheEntry = {

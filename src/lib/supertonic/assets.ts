@@ -66,16 +66,20 @@ function mirrorUrl(path: string): string {
 }
 
 /** Fetches an asset, preferring the self-hosted mirror over Hugging Face. */
-async function fetchAsset(path: string): Promise<Response> {
+async function fetchAsset(
+  path: string,
+  signal?: AbortSignal,
+): Promise<Response> {
   try {
-    const local = await fetch(mirrorUrl(path))
+    const local = await fetch(mirrorUrl(path), { signal })
     const type = local.headers.get('Content-Type') ?? ''
     // A missing mirror file on SPA hosts returns index.html – reject that.
     if (local.ok && !type.includes('text/html')) return local
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error
     // Mirror unreachable – fall through.
   }
-  const remote = await fetch(`${HF_BASE}/${path}`)
+  const remote = await fetch(`${HF_BASE}/${path}`, { signal })
   if (!remote.ok) {
     throw new Error(`Download failed for ${path}: HTTP ${remote.status}`)
   }
@@ -115,10 +119,19 @@ export async function ensureStudioStyle(
   const path = styleAsset(voiceId)
   const cached = await readAsset(path)
   if (cached) return cached
-  const response = await fetchAsset(path)
-  const data = await response.arrayBuffer()
-  await writeAsset(path, data)
-  return data
+  // Mit hartem Timeout: Dieser Abruf läuft mitten in der SERIELLEN
+  // Synthese-Warteschlange des Workers – ein hängender Netzabruf würde
+  // sonst jede weitere Sprachausgabe für immer blockieren.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 20_000)
+  try {
+    const response = await fetchAsset(path, controller.signal)
+    const data = await response.arrayBuffer()
+    await writeAsset(path, data)
+    return data
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /**

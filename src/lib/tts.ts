@@ -107,6 +107,7 @@ async function renderPreview(
     BASE_SPEED,
     priority,
     PREVIEW_SYNTH_STEPS,
+    'preview',
   )
   // Persistieren best-effort – das Abspielen wartet nicht darauf.
   void blob
