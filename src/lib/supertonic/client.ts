@@ -155,6 +155,24 @@ export const TTS_CANCELLED_ERROR = 'TtsCancelledError'
  */
 export const QUALITY_SYNTH_STEPS = 4
 
+/**
+ * Experimentier-Schalter für die Graph-Optimierung des Engine-Aufbaus:
+ * In der Browser-Konsole z. B. localStorage.setItem('vorleser.ortopt',
+ * 'basic') setzen und neu laden – die Diagnose-Logs ([booxnet-tts])
+ * zeigen dann Ladezeit und Threads zum Vergleich. Ohne Eintrag gilt
+ * 'all' (Standard von onnxruntime, stärkste Optimierung).
+ */
+function ortOptLevel(): string {
+  try {
+    const value = localStorage.getItem('vorleser.ortopt')
+    return value === 'extended' || value === 'basic' || value === 'disabled'
+      ? value
+      : 'all'
+  } catch {
+    return 'all'
+  }
+}
+
 function request(
   message: Omit<Parameters<Worker['postMessage']>[0], 'id'> &
     Record<string, unknown>,
@@ -184,7 +202,7 @@ function request(
         reject(error)
       },
     })
-    getWorker().postMessage({ ...message, id })
+    getWorker().postMessage({ ...message, id, ortOpt: ortOptLevel() })
   })
   return { id, promise }
 }

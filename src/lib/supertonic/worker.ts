@@ -61,7 +61,23 @@ function reportEngineProgress(value: number): void {
   })
 }
 
-async function loadEngine(): Promise<Engine> {
+/**
+ * Experimentier-Schalter für die Graph-Optimierung beim Session-Aufbau
+ * (localStorage 'vorleser.ortopt', vom Client mitgeschickt): 'all'
+ * (Standard) optimiert am stärksten, kostet aber beim Aufbau am meisten
+ * Zeit; 'basic'/'disabled' bauen schneller auf, rechnen dafür ggf.
+ * langsamer. Die Diagnose-Logs unten liefern die Messwerte zum Vergleich.
+ */
+export type OrtOptLevel = 'all' | 'extended' | 'basic' | 'disabled'
+
+function toOrtOptLevel(value: unknown): OrtOptLevel {
+  return value === 'extended' || value === 'basic' || value === 'disabled'
+    ? value
+    : 'all'
+}
+
+async function loadEngine(ortOpt: OrtOptLevel): Promise<Engine> {
+  const startedAt = Date.now()
   reportEngineProgress(0)
   const ort = (await import('onnxruntime-web/wasm')) as Ort
   // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers, siehe
@@ -73,6 +89,15 @@ async function loadEngine(): Promise<Engine> {
   ort.env.wasm.numThreads = self.crossOriginIsolated
     ? Math.max(1, Math.min(6, (navigator.hardwareConcurrency ?? 4) - 1))
     : 1
+  // Diagnose: Ohne Cross-Origin-Isolation (COOP/COEP-Header fehlen oder
+  // gingen im Service-Worker-Cache verloren) läuft die Engine EINKERNIG –
+  // das wäre der wahre Schuldige hinter "quälend langsam".
+  console.info(
+    `[booxnet-tts] Threads: ${ort.env.wasm.numThreads}` +
+      ` (crossOriginIsolated=${self.crossOriginIsolated === true},` +
+      ` Kerne=${navigator.hardwareConcurrency ?? '?'},` +
+      ` Optimierung=${ortOpt})`,
+  )
   ort.env.wasm.wasmPaths = await resolveOrtWasmPrefix()
 
   const [cfgsBuf, indexerBuf] = await Promise.all([
@@ -110,17 +135,29 @@ async function loadEngine(): Promise<Engine> {
     if (i + 1 < modelPaths.length) {
       nextBuffer = loadStudioAsset(modelPaths[i + 1])
     }
+    const sessionStart = Date.now()
     sessions.push(
       await ort.InferenceSession.create(new Uint8Array(buffer), {
         executionProviders: ['wasm'],
+        graphOptimizationLevel: ortOpt,
       }),
+    )
+    // Diagnose: Welches Modell frisst die Ladezeit? (Session-Aufbau ohne
+    // die parallel laufende OPFS-Lesezeit.)
+    console.info(
+      `[booxnet-tts] ${modelPaths[i]}: Session in ` +
+        `${((Date.now() - sessionStart) / 1000).toFixed(1)} s` +
+        ` (${Math.round(Math.max(0, sizes[i]) / 1024 / 1024)} MB)`,
     )
     step(sizes[i])
   }
   const [dp, textEnc, vectorEst, vocoder] = sessions
 
   reportEngineProgress(1)
-  console.info('[booxnet-tts] Engine bereit: WASM')
+  console.info(
+    `[booxnet-tts] Engine bereit: WASM, gesamt ` +
+      `${((Date.now() - startedAt) / 1000).toFixed(1)} s`,
+  )
   return {
     ort,
     cfgs,
@@ -133,8 +170,10 @@ async function loadEngine(): Promise<Engine> {
   }
 }
 
-function getEngine(): Promise<Engine> {
-  enginePromise ??= loadEngine().catch((error) => {
+function getEngine(ortOpt: OrtOptLevel): Promise<Engine> {
+  // Die erste Anfrage bestimmt die Optimierungsstufe; ein Wechsel greift
+  // erst nach einem Engine-Reset bzw. App-Neustart.
+  enginePromise ??= loadEngine(ortOpt).catch((error) => {
     enginePromise = null
     // Sonst bliebe der Fortschrittsbalken beim nächsten Versuch auf dem
     // alten Stand stehen.
@@ -426,12 +465,16 @@ interface SynthesizeRequest {
    * Stimmwechsel/Tipper dürfen keine Berechnungs-Schlange auftürmen.
    */
   channel?: string
+  /** Experimentier-Schalter für die Graph-Optimierung (siehe oben). */
+  ortOpt?: string
 }
 
 interface PreloadRequest {
   id: number
   type: 'preload'
   voiceId: StudioVoiceId
+  /** Experimentier-Schalter für die Graph-Optimierung (siehe oben). */
+  ortOpt?: string
 }
 
 interface ResetRequest {
@@ -481,7 +524,7 @@ async function handle(
     return
   }
   try {
-    const engine = await getEngine()
+    const engine = await getEngine(toOrtOptLevel(request.ortOpt))
     if (request.type === 'preload') {
       await getStyle(engine, request.voiceId)
       self.postMessage({ id: request.id, ok: true })
