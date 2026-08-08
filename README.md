@@ -42,6 +42,12 @@ offline und im Look einer nativen iOS-App.
   läuft dank Service Worker vollständig offline.
 - **Nativer iOS-Look:** Ionic React im iOS-Modus, inkl. Large Titles,
   Sheet-Modals, Swipe-to-Delete und automatischem Dark Mode.
+- **Barrierefrei (WCAG 2.1 AA / BITV-Basis):** axe-core-Audit ohne
+  Verstöße über alle Ansichten; Touch-Targets ≥ 48 px (Play 64 px),
+  AA-Kontraste in Hell und Dunkel, Zoom nicht blockiert, Tastatur-
+  steuerung im Reader (Leertaste = Play/Pause, Pfeiltasten = Satz
+  vor/zurück), sichtbarer Fokus, `prefers-reduced-motion` respektiert,
+  Screenreader-Labels auf allen Bedienelementen.
 
 ## Entwicklung
 

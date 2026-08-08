@@ -233,11 +233,38 @@ export default function ReaderPage() {
     const height = window.innerHeight
     if (rect.top >= height * 0.15 && rect.bottom <= height * 0.7) return
     programmaticScroll.current = true
-    element.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    element.scrollIntoView({
+      block: 'center',
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    })
     setTimeout(() => {
       programmaticScroll.current = false
     }, 700)
   }, [current, state])
+
+  // Keyboard control: Space toggles playback, arrow keys skip sentences.
+  const keyHandler = useRef<(event: KeyboardEvent) => void>(() => {})
+  keyHandler.current = (event: KeyboardEvent) => {
+    if (voiceSheetOpen) return
+    const target = event.target as HTMLElement | null
+    if (target?.closest('input, textarea, [contenteditable]')) return
+    if (event.code === 'Space') {
+      event.preventDefault()
+      togglePlayback()
+    } else if (event.key === 'ArrowRight') {
+      speaker.skip(1)
+    } else if (event.key === 'ArrowLeft') {
+      speaker.skip(-1)
+    }
+  }
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => keyHandler.current(event)
+    window.addEventListener('keydown', listener)
+    return () => window.removeEventListener('keydown', listener)
+  }, [])
 
   const onUserScrollStart = useCallback(() => {
     if (!programmaticScroll.current) {
@@ -361,14 +388,14 @@ export default function ReaderPage() {
                 onClick={() => setVoiceSheetOpen(true)}
                 aria-label="Stimme auswählen"
               >
-                <IonIcon slot="icon-only" icon={personCircleOutline} />
+                <IonIcon aria-hidden="true" slot="icon-only" icon={personCircleOutline} />
               </IonButton>
               <IonButton
                 fill="clear"
                 onClick={() => speaker.skip(-1)}
                 aria-label="Ein Satz zurück"
               >
-                <IonIcon slot="icon-only" icon={playBack} />
+                <IonIcon aria-hidden="true" slot="icon-only" icon={playBack} />
               </IonButton>
               <IonButton
                 className="player__play"
@@ -384,6 +411,7 @@ export default function ReaderPage() {
                   <IonSpinner name="crescent" />
                 ) : (
                   <IonIcon
+                    aria-hidden="true"
                     slot="icon-only"
                     icon={state === 'playing' ? pause : play}
                   />
@@ -394,7 +422,7 @@ export default function ReaderPage() {
                 onClick={() => speaker.skip(1)}
                 aria-label="Ein Satz vor"
               >
-                <IonIcon slot="icon-only" icon={playForward} />
+                <IonIcon aria-hidden="true" slot="icon-only" icon={playForward} />
               </IonButton>
               <IonButton
                 fill="clear"

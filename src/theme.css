@@ -1,10 +1,40 @@
 :root {
-  --ion-color-primary: #0a84ff;
-  --ion-color-primary-rgb: 10, 132, 255;
+  /* 0a84ff fails WCAG AA as text on white (3.2:1) – 0064d2 reaches 4.9:1
+     and stays recognizably "iOS blue". */
+  --ion-color-primary: #0064d2;
+  --ion-color-primary-rgb: 0, 100, 210;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #0974e0;
-  --ion-color-primary-tint: #2390ff;
+  --ion-color-primary-shade: #0058b9;
+  --ion-color-primary-tint: #1a74d7;
+  /* Muted text with AA contrast on both palettes (≥4.5:1). */
+  --booxnet-muted: #545456;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* In dark mode the brighter blue has the better contrast. */
+    --ion-color-primary: #409cff;
+    --ion-color-primary-rgb: 64, 156, 255;
+    --ion-color-primary-contrast: #000000;
+    --ion-color-primary-contrast-rgb: 0, 0, 0;
+    --ion-color-primary-shade: #388ae0;
+    --ion-color-primary-tint: #53a6ff;
+    --booxnet-muted: #a1a1a6;
+  }
+}
+
+/* Secondary text everywhere (notes, status lines) with AA contrast. */
+ion-note,
+.voice-section-note,
+.page-marker {
+  color: var(--booxnet-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sentence {
+    transition: none;
+  }
 }
 
 /* ---- Library ---- */
@@ -94,7 +124,7 @@
 }
 
 .sentence--active {
-  background: rgba(10, 132, 255, 0.18);
+  background: rgba(0, 100, 210, 0.18);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -133,21 +163,44 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 10px;
+}
+
+/* Generous touch targets: 48×48 px minimum (WCAG 2.5.5 / Apple HIG 44pt). */
+.player__controls ion-button {
+  min-width: 48px;
+  min-height: 48px;
+  margin: 0;
+}
+
+.player__controls ion-icon {
+  font-size: 28px;
 }
 
 .player__play {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   --border-radius: 50%;
 }
 
 .player__play ion-icon {
-  font-size: 26px;
+  font-size: 30px;
 }
 
 .player__rate {
-  min-width: 56px;
+  min-width: 60px;
+  font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+}
+
+.player__meta {
+  font-size: 0.85rem;
+}
+
+/* Visible keyboard focus on the reading text. */
+.sentence:focus-visible {
+  outline: 3px solid var(--ion-color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
