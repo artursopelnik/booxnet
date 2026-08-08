@@ -1,11 +1,12 @@
 /**
  * Sentence-by-sentence read-aloud engine on top of the Supertonic studio
  * voices. Sentences are synthesized in a Web Worker (the UI never blocks),
- * played through an <audio> element, prefetched ahead of playback, and
- * separated by a natural pause so the reading breathes at sentence ends.
+ * prefetched ahead of playback and separated by natural pauses.
  *
- * Speed is passed to the engine natively (it stretches phoneme durations)
- * instead of speeding up the audio afterwards – no chipmunk artifacts.
+ * Playback uses the Web Audio API with one shared AudioContext that is
+ * resumed inside the user's tap. Unlike <audio>.play(), starting buffer
+ * sources on a running context is never blocked by iOS Safari – this is
+ * what keeps sentence N+1 playing without another tap.
  */
 import { studioPrefetch, studioSynthesize } from './supertonic/client'
 import type { StudioVoiceMeta } from './voices'
@@ -24,11 +25,13 @@ export interface SentenceInput {
   text: string
   /** Pause after this sentence at 1× speed; defaults to SENTENCE_PAUSE_MS. */
   pauseAfter?: number
+  /** Not worth reading aloud (page numbers, ornaments) – skipped. */
+  skip?: boolean
 }
 
 const VOICE_KEY = 'vorleser.voice'
 const RATE_KEY = 'vorleser.rate'
-const PREFETCH_AHEAD = 2
+const PREFETCH_AHEAD = 3
 /** Pause between sentences at 1× speed. */
 const SENTENCE_PAUSE_MS = 350
 /** Supertonic's recommended neutral speed. */
@@ -63,36 +66,56 @@ export function previewTextFor(voice: StudioVoiceMeta): string {
   return `Hallo, ich bin ${voice.name}. So klinge ich, wenn ich dir dein Buch vorlese.`
 }
 
-/**
- * iOS Safari only allows audio started from a user gesture. Because our
- * audio arrives after an async synthesis step, we "unlock" a persistent
- * <audio> element with a silent clip synchronously inside the tap and then
- * reuse that same element for every sentence – once unlocked, it may keep
- * playing programmatically.
- */
-const SILENT_WAV =
-  'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA=='
+/* ---------------------------------------------------------------- audio */
 
-function unlockAudio(element: HTMLAudioElement): void {
-  element.muted = true
-  element.src = SILENT_WAV
-  void element.play().catch(() => {})
-  element.muted = false
-}
+let sharedCtx: AudioContext | null = null
 
-function setBlobSrc(element: HTMLAudioElement, blob: Blob): void {
-  if (element.src.startsWith('blob:')) {
-    URL.revokeObjectURL(element.src)
+function getAudioContext(): AudioContext {
+  if (!sharedCtx) {
+    const Ctor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext
+    sharedCtx = new Ctor()
   }
-  element.src = URL.createObjectURL(blob)
+  return sharedCtx
 }
 
-let previewAudio: HTMLAudioElement | null = null
-let previewUnlocked = false
+/**
+ * Must be called synchronously inside a user gesture once: resumes the
+ * context and plays a one-sample silent buffer so iOS marks it as
+ * user-activated.
+ */
+function unlockAudioContext(): void {
+  const ctx = getAudioContext()
+  if (ctx.state === 'suspended') {
+    void ctx.resume()
+  }
+  const buffer = ctx.createBuffer(1, 1, 22050)
+  const source = ctx.createBufferSource()
+  source.buffer = buffer
+  source.connect(ctx.destination)
+  source.start(0)
+}
+
+async function decodeBlob(blob: Blob): Promise<AudioBuffer> {
+  const data = await blob.arrayBuffer()
+  return getAudioContext().decodeAudioData(data)
+}
+
+/* -------------------------------------------------------------- preview */
+
+let previewSource: AudioBufferSourceNode | null = null
 
 function stopPreview(): void {
-  if (previewAudio && !previewAudio.paused) {
-    previewAudio.pause()
+  if (previewSource) {
+    previewSource.onended = null
+    try {
+      previewSource.stop()
+    } catch {
+      // Already stopped.
+    }
+    previewSource = null
   }
 }
 
@@ -101,26 +124,34 @@ function stopPreview(): void {
  * Must be called from a user gesture (tap on the voice row).
  */
 export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
+  unlockAudioContext()
   stopPreview()
-  previewAudio ??= new Audio()
-  if (!previewUnlocked) {
-    unlockAudio(previewAudio)
-    previewUnlocked = true
-  }
   const blob = await studioSynthesize(
     voice.id,
     'de',
     previewTextFor(voice),
     BASE_SPEED,
   )
+  const buffer = await decodeBlob(blob)
   stopPreview()
-  setBlobSrc(previewAudio, blob)
-  await previewAudio.play()
+  const ctx = getAudioContext()
+  if (ctx.state === 'suspended') await ctx.resume()
+  const source = ctx.createBufferSource()
+  source.buffer = buffer
+  source.connect(ctx.destination)
+  previewSource = source
+  source.start()
+  await new Promise<void>((resolve) => {
+    source.onended = () => resolve()
+  })
 }
+
+/* -------------------------------------------------------------- speaker */
 
 export class Speaker {
   private sentences: string[] = []
   private pauses: number[] = []
+  private skips: boolean[] = []
   private index = 0
   private voice: StudioVoiceMeta | null = null
   private rate = 1
@@ -129,11 +160,9 @@ export class Speaker {
   private state: SpeakerState = 'idle'
   /** Guards against stale async callbacks after pause/skip/stop. */
   private generation = 0
-  /** One persistent element, unlocked once via user gesture (iOS Safari). */
-  private audioEl: HTMLAudioElement | null = null
-  private unlocked = false
-  /** Index the paused audio belongs to, for seamless mid-sentence resume. */
-  private audioIndex = -1
+  private source: AudioBufferSourceNode | null = null
+  /** Index the paused source belongs to, for mid-sentence resume. */
+  private sourceIndex = -1
   private pauseTimer: ReturnType<typeof setTimeout> | null = null
   private events: SpeakerEvents
 
@@ -144,7 +173,8 @@ export class Speaker {
   setSentences(items: SentenceInput[]): void {
     this.sentences = items.map((item) => item.text)
     this.pauses = items.map((item) => item.pauseAfter ?? SENTENCE_PAUSE_MS)
-    this.discardAudio()
+    this.skips = items.map((item) => item.skip ?? false)
+    this.stopSource()
   }
 
   setLangHint(lang: string): void {
@@ -154,11 +184,8 @@ export class Speaker {
   setVoice(voice: StudioVoiceMeta | null): void {
     const changed = this.voice?.id !== voice?.id
     this.voice = voice
-    if (changed) {
-      this.discardAudio()
-      if (this.state === 'playing' || this.state === 'loading') {
-        this.play(this.index)
-      }
+    if (changed && (this.state === 'playing' || this.state === 'loading')) {
+      this.play(this.index)
     }
   }
 
@@ -169,8 +196,6 @@ export class Speaker {
     // with the new tempo when playing.
     if (this.state === 'playing' || this.state === 'loading') {
       this.play(this.index)
-    } else {
-      this.discardAudio()
     }
   }
 
@@ -189,27 +214,21 @@ export class Speaker {
     }
     this.generation++
     this.clearPauseTimer()
-
-    // Unlock synchronously inside the user gesture – the actual sentence
-    // audio arrives only after async synthesis, which iOS would block.
-    const element = this.ensureAudioElement()
-    if (!this.unlocked) {
-      unlockAudio(element)
-      this.unlocked = true
-    }
+    // Inside the user gesture: resume/unlock the context.
+    unlockAudioContext()
 
     // Resume paused audio mid-sentence.
     if (
       this.state === 'paused' &&
-      this.audioIndex === this.index &&
-      element.src.startsWith('blob:')
+      this.source &&
+      this.sourceIndex === this.index
     ) {
       this.setState('playing')
-      void element.play().catch(() => this.speakCurrent())
+      void getAudioContext().resume()
       return
     }
 
-    this.stopAudio()
+    this.stopSource()
     this.setState('loading')
     void this.speakCurrent()
   }
@@ -218,7 +237,8 @@ export class Speaker {
     if (this.state !== 'playing' && this.state !== 'loading') return
     this.generation++
     this.clearPauseTimer()
-    this.audioEl?.pause()
+    // Suspending freezes the current source so play() can resume it.
+    void getAudioContext().suspend()
     this.setState('paused')
   }
 
@@ -237,14 +257,14 @@ export class Speaker {
     if (this.state === 'playing' || this.state === 'loading') {
       this.play(this.index)
     } else {
-      this.discardAudio()
+      this.stopSource()
     }
   }
 
   stop(): void {
     this.generation++
     this.clearPauseTimer()
-    this.discardAudio()
+    this.stopSource()
     this.setState('idle')
   }
 
@@ -255,27 +275,21 @@ export class Speaker {
     }
   }
 
-  private ensureAudioElement(): HTMLAudioElement {
-    if (!this.audioEl) {
-      this.audioEl = new Audio()
-      this.audioEl.preload = 'auto'
+  private stopSource(): void {
+    if (this.source) {
+      this.source.onended = null
+      try {
+        this.source.stop()
+      } catch {
+        // Already stopped.
+      }
+      this.source = null
     }
-    return this.audioEl
-  }
-
-  /** Stops playback but keeps the (unlocked) element for reuse. */
-  private stopAudio(): void {
-    if (this.audioEl) {
-      this.audioEl.pause()
-    }
-    this.audioIndex = -1
-  }
-
-  private discardAudio(): void {
-    this.stopAudio()
-    if (this.audioEl?.src.startsWith('blob:')) {
-      URL.revokeObjectURL(this.audioEl.src)
-      this.audioEl.removeAttribute('src')
+    this.sourceIndex = -1
+    // A suspended context would silently swallow the next start().
+    const ctx = sharedCtx
+    if (ctx && ctx.state === 'suspended') {
+      void ctx.resume()
     }
   }
 
@@ -285,27 +299,42 @@ export class Speaker {
     this.events.onStateChange?.(state)
   }
 
-  private advance(generation: number): void {
+  private scheduleNext(generation: number, delayMs: number): void {
     if (generation !== this.generation) return
     if (this.state !== 'playing' && this.state !== 'loading') return
     if (this.index >= this.sentences.length - 1) {
-      this.discardAudio()
+      this.stopSource()
       this.setState('idle')
       this.events.onDone?.()
       return
     }
-    // Natural pause at the sentence end: per-sentence length (longer at
-    // paragraph/page breaks), scaled with the tempo, with a little jitter
-    // so the rhythm doesn't feel metronomic.
-    const base = this.pauses[this.index] ?? SENTENCE_PAUSE_MS
-    const jitter = 0.85 + Math.random() * 0.3
     this.pauseTimer = setTimeout(() => {
       this.pauseTimer = null
       if (generation !== this.generation) return
       if (this.state !== 'playing' && this.state !== 'loading') return
       this.index++
       void this.speakCurrent()
-    }, (base * jitter) / this.rate)
+    }, delayMs)
+  }
+
+  private advance(generation: number): void {
+    // Natural pause at the sentence end: per-sentence length (longer at
+    // paragraph/page breaks), scaled with the tempo, with a little jitter
+    // so the rhythm doesn't feel metronomic.
+    const base = this.pauses[this.index] ?? SENTENCE_PAUSE_MS
+    const jitter = 0.85 + Math.random() * 0.3
+    this.scheduleNext(generation, (base * jitter) / this.rate)
+  }
+
+  /** Upcoming sentences worth synthesizing, for the prefetch warm-up. */
+  private upcoming(count: number): string[] {
+    const result: string[] = []
+    for (let i = this.index + 1; i < this.sentences.length; i++) {
+      if (this.skips[i]) continue
+      result.push(this.sentences[i])
+      if (result.length >= count) break
+    }
+    return result
   }
 
   private async speakCurrent(): Promise<void> {
@@ -318,12 +347,26 @@ export class Speaker {
     }
     this.events.onSentence?.(this.index)
     const generation = this.generation
-    const speed = engineSpeed(this.rate)
 
+    // Page numbers, ornaments etc. are skipped near-instantly.
+    if (this.skips[this.index]) {
+      this.setState('playing')
+      this.scheduleNext(generation, 60)
+      return
+    }
+
+    const speed = engineSpeed(this.rate)
     this.setState('loading')
-    let blob: Blob
+    let buffer: AudioBuffer
     try {
-      blob = await studioSynthesize(voice.id, this.langHint, text, speed)
+      const blob = await studioSynthesize(
+        voice.id,
+        this.langHint,
+        text,
+        speed,
+      )
+      if (generation !== this.generation) return
+      buffer = await decodeBlob(blob)
     } catch {
       if (generation !== this.generation) return
       this.events.onError?.(
@@ -334,28 +377,24 @@ export class Speaker {
     }
     if (generation !== this.generation) return
 
-    const element = this.ensureAudioElement()
-    element.pause()
-    element.onended = () => this.advance(generation)
-    element.onerror = () => {
-      if (generation === this.generation) this.advance(generation)
+    this.stopSource()
+    const ctx = getAudioContext()
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume()
+      } catch {
+        // start() below still works once the context recovers.
+      }
     }
-    setBlobSrc(element, blob)
-    this.audioIndex = this.index
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    source.connect(ctx.destination)
+    source.onended = () => this.advance(generation)
+    this.source = source
+    this.sourceIndex = this.index
     this.setState('playing')
-    try {
-      await element.play()
-    } catch {
-      if (generation !== this.generation) return
-      this.setState('paused')
-      return
-    }
+    source.start()
 
-    studioPrefetch(
-      voice.id,
-      this.langHint,
-      this.sentences.slice(this.index + 1, this.index + 1 + PREFETCH_AHEAD),
-      speed,
-    )
+    studioPrefetch(voice.id, this.langHint, this.upcoming(PREFETCH_AHEAD), speed)
   }
 }

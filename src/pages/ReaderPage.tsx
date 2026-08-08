@@ -8,6 +8,7 @@ import {
   IonIcon,
   IonNote,
   IonPage,
+  IonProgressBar,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -34,8 +35,10 @@ import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
 import { detectStudioLang, langLabel } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
-import { toSentences } from '../lib/text'
+import { studioPrefetch } from '../lib/supertonic/client'
+import { isSpeakable, sanitizeForSpeech, toSentences } from '../lib/text'
 import {
+  engineSpeed,
   getSavedRate,
   getSavedVoiceId,
   saveRate,
@@ -175,9 +178,10 @@ export default function ReaderPage() {
     isStudioEngineInstalled().then(setEngineInstalled)
   }, [])
 
-  // What the voice actually speaks: a subtle <breath> expression tag at
-  // page starts (natively supported by Supertonic 3), longer pauses at
-  // page breaks, and punctuation-aware pauses make the reading human.
+  // What the voice actually speaks: sanitized text (no PDF artifacts), a
+  // subtle <breath> expression tag at page starts (natively supported by
+  // Supertonic 3), longer pauses at page breaks, punctuation-aware pauses.
+  // Fragments without real words (page numbers, ornaments) are skipped.
   const speakItems = useMemo(
     () =>
       sentences.map((sentence, index) => {
@@ -186,9 +190,12 @@ export default function ReaderPage() {
         const startsPage =
           previous !== undefined && previous.page !== sentence.page
         const endsPage = next !== undefined && next.page !== sentence.page
+        const clean = sanitizeForSpeech(sentence.text)
+        const speakable = isSpeakable(clean)
         return {
-          text: startsPage ? `<breath> ${sentence.text}` : sentence.text,
+          text: startsPage && speakable ? `<breath> ${clean}` : clean,
           pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),
+          skip: !speakable,
         }
       }),
     [sentences],
@@ -197,6 +204,32 @@ export default function ReaderPage() {
   useEffect(() => {
     speaker.setSentences(speakItems)
   }, [speaker, speakItems])
+
+  // Progressive rendering: paint the pages around the reading position
+  // immediately, fill in the rest in the background – huge books (hundreds
+  // of pages) no longer freeze the UI when opening.
+  const [visiblePages, setVisiblePages] = useState(8)
+  useEffect(() => {
+    if (!book) return
+    const positionPage = pageOfSentence.get(book.position) ?? 0
+    const startIndex = pages.findIndex((p) => p.pageIndex === positionPage)
+    setVisiblePages(Math.max(8, startIndex + 4))
+  }, [book, pages, pageOfSentence])
+  useEffect(() => {
+    if (visiblePages >= pages.length) return
+    const timer = setTimeout(
+      () => setVisiblePages((v) => Math.min(v + 15, pages.length)),
+      100,
+    )
+    return () => clearTimeout(timer)
+  }, [visiblePages, pages.length])
+  // Jumping forward must always render the target page.
+  useEffect(() => {
+    const page = pageOfSentence.get(current)
+    if (page === undefined) return
+    const index = pages.findIndex((p) => p.pageIndex === page)
+    if (index >= 0) setVisiblePages((v) => Math.max(v, index + 2))
+  }, [current, pages, pageOfSentence])
 
   useEffect(() => {
     if (!book) return
@@ -211,6 +244,19 @@ export default function ReaderPage() {
   useEffect(() => {
     speaker.setVoice(voice)
   }, [speaker, voice])
+
+  // Warm up the engine and the first sentences as soon as the reader is
+  // open – tapping Play then starts quickly instead of on a cold engine.
+  useEffect(() => {
+    if (!engineInstalled || speakItems.length === 0) return
+    const first = speakItems
+      .filter((item) => !item.skip)
+      .slice(0, 2)
+      .map((item) => item.text)
+    if (first.length > 0) {
+      studioPrefetch(voice.id, bookLang, first, engineSpeed(rate))
+    }
+  }, [engineInstalled, speakItems, voice.id, bookLang, rate])
 
   useEffect(() => {
     speaker.setRate(rate)
@@ -391,7 +437,7 @@ export default function ReaderPage() {
               alt={`Cover: ${book.title}`}
             />
           )}
-          {pages.map((page) => (
+          {pages.slice(0, visiblePages).map((page) => (
             <PageSection
               key={page.pageIndex}
               pageIndex={page.pageIndex}
@@ -404,12 +450,16 @@ export default function ReaderPage() {
       </IonContent>
 
       <IonFooter translucent>
+        {state === 'loading' && (
+          <IonProgressBar type="indeterminate" aria-label="Stimme lädt" />
+        )}
         <IonToolbar className="player-toolbar">
           <div className="player">
             <div className="player__meta">
-              <IonNote>
-                Satz {Math.min(current + 1, sentences.length)} von{' '}
-                {sentences.length} · {voice.name} · {langLabel(bookLang)}
+              <IonNote aria-live="polite">
+                {state === 'loading'
+                  ? 'Stimme wird vorbereitet …'
+                  : `Satz ${Math.min(current + 1, sentences.length)} von ${sentences.length} · ${voice.name} · ${langLabel(bookLang)}`}
               </IonNote>
             </div>
             <div className="player__controls">
