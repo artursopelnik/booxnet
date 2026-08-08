@@ -15,14 +15,83 @@ interface WorkerResponse {
   cancelled?: boolean
 }
 
+/** Eckdaten der geladenen Engine, für die Diagnose-Anzeige in der UI. */
+export interface EngineStats {
+  threads: number
+  isolated: boolean
+  cores: number | null
+  loadSeconds: number
+  /** Tatsächlich geladene Variante (nach evtl. Rückfall auf Standard). */
+  variant: 'standard' | 'int8'
+  /** Vom Nutzer gewünschte Variante. */
+  variantRequested: 'standard' | 'int8'
+}
+
+/** Messwerte der letzten fertigen Satz-Berechnung (ohne Vorschauen). */
+export interface SynthStats {
+  computeSeconds: number
+  audioSeconds: number
+}
+
 /**
- * Fortschrittsmeldung des Workers (0..1): 'engine-progress' für das
- * einmalige Engine-Laden, 'synth-progress' für die Rechenschritte der
- * laufenden Satz-Berechnung.
+ * Meldungen, die der Worker von sich aus schickt: Fortschritt (0..1) für
+ * Engine-Laden und Satz-Berechnung sowie Diagnose-Eckdaten.
  */
-interface ProgressMessage {
-  type: 'engine-progress' | 'synth-progress'
-  value: number
+type ProgressMessage =
+  | { type: 'engine-progress'; value: number }
+  | { type: 'synth-progress'; value: number }
+  | { type: 'engine-stats'; stats: EngineStats }
+  | { type: 'synth-stats'; stats: SynthStats }
+
+export interface EngineInfo {
+  engine: EngineStats | null
+  synth: SynthStats | null
+}
+
+let engineInfo: EngineInfo = { engine: null, synth: null }
+const engineInfoListeners = new Set<(info: EngineInfo) => void>()
+
+function updateEngineInfo(patch: Partial<EngineInfo>): void {
+  engineInfo = { ...engineInfo, ...patch }
+  for (const listener of engineInfoListeners) {
+    listener(engineInfo)
+  }
+}
+
+/**
+ * Abonniert die Diagnose-Eckdaten (Threads, Ladezeit, Variante, letzte
+ * Satz-Berechnung) für die Anzeige in der Stimmen-Auswahl – am Handy
+ * gibt es keine Browser-Konsole. Sofort mit dem aktuellen Stand gerufen.
+ */
+export function subscribeEngineInfo(
+  listener: (info: EngineInfo) => void,
+): () => void {
+  listener(engineInfo)
+  engineInfoListeners.add(listener)
+  return () => {
+    engineInfoListeners.delete(listener)
+  }
+}
+
+const VARIANT_KEY = 'vorleser.variante'
+
+/** Gewählte Engine-Variante: Standard (fp32) oder experimentelles int8. */
+export function engineVariantSetting(): 'standard' | 'int8' {
+  try {
+    return localStorage.getItem(VARIANT_KEY) === 'int8' ? 'int8' : 'standard'
+  } catch {
+    return 'standard'
+  }
+}
+
+/** Setzt die Variante; der Aufrufer startet die Engine danach neu. */
+export function setEngineVariantSetting(variant: 'standard' | 'int8'): void {
+  try {
+    if (variant === 'int8') localStorage.setItem(VARIANT_KEY, 'int8')
+    else localStorage.removeItem(VARIANT_KEY)
+  } catch {
+    // Ohne Speicher bleibt es beim Standard.
+  }
 }
 
 let engineProgress = 0
@@ -95,7 +164,12 @@ function getWorker(): Worker {
       const data = event.data
       if ('type' in data) {
         if (data.type === 'engine-progress') setEngineProgress(data.value)
-        else setSynthProgress(data.value)
+        else if (data.type === 'synth-progress') setSynthProgress(data.value)
+        else if (data.type === 'engine-stats') {
+          updateEngineInfo({ engine: data.stats })
+        } else {
+          updateEngineInfo({ synth: data.stats })
+        }
         return
       }
       const { id, ok, wav, error, cancelled } = data
@@ -121,6 +195,7 @@ function getWorker(): Worker {
       worker = null
       setEngineProgress(0)
       setSynthProgress(0)
+      updateEngineInfo({ engine: null, synth: null })
     }
   }
   return worker
@@ -202,7 +277,12 @@ function request(
         reject(error)
       },
     })
-    getWorker().postMessage({ ...message, id, ortOpt: ortOptLevel() })
+    getWorker().postMessage({
+      ...message,
+      id,
+      ortOpt: ortOptLevel(),
+      variant: engineVariantSetting(),
+    })
   })
   return { id, promise }
 }
@@ -240,11 +320,17 @@ export function resetStudioEngine(): void {
   warmedVoices.clear()
   setEngineProgress(0)
   setSynthProgress(0)
+  updateEngineInfo({ engine: null, synth: null })
   if (worker) {
     worker.terminate()
     worker = null
     for (const entry of pending.values()) {
-      entry.reject(new Error('Engine wurde zurückgesetzt'))
+      // Als "verdrängt" markiert: Läuft gerade eine Wiedergabe, fordert
+      // der Sprecher den Satz einfach neu an (dann mit der neuen
+      // Variante), statt dem Nutzer einen Fehler zu zeigen.
+      const error = new Error('Engine wurde zurückgesetzt')
+      error.name = TTS_CANCELLED_ERROR
+      entry.reject(error)
     }
     pending.clear()
   }

@@ -12,6 +12,7 @@ import {
   IonProgressBar,
   IonSpinner,
   IonTitle,
+  IonToggle,
   IonToolbar,
   useIonAlert,
   useIonToast,
@@ -19,6 +20,7 @@ import {
 import {
   checkmark,
   cloudDownloadOutline,
+  flaskOutline,
   sparklesOutline,
   trashOutline,
   volumeMediumOutline,
@@ -26,16 +28,66 @@ import {
 import { useEffect, useState } from 'react'
 import {
   DOWNLOAD_ERRORS,
+  downloadInt8VectorEstimator,
   downloadStudioEngine,
+  INT8_VECTOR_ESTIMATOR_SIZE_MB,
+  isInt8VariantInstalled,
   isStudioEngineInstalled,
   removeStudioData,
   STUDIO_ENGINE_SIZE_MB,
   StudioDownloadError,
 } from '../lib/supertonic/assets'
-import { resetStudioEngine } from '../lib/supertonic/client'
+import {
+  engineVariantSetting,
+  resetStudioEngine,
+  setEngineVariantSetting,
+  subscribeEngineInfo,
+  type EngineInfo,
+} from '../lib/supertonic/client'
 import { isStorageAvailable } from '../lib/supertonic/opfs'
 import { previewVoice, warmVoicePreviews } from '../lib/tts'
 import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
+
+/** Deutsche Zahl mit einer Nachkommastelle (Komma statt Punkt). */
+function num(value: number): string {
+  return value.toFixed(1).replace('.', ',')
+}
+
+/**
+ * Klartext-Diagnose für die Anzeige in der App. Wichtigster Wert ist die
+ * Thread-Zahl: Läuft die Engine einkernig (Cross-Origin-Isolation greift
+ * nicht), ist das die Erklärung für zähe Synthese – hier sofort sichtbar,
+ * statt nur in der Browser-Konsole.
+ */
+function diagnosticLines(info: EngineInfo): string[] {
+  const { engine, synth } = info
+  if (!engine) {
+    return ['Stimme noch nicht vorbereitet – tippe im Buch auf Abspielen.']
+  }
+  const lines = [
+    engine.isolated
+      ? `Rechenkerne: ${engine.threads} Threads von ${engine.cores ?? '?'} Kernen`
+      : `⚠️ Nur ${engine.threads} Thread: Mehrkern-Modus nicht aktiv (das bremst stark)`,
+    `Vorbereitung: ${num(engine.loadSeconds)} s`,
+    `Rechenmodell: ${engine.variant === 'int8' ? 'int8 (Experiment)' : 'Standard'}`,
+  ]
+  if (engine.variantRequested === 'int8' && engine.variant !== 'int8') {
+    lines.push('Hinweis: int8 ließ sich nicht laden, Standard wird benutzt.')
+  }
+  if (synth && synth.audioSeconds > 0) {
+    const factor = synth.computeSeconds / synth.audioSeconds
+    lines.push(
+      `Letzter Satz: ${num(synth.computeSeconds)} s Rechenzeit für ` +
+        `${num(synth.audioSeconds)} s Ton (${num(factor)}×)`,
+    )
+    lines.push(
+      factor < 1
+        ? 'Unter 1× heißt: schneller als Echtzeit, der Vorrat wächst.'
+        : 'Über 1× heißt: langsamer als Echtzeit, der Vorrat schrumpft.',
+    )
+  }
+  return lines
+}
 
 interface Props {
   isOpen: boolean
@@ -68,9 +120,19 @@ export default function VoiceSheet({
   const [previewing, setPreviewing] = useState<string | null>(null)
   const [presentToast] = useIonToast()
   const [presentAlert] = useIonAlert()
+  /** Diagnose: Am Handy gibt es keine Browser-Konsole. */
+  const [info, setInfo] = useState<EngineInfo>({ engine: null, synth: null })
+  const [int8Installed, setInt8Installed] = useState(false)
+  const [int8Enabled, setInt8Enabled] = useState(
+    () => engineVariantSetting() === 'int8',
+  )
+  const [int8Progress, setInt8Progress] = useState<number | null>(null)
+
+  useEffect(() => subscribeEngineInfo(setInfo), [])
 
   useEffect(() => {
     if (isOpen) {
+      void isInt8VariantInstalled().then(setInt8Installed)
       isStudioEngineInstalled().then((ok) => {
         setInstalled(ok)
         // Fehlende Begrüßungen im Hintergrund fertig rendern, damit das
@@ -124,7 +186,46 @@ export default function VoiceSheet({
     await removeStudioData()
     resetStudioEngine()
     setInstalled(false)
+    setInt8Installed(false)
     onEngineChange(false)
+  }
+
+  /**
+   * Schaltet das experimentelle int8-Rechenmodell um: Beim ersten
+   * Einschalten werden die ~65 MB nachgeladen. Die Engine wird danach
+   * zurückgesetzt, damit die neue Variante beim nächsten Abspielen
+   * wirklich greift (die Variante steht beim Engine-Aufbau fest).
+   */
+  const toggleInt8 = async (enabled: boolean) => {
+    if (enabled && !int8Installed) {
+      setInt8Progress(0)
+      try {
+        await downloadInt8VectorEstimator((percent) =>
+          setInt8Progress(percent),
+        )
+        setInt8Installed(true)
+      } catch (error) {
+        const reason =
+          error instanceof StudioDownloadError ? error.reason : 'network'
+        presentToast({
+          message: DOWNLOAD_ERRORS[reason],
+          duration: 5000,
+          color: 'danger',
+        })
+        return
+      } finally {
+        setInt8Progress(null)
+      }
+    }
+    setEngineVariantSetting(enabled ? 'int8' : 'standard')
+    setInt8Enabled(enabled)
+    resetStudioEngine()
+    presentToast({
+      message: enabled
+        ? 'Experiment aktiv. Die Stimme wird jetzt neu vorbereitet – achte auf Klang und Tempo.'
+        : 'Zurück auf Standard. Die Stimme wird neu vorbereitet.',
+      duration: 4000,
+    })
   }
 
   // Ein versehentlicher Tipper darf nicht 400 MB wegwerfen – erst fragen.
@@ -266,6 +367,58 @@ export default function VoiceSheet({
             </IonItem>
           )}
         </IonList>
+
+        {/* Experiment und Messwerte direkt in der App: Am Handy gibt es
+            keine Browser-Konsole, in der sich Threads, Ladezeit und
+            Rechentempo ablesen liessen. */}
+        {installed && (
+          <IonList inset>
+            <div className="voice-section-note">Experiment</div>
+            <IonItem>
+              <IonIcon
+                aria-hidden="true"
+                slot="start"
+                icon={flaskOutline}
+                color="medium"
+              />
+              <IonLabel className="ion-text-wrap">
+                <h2>Schnelleres Rechenmodell</h2>
+                <IonNote>
+                  {int8Progress !== null
+                    ? `Wird geladen … ${int8Progress} %`
+                    : int8Installed
+                      ? 'Kleineres, verlustbehaftet gerechnetes Modell (int8). Kann spürbar schneller sein – achte darauf, ob die Stimme anders klingt.'
+                      : `Einmalig ca. ${INT8_VECTOR_ESTIMATOR_SIZE_MB} MB laden: kleineres Rechenmodell (int8), das schneller sein kann. Der Klang kann sich leicht ändern.`}
+                </IonNote>
+                {int8Progress !== null && (
+                  <IonProgressBar
+                    value={int8Progress / 100}
+                    style={{ marginTop: 6 }}
+                  />
+                )}
+              </IonLabel>
+              <IonToggle
+                slot="end"
+                checked={int8Enabled}
+                disabled={int8Progress !== null}
+                onIonChange={(event) =>
+                  void toggleInt8(event.detail.checked)
+                }
+                aria-label="Schnelleres Rechenmodell verwenden"
+              />
+            </IonItem>
+            <IonItem lines="none">
+              <IonLabel className="ion-text-wrap">
+                <h2>Technische Details</h2>
+                <div className="engine-diagnostics">
+                  {diagnosticLines(info).map((line) => (
+                    <div key={line}>{line}</div>
+                  ))}
+                </div>
+              </IonLabel>
+            </IonItem>
+          </IonList>
+        )}
       </IonContent>
     </IonModal>
   )
