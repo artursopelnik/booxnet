@@ -79,12 +79,24 @@ export default function LibraryPage() {
       <IonHeader translucent>
         <IonToolbar>
           <IonTitle>Bibliothek</IonTitle>
+          <img
+            slot="end"
+            className="brand-mark"
+            src={`${import.meta.env.BASE_URL}icon.svg`}
+            alt="Booxnet"
+          />
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
         <IonHeader collapse="condense">
           <IonToolbar>
             <IonTitle size="large">Bibliothek</IonTitle>
+            <img
+              slot="end"
+              className="brand-mark brand-mark--large"
+              src={`${import.meta.env.BASE_URL}icon.svg`}
+              alt="Booxnet"
+            />
           </IonToolbar>
         </IonHeader>
 

@@ -288,12 +288,21 @@ export default function ReaderPage() {
       return
     }
     if (!engineInstalled) {
-      toastRef.current({
-        message: 'Lade zuerst das Sprachmodell herunter (einmalig).',
-        duration: 3000,
-        color: 'warning',
+      // Re-check OPFS – the state can be stale (e.g. download finished in
+      // a second tab). Only the confirmed-missing case opens the sheet.
+      void isStudioEngineInstalled().then((installed) => {
+        setEngineInstalled(installed)
+        if (installed) {
+          speaker.play(current)
+        } else {
+          toastRef.current({
+            message: 'Lade zuerst das Sprachmodell herunter (einmalig).',
+            duration: 3000,
+            color: 'warning',
+          })
+          setVoiceSheetOpen(true)
+        }
       })
-      setVoiceSheetOpen(true)
       return
     }
     speaker.play(current)
@@ -328,7 +337,11 @@ export default function ReaderPage() {
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">
-              <IonBackButton defaultHref="/library" text="Bibliothek" />
+              <IonBackButton
+                defaultHref="/library"
+                text=""
+                aria-label="Zurück zur Bibliothek"
+              />
             </IonButtons>
           </IonToolbar>
         </IonHeader>
@@ -348,9 +361,19 @@ export default function ReaderPage() {
       <IonHeader translucent>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/library" text="Bibliothek" />
+            <IonBackButton
+              defaultHref="/library"
+              text=""
+              aria-label="Zurück zur Bibliothek"
+            />
           </IonButtons>
-          <IonTitle>{book.title}</IonTitle>
+          <IonTitle className="reader-title">{book.title}</IonTitle>
+          <img
+            slot="end"
+            className="brand-mark"
+            src={`${import.meta.env.BASE_URL}icon.svg`}
+            alt="Booxnet"
+          />
         </IonToolbar>
       </IonHeader>
 
@@ -361,6 +384,13 @@ export default function ReaderPage() {
         onIonScrollStart={onUserScrollStart}
       >
         <article className="reader-text">
+          {book.cover && (
+            <img
+              className="reader-cover"
+              src={book.cover}
+              alt={`Cover: ${book.title}`}
+            />
+          )}
           {pages.map((page) => (
             <PageSection
               key={page.pageIndex}
