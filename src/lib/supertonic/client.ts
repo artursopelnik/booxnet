@@ -73,14 +73,12 @@ export const TTS_TIMEOUT_ERROR = 'TtsTimeoutError'
 export const TTS_CANCELLED_ERROR = 'TtsCancelledError'
 
 /**
- * Adaptive Qualität: Schnell muss die Synthese nur sein, wenn der Nutzer
- * aktiv wartet (Satz angetippt, Play gedrückt, Puffer leer) – dort gilt
- * die niedrige Schrittzahl für einen Sofort-Start. Sätze, die im
- * Hintergrund vorausberechnet werden, während der aktuelle noch spielt,
- * haben Zeit und rechnen in guter Qualität. So klingt fast alles, was
- * man hört, ordentlich, ohne die Reaktionszeit zu opfern.
+ * Einheitliche Klangqualität für alles: Niedrigere "Schnell-Stufen"
+ * (2–3 Schritte) klingen blechern und sind bewusst abgeschafft – lieber
+ * ein Moment länger laden als schlecht klingen. Die Schrittzahl bleibt
+ * pro Anfrage übertragbar, damit eine spätere Qualitäts-Einstellung
+ * ohne Umbau möglich ist.
  */
-export const FAST_SYNTH_STEPS = 3
 export const QUALITY_SYNTH_STEPS = 6
 
 function request(

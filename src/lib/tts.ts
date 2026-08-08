@@ -9,7 +9,6 @@
  * what keeps sentence N+1 playing without another tap.
  */
 import {
-  FAST_SYNTH_STEPS,
   studioPrefetch,
   studioSynthesize,
   TTS_CANCELLED_ERROR,
@@ -366,15 +365,14 @@ export class Speaker {
     this.setState('loading')
     let buffer: AudioBuffer
     try {
-      // Nutzer wartet aktiv: schnellste Stufe für den Sofort-Start. War
-      // der Satz schon (hochwertig) vorausberechnet, greift der Cache.
+      // Immer volle Qualität – auch wenn der Nutzer aktiv wartet. War der
+      // Satz schon vorausberechnet, greift ohnehin der Cache.
       const blob = await studioSynthesize(
         voice.id,
         this.langHint,
         text,
         speed,
         true,
-        FAST_SYNTH_STEPS,
       )
       if (generation !== this.generation) return
       buffer = await decodeBlob(blob)
