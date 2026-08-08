@@ -65,17 +65,32 @@ async function loadEngine(): Promise<Engine> {
   const cfgs = JSON.parse(new TextDecoder().decode(cfgsBuf)) as Cfgs
   const indexer = JSON.parse(new TextDecoder().decode(indexerBuf)) as number[]
 
-  const createSession = async (path: string) => {
-    const buffer = await loadStudioAsset(path)
-    return ort.InferenceSession.create(new Uint8Array(buffer), {
-      executionProviders: ['wasm'],
-    })
+  // Pipelined statt strikt seriell: Während onnxruntime eine Session
+  // aufbaut (reine CPU-Arbeit), wird bereits die nächste Modelldatei aus
+  // OPFS gelesen (reines I/O). Das spart die Lesezeit von drei der vier
+  // Modelle beim Kaltstart, hält aber höchstens zwei Modellpuffer
+  // gleichzeitig im Speicher – alle vier parallel würde auf
+  // speicherknappen iPhones das Seiten-Aus riskieren.
+  const modelPaths = [
+    'onnx/duration_predictor.onnx',
+    'onnx/text_encoder.onnx',
+    'onnx/vector_estimator.onnx',
+    'onnx/vocoder.onnx',
+  ]
+  const sessions: OrtSession[] = []
+  let nextBuffer = loadStudioAsset(modelPaths[0])
+  for (let i = 0; i < modelPaths.length; i++) {
+    const buffer = await nextBuffer
+    if (i + 1 < modelPaths.length) {
+      nextBuffer = loadStudioAsset(modelPaths[i + 1])
+    }
+    sessions.push(
+      await ort.InferenceSession.create(new Uint8Array(buffer), {
+        executionProviders: ['wasm'],
+      }),
+    )
   }
-
-  const dp = await createSession('onnx/duration_predictor.onnx')
-  const textEnc = await createSession('onnx/text_encoder.onnx')
-  const vectorEst = await createSession('onnx/vector_estimator.onnx')
-  const vocoder = await createSession('onnx/vocoder.onnx')
+  const [dp, textEnc, vectorEst, vocoder] = sessions
 
   console.info('[booxnet-tts] Engine bereit: WASM')
   return {
@@ -484,6 +499,19 @@ self.onmessage = (event: MessageEvent<Request>) => {
     if (index > 0) {
       const [task] = taskQueue.splice(index, 1)
       taskQueue.unshift(task)
+    }
+    // Der Nutzer wartet JETZT auf die Ziel-Anfrage (Play-Druck auf einen
+    // bereits vorgemerkten Satz). Eine gerade laufende HINTERGRUND-
+    // Berechnung eines anderen Auftrags steigt am nächsten Rechenschritt
+    // aus, statt erst komplett fertig zu rechnen, während der gewünschte
+    // Satz in der Warteschlange hängt. Die Ziel-Anfrage selbst darf
+    // natürlich weiterlaufen, falls sie schon dran ist.
+    if (
+      runningTask &&
+      !runningTask.priority &&
+      runningTask.id !== request.target
+    ) {
+      runningTask.aborted = true
     }
     return
   }
