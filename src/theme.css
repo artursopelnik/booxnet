@@ -1,12 +1,12 @@
 :root {
-  /* 0a84ff fails WCAG AA as text on white (3.2:1) – 0064d2 reaches 4.9:1
-     and stays recognizably "iOS blue". */
-  --ion-color-primary: #0064d2;
-  --ion-color-primary-rgb: 0, 100, 210;
+  /* Brand blue from the Booxnet logo. Passes WCAG AA as text on white
+     (≥4.5:1), unlike the brighter iOS-blue 0a84ff (3.2:1). */
+  --ion-color-primary: #0b63d6;
+  --ion-color-primary-rgb: 11, 99, 214;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #0058b9;
-  --ion-color-primary-tint: #1a74d7;
+  --ion-color-primary-shade: #0a57bc;
+  --ion-color-primary-tint: #2373da;
   /* Muted text with AA contrast on both palettes (≥4.5:1). */
   --booxnet-muted: #545456;
 }
@@ -147,8 +147,8 @@ ion-note,
 }
 
 .sentence--active {
-  background: rgba(0, 100, 210, 0.22);
-  box-shadow: 0 0 0 3px rgba(0, 100, 210, 0.22);
+  background: rgba(11, 99, 214, 0.22);
+  box-shadow: 0 0 0 3px rgba(11, 99, 214, 0.22);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
