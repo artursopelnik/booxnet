@@ -121,10 +121,6 @@ export default function AppSection() {
             />
             <IonLabel>
               <h2>Zum Home-Bildschirm hinzufügen</h2>
-              <IonNote>
-                Booxnet als App installieren – startet schneller und läuft
-                komplett offline
-              </IonNote>
             </IonLabel>
           </IonItem>
         )}
@@ -148,11 +144,7 @@ export default function AppSection() {
             <h2>
               {hasUpdate ? 'Update installieren' : 'Nach Update suchen'}
             </h2>
-            <IonNote>
-              {hasUpdate
-                ? 'Eine neue Version ist bereit – tippen zum Neuladen'
-                : 'Prüft, ob eine neue Version von Booxnet verfügbar ist'}
-            </IonNote>
+            {hasUpdate && <IonNote>Tippen zum Neuladen</IonNote>}
           </IonLabel>
           {checking && <IonSpinner slot="end" name="crescent" />}
         </IonItem>
