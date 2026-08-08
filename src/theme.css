@@ -1,3 +1,13 @@
+/* Browser-Zoom aus (siehe Abwägung in index.html): pan-x/pan-y erlaubt
+   Scrollen und Ionic-Gesten (Swipe-Back, Slider), unterbindet aber
+   Pinch- und Doppeltipp-Zoom. Gilt als Vorfahren-Beschränkung für die
+   ganze Seite; Ionic-Gestenelemente mit eigenem touch-action: none
+   funktionieren weiter (Schnittmenge). */
+html,
+body {
+  touch-action: pan-x pan-y;
+}
+
 :root {
   /* Brand blue from the Booxnet logo. Passes WCAG AA as text on white
      (≥4.5:1), unlike the brighter iOS-blue 0a84ff (3.2:1). */
@@ -210,13 +220,23 @@ html.ion-palette-dark .reader-text.hl-underline .sentence--active {
   --padding-bottom: 6px;
 }
 
-/* Hinweis unter dem Fortschrittsbalken beim einmaligen Engine-Laden. */
+/* Hinweis unter dem Fortschrittsbalken (Engine-Laden / Satz-Berechnung).
+   Leicht verzögert eingeblendet, damit er bei den normalen, nur kurz
+   aufleuchtenden Ladephasen vorausberechneter Sätze nicht flackert. */
 .engine-loading-hint {
   padding: 4px 16px 0;
   font-size: 0.8rem;
   text-align: center;
   color: var(--ion-color-medium);
   font-variant-numeric: tabular-nums;
+  opacity: 0;
+  animation: engine-hint-appear 0.25s ease-in 0.6s forwards;
+}
+
+@keyframes engine-hint-appear {
+  to {
+    opacity: 1;
+  }
 }
 
 .player {

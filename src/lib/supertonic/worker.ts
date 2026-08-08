@@ -260,6 +260,7 @@ async function inferChunk(
   speed: number,
   steps: number,
   shouldAbort: () => boolean,
+  onStep?: (completedSteps: number) => void,
 ): Promise<Float32Array> {
   const { ort, cfgs } = engine
 
@@ -329,6 +330,7 @@ async function inferChunk(
       total_step: totalStep,
     })
     xt = new Float32Array(out.denoised_latent.data as Float32Array)
+    onStep?.(step + 1)
   }
 
   // Latent → waveform.
@@ -376,13 +378,19 @@ async function synthesize(
   speed: number,
   steps: number,
   shouldAbort: () => boolean,
+  onProgress?: (value: number) => void,
 ): Promise<ArrayBuffer> {
   const style = await getStyle(engine, voiceId)
   const chunks = chunkText(text, lang)
+  // Fortschritt über alle Denoising-Schritte aller Text-Stücke hinweg –
+  // der Vocoder am Ende ist im Vergleich dazu kurz.
+  const totalSteps = chunks.length * steps
   const parts: Float32Array[] = []
-  for (const chunk of chunks) {
+  for (const [index, chunk] of chunks.entries()) {
     parts.push(
-      await inferChunk(engine, chunk, lang, style, speed, steps, shouldAbort),
+      await inferChunk(engine, chunk, lang, style, speed, steps, shouldAbort,
+        (done) => onProgress?.((index * steps + done) / totalSteps),
+      ),
     )
   }
   const sampleRate = engine.cfgs.ae.sample_rate
@@ -491,6 +499,18 @@ async function handle(
       channel: request.channel,
       aborted: false,
     }
+    // Rechenschritt-Fortschritt an die UI melden, damit auch die
+    // Satz-Berechnung nie wie eingefroren wirkt. Nur fürs Vorlesen –
+    // Vorschau-Begrüßungen rechnen unsichtbar im Hintergrund.
+    const reportSynth =
+      request.channel === 'preview'
+        ? undefined
+        : (value: number) =>
+            self.postMessage({
+              type: 'synth-progress',
+              value: Math.max(0, Math.min(1, value)),
+            })
+    reportSynth?.(0)
     const wav = await synthesize(
       engine,
       request.voiceId,
@@ -499,6 +519,7 @@ async function handle(
       request.speed,
       steps,
       () => runningTask?.aborted === true,
+      reportSynth,
     )
     // Transfer the buffer – no copy on the way back.
     self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })
