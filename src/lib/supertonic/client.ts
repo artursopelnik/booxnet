@@ -72,6 +72,15 @@ export const TTS_TIMEOUT_ERROR = 'TtsTimeoutError'
 /** Marks requests displaced by a newer Play press – never user-visible. */
 export const TTS_CANCELLED_ERROR = 'TtsCancelledError'
 
+/**
+ * Einheitliche Klangqualität für alles: Niedrigere "Schnell-Stufen"
+ * (2–3 Schritte) klingen blechern und sind bewusst abgeschafft – lieber
+ * ein Moment länger laden als schlecht klingen. Die Schrittzahl bleibt
+ * pro Anfrage übertragbar, damit eine spätere Qualitäts-Einstellung
+ * ohne Umbau möglich ist.
+ */
+export const QUALITY_SYNTH_STEPS = 6
+
 function request(
   message: Omit<Parameters<Worker['postMessage']>[0], 'id'> &
     Record<string, unknown>,
@@ -162,7 +171,10 @@ const cache = new Map<string, CacheEntry>()
  * Synthesizes one sentence, memoized per voice+language+speed+text.
  * With `priority` (the sentence is being played right now) it overtakes
  * queued prefetches in the worker; if the sentence is already queued as a
- * prefetch, that request is bumped to the front instead.
+ * prefetch, that request is bumped to the front instead. Der Cache-Key
+ * ignoriert die Schrittzahl bewusst: Ein bereits (hochwertig)
+ * vorausberechneter Satz wird beim Antippen wiederverwendet statt
+ * schnell-schlechter neu gerechnet.
  */
 export function studioSynthesize(
   voiceId: StudioVoiceId,
@@ -170,6 +182,7 @@ export function studioSynthesize(
   text: string,
   speed: number,
   priority = false,
+  steps: number = QUALITY_SYNTH_STEPS,
 ): Promise<Blob> {
   const key = `${voiceId} ${lang} ${speed} ${text}`
   const hit = cache.get(key)
@@ -182,7 +195,7 @@ export function studioSynthesize(
     return hit.promise
   }
   const { id, promise } = request(
-    { type: 'synthesize', voiceId, lang, text, speed, priority },
+    { type: 'synthesize', voiceId, lang, text, speed, steps, priority },
     priority ? PLAY_TIMEOUT_MS : PREFETCH_TIMEOUT_MS,
   )
   const entry: CacheEntry = {
@@ -209,7 +222,7 @@ export function studioSynthesize(
   return entry.promise
 }
 
-/** Fire-and-forget warm-up of upcoming sentences. */
+/** Fire-and-forget warm-up of upcoming sentences, in good quality. */
 export function studioPrefetch(
   voiceId: StudioVoiceId,
   lang: string,
@@ -217,7 +230,14 @@ export function studioPrefetch(
   speed: number,
 ): void {
   for (const text of sentences) {
-    studioSynthesize(voiceId, lang, text, speed).catch(() => {
+    studioSynthesize(
+      voiceId,
+      lang,
+      text,
+      speed,
+      false,
+      QUALITY_SYNTH_STEPS,
+    ).catch(() => {
       // Prefetch failures surface when the sentence is actually played.
     })
   }

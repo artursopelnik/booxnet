@@ -41,19 +41,20 @@ interface Engine {
   vectorEst: OrtSession
   vocoder: OrtSession
   styles: Map<StudioVoiceId, Style>
-  /** Denoising steps: more = better quality, slower synthesis. */
-  steps: number
 }
 
 let enginePromise: Promise<Engine> | null = null
 
 async function loadEngine(): Promise<Engine> {
   const ort = (await import('onnxruntime-web/wasm')) as Ort
-  // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers).
-  // Without cross-origin isolation - e.g. on GitHub Pages - forcing
-  // threads makes onnxruntime hang on iOS Safari instead of falling back.
+  // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers, siehe
+  // public/_headers - Netlify setzt sie, GitHub Pages kann das nicht).
+  // Without cross-origin isolation forcing threads makes onnxruntime hang
+  // on iOS Safari instead of falling back. Gedeckelt auf 4: mehr Threads
+  // bringen bei diesen Modellen kaum noch Tempo, wuerden aber UI- und
+  // Audio-Threads des Geraets verdraengen.
   ort.env.wasm.numThreads = self.crossOriginIsolated
-    ? (navigator.hardwareConcurrency ?? 4)
+    ? Math.min(4, navigator.hardwareConcurrency ?? 4)
     : 1
   ort.env.wasm.wasmPaths = await resolveOrtWasmPrefix()
 
@@ -86,10 +87,6 @@ async function loadEngine(): Promise<Engine> {
     vectorEst,
     vocoder,
     styles: new Map(),
-    // Tempo schlägt Klangfeinheit: 2 ist Supertonics dokumentiertes
-    // Minimum – darunter kippt die Verständlichkeit, während der
-    // schrittunabhängige Fixanteil pro Satz ohnehin bestehen bleibt.
-    steps: 2,
   }
 }
 
@@ -212,6 +209,7 @@ async function inferChunk(
   lang: string,
   style: Style,
   speed: number,
+  steps: number,
 ): Promise<Float32Array> {
   const { ort, cfgs } = engine
 
@@ -262,12 +260,12 @@ async function inferChunk(
   )
   const totalStep = new ort.Tensor(
     'float32',
-    new Float32Array([engine.steps]),
+    new Float32Array([steps]),
     [1],
   )
 
   // Denoising loop.
-  for (let step = 0; step < engine.steps; step++) {
+  for (let step = 0; step < steps; step++) {
     const out = await engine.vectorEst.run({
       noisy_latent: new ort.Tensor('float32', xt, [1, latentDim, latentLen]),
       text_emb: textEmb,
@@ -322,12 +320,13 @@ async function synthesize(
   lang: string,
   text: string,
   speed: number,
+  steps: number,
 ): Promise<ArrayBuffer> {
   const style = await getStyle(engine, voiceId)
   const chunks = chunkText(text, lang)
   const parts: Float32Array[] = []
   for (const chunk of chunks) {
-    parts.push(await inferChunk(engine, chunk, lang, style, speed))
+    parts.push(await inferChunk(engine, chunk, lang, style, speed, steps))
   }
   const sampleRate = engine.cfgs.ae.sample_rate
   const silence = Math.floor(SILENCE_SECONDS * sampleRate)
@@ -351,6 +350,8 @@ interface SynthesizeRequest {
   lang: string
   text: string
   speed: number
+  /** Denoising-Schritte: mehr = besserer Klang, langsamere Synthese. */
+  steps?: number
   /** Wird gerade abgespielt/erwartet – verdrängt Vorab-Berechnungen. */
   priority?: boolean
 }
@@ -388,12 +389,14 @@ async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
       self.postMessage({ id: request.id, ok: true })
       return
     }
+    const steps = Math.min(12, Math.max(1, Math.round(request.steps ?? 4)))
     const wav = await synthesize(
       engine,
       request.voiceId,
       request.lang,
       request.text,
       request.speed,
+      steps,
     )
     // Transfer the buffer – no copy on the way back.
     self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })

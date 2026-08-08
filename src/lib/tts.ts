@@ -365,6 +365,8 @@ export class Speaker {
     this.setState('loading')
     let buffer: AudioBuffer
     try {
+      // Immer volle Qualität – auch wenn der Nutzer aktiv wartet. War der
+      // Satz schon vorausberechnet, greift ohnehin der Cache.
       const blob = await studioSynthesize(
         voice.id,
         this.langHint,
