@@ -1,3 +1,13 @@
+/* Browser-Zoom aus (siehe Abwägung in index.html): pan-x/pan-y erlaubt
+   Scrollen und Ionic-Gesten (Swipe-Back, Slider), unterbindet aber
+   Pinch- und Doppeltipp-Zoom. Gilt als Vorfahren-Beschränkung für die
+   ganze Seite; Ionic-Gestenelemente mit eigenem touch-action: none
+   funktionieren weiter (Schnittmenge). */
+html,
+body {
+  touch-action: pan-x pan-y;
+}
+
 :root {
   /* Brand blue from the Booxnet logo. Passes WCAG AA as text on white
      (≥4.5:1), unlike the brighter iOS-blue 0a84ff (3.2:1). */
