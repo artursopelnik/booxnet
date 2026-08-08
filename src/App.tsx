@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { Redirect, Route } from 'react-router-dom'
 import LibraryPage from './pages/LibraryPage'
 import ReaderPage from './pages/ReaderPage'
+import WelcomePage from './pages/WelcomePage'
 
 export default function App() {
   // One-time cleanup: earlier versions stored Piper voice models under
@@ -19,6 +20,7 @@ export default function App() {
     <IonApp>
       <IonReactRouter basename={import.meta.env.BASE_URL}>
         <IonRouterOutlet>
+          <Route exact path="/welcome" component={WelcomePage} />
           <Route exact path="/library" component={LibraryPage} />
           <Route exact path="/reader/:id" component={ReaderPage} />
           <Route exact path="/">

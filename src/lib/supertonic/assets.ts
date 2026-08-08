@@ -25,6 +25,16 @@ export const STUDIO_ENGINE_SIZE_MB = 400
 
 export type StudioDownloadFailure = 'storage' | 'quota' | 'network'
 
+/** Nutzerfreundliche Erklärungen je Download-Fehlerursache. */
+export const DOWNLOAD_ERRORS: Record<StudioDownloadFailure, string> = {
+  storage:
+    'Dein Browser erlaubt hier keinen Speicher für das Sprachmodell, das passiert vor allem in privaten Fenstern. Öffne Booxnet in einem normalen Fenster und lade es dort herunter.',
+  quota:
+    `Auf deinem Gerät ist zu wenig Speicherplatz für das Sprachmodell frei (ca. ${STUDIO_ENGINE_SIZE_MB} MB). Schaffe etwas Platz und versuche es dann erneut. Bereits geladene Teile bleiben erhalten.`,
+  network:
+    'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal. Bereits geladene Teile bleiben erhalten.',
+}
+
 /** Download error with a coarse cause so the UI can give accurate advice. */
 export class StudioDownloadError extends Error {
   constructor(

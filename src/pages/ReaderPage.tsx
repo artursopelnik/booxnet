@@ -44,6 +44,7 @@ import {
   saveRate,
   saveVoiceId,
   Speaker,
+  warmVoicePreviews,
   type SpeakerState,
 } from '../lib/tts'
 import {
@@ -315,10 +316,16 @@ export default function ReaderPage() {
 
   // Warm the engine (and the selected voice's style) as soon as the reader
   // opens – loading ~400 MB of sessions takes long, and doing it here makes
-  // the first press on Play feel instant instead of frozen.
+  // the first press on Play feel instant instead of frozen. Nebenbei
+  // fehlende Stimmen-Begrüßungen vorrendern (gewählte Stimme zuerst),
+  // damit das Probehören später sofort abspielt.
   useEffect(() => {
     if (engineInstalled) {
       studioWarmup(voice.id)
+      warmVoicePreviews([
+        ...STUDIO_VOICES.filter((v) => v.id === voice.id),
+        ...STUDIO_VOICES.filter((v) => v.id !== voice.id),
+      ])
     }
   }, [engineInstalled, voice.id])
 
