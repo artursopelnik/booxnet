@@ -252,6 +252,31 @@ function gaussianArray(length: number): Float32Array {
 /** Laufende Synthese wurde von einer Vorrang-Anfrage verdrängt. */
 class AbortedError extends Error {}
 
+/**
+ * Gibt die Ereignisschleife des Workers frei, damit eingegangene
+ * Steuer-Nachrichten (Vorrang-Anfrage, bump, flush) verarbeitet werden.
+ * Ohne dieses Luftholen hängen ONNX-Rechenblöcke nur über Microtasks
+ * aneinander und onmessage feuert erst, wenn die GESAMTE Warteschlange
+ * leergerechnet ist – ein Stimmen- oder Tempowechsel musste dann erst
+ * alle veralteten Vorausberechnungen abwarten. Über MessageChannel statt
+ * setTimeout: Nachrichten derselben Task-Quelle, die während des Rechnens
+ * eintrafen, kommen garantiert VOR der Fortsetzung dran, und die
+ * Timer-Mindestverzögerung entfällt.
+ */
+const yieldChannel = new MessageChannel()
+let yieldResolve: (() => void) | null = null
+yieldChannel.port1.onmessage = () => {
+  const resolve = yieldResolve
+  yieldResolve = null
+  resolve?.()
+}
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => {
+    yieldResolve = resolve
+    yieldChannel.port2.postMessage(0)
+  })
+}
+
 async function inferChunk(
   engine: Engine,
   text: string,
@@ -331,6 +356,14 @@ async function inferChunk(
     })
     xt = new Float32Array(out.denoised_latent.data as Float32Array)
     onStep?.(step + 1)
+    // ONNX-Runtime läuft hier (ohne SharedArrayBuffer nur 1 Thread) rein
+    // synchron hinter einer bereits aufgelösten Promise – ohne echtes
+    // Yield an die Browser-Ereignisschleife bleiben eingehende
+    // Vorrang-Anfragen (Stimmen-/Tempowechsel) in der Nachrichten-
+    // Warteschlange liegen, bis die GESAMTE Warteschlange abgearbeitet
+    // ist. Das erklärt, warum ein Wechsel scheinbar mehrere Sätze lang
+    // "durchlädt", bevor er greift.
+    await yieldToEventLoop()
   }
 
   // Latent → waveform.
