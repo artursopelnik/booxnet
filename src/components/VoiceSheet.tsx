@@ -31,11 +31,7 @@ import {
 } from '../lib/supertonic/assets'
 import { resetStudioEngine } from '../lib/supertonic/client'
 import { previewVoice } from '../lib/tts'
-import {
-  STUDIO_LANGS,
-  STUDIO_VOICES,
-  type StudioVoiceMeta,
-} from '../lib/voices'
+import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
 
 interface Props {
   isOpen: boolean
@@ -54,7 +50,10 @@ export default function VoiceSheet({
   onDismiss,
 }: Props) {
   const [installed, setInstalled] = useState(false)
-  const [progress, setProgress] = useState<number | null>(null)
+  const [progress, setProgress] = useState<{
+    percent: number
+    mb: number
+  } | null>(null)
   const [previewing, setPreviewing] = useState<string | null>(null)
   const [presentToast] = useIonToast()
 
@@ -65,19 +64,33 @@ export default function VoiceSheet({
   }, [isOpen])
 
   const startDownload = async () => {
-    setProgress(0)
+    setProgress({ percent: 0, mb: 0 })
+    // Keep the screen on: if it locks, iOS suspends the tab and the
+    // download dies mid-file. Best-effort – not all browsers support it.
+    let wakeLock: WakeLockSentinel | null = null
     try {
-      await downloadStudioEngine(setProgress)
+      wakeLock = (await navigator.wakeLock?.request('screen')) ?? null
+    } catch {
+      // Wake lock unavailable – the hint text still asks to keep the app open.
+    }
+    try {
+      await downloadStudioEngine((percent, mb) =>
+        setProgress({ percent, mb }),
+      )
       setInstalled(true)
       onEngineChange(true)
-    } catch {
+    } catch (error) {
       presentToast({
-        message:
-          'Download des Sprachmodells fehlgeschlagen. Prüfe deine Internetverbindung und versuche es erneut – bereits geladene Teile bleiben erhalten.',
-        duration: 4000,
+        message: `${
+          error instanceof Error
+            ? error.message
+            : 'Download des Sprachmodells fehlgeschlagen.'
+        } Bereits geladene Teile bleiben erhalten.`,
+        duration: 5000,
         color: 'danger',
       })
     } finally {
+      void wakeLock?.release().catch(() => {})
       setProgress(null)
     }
   }
@@ -121,7 +134,7 @@ export default function VoiceSheet({
     >
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Stimme auswählen</IonTitle>
+          <IonTitle>Stimmen</IonTitle>
           <IonButtons slot="end">
             <IonButton strong onClick={onDismiss}>
               Fertig
@@ -131,9 +144,8 @@ export default function VoiceSheet({
       </IonHeader>
       <IonContent>
         <div className="voice-section-note">
-          10 Stimmen in Studioqualität (44,1 kHz), jede spricht{' '}
-          {STUDIO_LANGS.length} Sprachen. Einmal das Sprachmodell laden,
-          danach läuft alles komplett offline auf deinem Gerät.
+          Nach einem einmaligen Download werden alle Stimmen komplett
+          offline auf deinem Gerät vorgelesen.
         </div>
         <IonList inset>
           {!installed && (
@@ -147,11 +159,11 @@ export default function VoiceSheet({
                 <IonNote>
                   {progress === null
                     ? `Einmalig ca. ${STUDIO_ENGINE_SIZE_MB} MB – schaltet alle 10 Stimmen frei`
-                    : `Wird geladen … ${progress} %`}
+                    : `Wird geladen … ${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB. Lass die App dabei geöffnet.`}
                 </IonNote>
                 {progress !== null && (
                   <IonProgressBar
-                    value={progress / 100}
+                    value={progress.percent / 100}
                     style={{ marginTop: 6 }}
                   />
                 )}
@@ -171,9 +183,8 @@ export default function VoiceSheet({
               <IonLabel>
                 <h2>{voice.name}</h2>
                 <IonNote>
-                  {voice.gender === 'm' ? 'Männlich' : 'Weiblich'} · Studio{' '}
-                  {voice.id}
-                  {installed ? ' · offline' : ' · benötigt das Sprachmodell'}
+                  {voice.gender === 'm' ? 'Männlich' : 'Weiblich'}
+                  {!installed && ' · benötigt das Sprachmodell'}
                 </IonNote>
               </IonLabel>
               {voice.id === selectedId && (

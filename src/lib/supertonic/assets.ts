@@ -10,8 +10,14 @@
  * mirrored deployment keeps working even if the upstream repository
  * disappears. Everything is stored in OPFS for offline use.
  */
-import type { StudioVoiceId } from '../voices'
-import { hasAsset, readAsset, removeAllAssets, writeAsset } from './opfs'
+import { STUDIO_VOICES, type StudioVoiceId } from '../voices'
+import {
+  assetSize,
+  readAsset,
+  removeAllAssets,
+  writeAsset,
+  writeAssetStream,
+} from './opfs'
 
 export const STUDIO_ENGINE_SIZE_MB = 400
 
@@ -54,7 +60,7 @@ async function fetchAsset(path: string): Promise<Response> {
 export async function isStudioEngineInstalled(): Promise<boolean> {
   try {
     const checks = await Promise.all(
-      ENGINE_ASSETS.map((path) => hasAsset(path)),
+      ENGINE_ASSETS.map(async (path) => (await assetSize(path)) > 0),
     )
     return checks.every(Boolean)
   } catch {
@@ -91,52 +97,90 @@ export async function ensureStudioStyle(
 }
 
 /**
- * Downloads the shared engine sequentially with overall progress. Progress
- * is weighted by bytes; sizes come from Content-Length with the known total
- * as fallback. Already-stored files are skipped, so an interrupted download
- * resumes where it stopped.
+ * Downloads the shared engine plus all ten voice styles sequentially with
+ * byte-weighted overall progress. Files stream directly into OPFS – no
+ * full-file buffering, which matters for the ~200 MB models on memory-tight
+ * mobile devices. Already-stored files are skipped and incomplete files are
+ * never committed, so an interrupted download resumes where it stopped.
  */
 export async function downloadStudioEngine(
-  onProgress: (percent: number) => void,
+  onProgress: (percent: number, loadedMB: number) => void,
 ): Promise<void> {
-  const totalEstimate = STUDIO_ENGINE_SIZE_MB * 1024 * 1024
-  let loadedBefore = 0
+  // Ask the browser not to evict the ~400 MB store under storage pressure –
+  // without this, Safari may silently wipe OPFS after a few days.
+  try {
+    await navigator.storage.persist?.()
+  } catch {
+    // Persistence is best-effort.
+  }
 
-  for (const [index, path] of ENGINE_ASSETS.entries()) {
-    if (await hasAsset(path)) {
+  const assets = [
+    ...ENGINE_ASSETS,
+    ...STUDIO_VOICES.map((voice) => styleAsset(voice.id)),
+  ]
+  const totalEstimate = STUDIO_ENGINE_SIZE_MB * 1024 * 1024
+  let storedBytes = 0
+  const report = (fileBytes: number) => {
+    const loaded = storedBytes + fileBytes
+    onProgress(
+      Math.min(99, Math.round((loaded / totalEstimate) * 100)),
+      Math.round(loaded / 1024 / 1024),
+    )
+  }
+
+  for (const path of assets) {
+    const existing = await assetSize(path)
+    if (existing > 0) {
+      storedBytes += existing
+      report(0)
       continue
     }
-    const response = await fetchAsset(path)
-    if (!response.body) {
-      throw new Error(`Download failed for ${path}: empty body`)
-    }
-    const contentLength = Number(response.headers.get('Content-Length')) || 0
-    const reader = response.body.getReader()
-    const chunks: Uint8Array[] = []
-    let loaded = 0
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      chunks.push(value)
-      loaded += value.byteLength
-      const fileShare = contentLength
-        ? Math.min(loaded / contentLength, 1)
-        : 0
-      const overall =
-        (loadedBefore + fileShare * (contentLength || 0)) / totalEstimate
-      const fallback = (index + fileShare) / ENGINE_ASSETS.length
-      onProgress(
-        Math.min(99, Math.round((contentLength ? overall : fallback) * 100)),
-      )
-    }
-    const data = new Uint8Array(loaded)
-    let offset = 0
-    for (const chunk of chunks) {
-      data.set(chunk, offset)
-      offset += chunk.byteLength
-    }
-    await writeAsset(path, data)
-    loadedBefore += loaded
+    storedBytes += await downloadAsset(path, report)
   }
-  onProgress(100)
+  onProgress(100, Math.round(storedBytes / 1024 / 1024))
+}
+
+const DOWNLOAD_ATTEMPTS = 3
+
+/** Downloads one asset with retries, reporting in-file progress bytes. */
+async function downloadAsset(
+  path: string,
+  onBytes: (fileBytes: number) => void,
+): Promise<number> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < DOWNLOAD_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)))
+    }
+    let fileBytes = 0
+    try {
+      const response = await fetchAsset(path)
+      if (!response.body) {
+        throw new Error(`Download failed for ${path}: empty body`)
+      }
+      const contentLength = Number(response.headers.get('Content-Length')) || 0
+      return await writeAssetStream(
+        path,
+        response.body,
+        (bytes) => {
+          fileBytes += bytes
+          onBytes(fileBytes)
+        },
+        contentLength,
+      )
+    } catch (error) {
+      lastError = error
+      onBytes(0)
+      // A full store won't fix itself by retrying – tell the user directly.
+      if ((error as DOMException | null)?.name === 'QuotaExceededError') {
+        throw new Error(
+          'Auf deinem Gerät ist zu wenig Speicherplatz frei. Schaffe etwas Platz und versuche es dann erneut.',
+        )
+      }
+    }
+  }
+  console.error(`Supertonic download failed for ${path}:`, lastError)
+  throw new Error(
+    'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal.',
+  )
 }

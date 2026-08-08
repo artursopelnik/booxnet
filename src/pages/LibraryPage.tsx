@@ -24,7 +24,6 @@ import { add, bookOutline, trashOutline } from 'ionicons/icons'
 import { useRef, useState } from 'react'
 import { deleteBook, getAllBooks, putBook, type Book } from '../lib/db'
 import { importPdf } from '../lib/pdf'
-import { STUDIO_LANGS, STUDIO_VOICES } from '../lib/voices'
 
 export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([])
@@ -91,12 +90,6 @@ export default function LibraryPage() {
         <IonHeader collapse="condense">
           <IonToolbar>
             <IonTitle size="large">Bibliothek</IonTitle>
-            <img
-              slot="end"
-              className="brand-mark brand-mark--large"
-              src={`${import.meta.env.BASE_URL}icon.svg`}
-              alt="Booxnet"
-            />
           </IonToolbar>
         </IonHeader>
 
@@ -107,10 +100,8 @@ export default function LibraryPage() {
             <IonIcon aria-hidden="true" icon={bookOutline} />
             <h2>Noch keine Bücher</h2>
             <p>
-              Komplett kostenfreies Text-to-Speech: Booxnet liest dir PDFs
-              und E-Books mit {STUDIO_VOICES.length} natürlich klingenden
-              Studio-Stimmen in {STUDIO_LANGS.length} Sprachen vor – komplett
-              offline auf deinem Gerät.
+              Lade ein PDF hoch und lass es dir vorlesen – kostenlos und
+              komplett offline auf deinem Gerät.
             </p>
             <IonButton onClick={() => fileInput.current?.click()}>
               PDF hochladen

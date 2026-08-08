@@ -35,7 +35,7 @@ import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
 import { detectStudioLang, langLabel } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
-import { studioPrefetch } from '../lib/supertonic/client'
+import { studioPrefetch, studioWarmup } from '../lib/supertonic/client'
 import { isSpeakable, sanitizeForSpeech, toSentences } from '../lib/text'
 import {
   engineSpeed,
@@ -107,6 +107,77 @@ const PageSection = memo(function PageSection({
   )
 })
 
+/** Pages around the reading position that are always fully rendered. */
+const RENDER_WINDOW = 5
+
+/** Rough page height from its text, so placeholders keep the scrollbar
+ * honest before the real content mounts. */
+function estimatePageHeight(sentences: PageSentence[]): number {
+  const chars = sentences.reduce((sum, s) => sum + s.text.length, 0)
+  // ~45 characters per line at the reader's font size, ~32 px line height,
+  // plus the page marker block.
+  return Math.max(160, Math.round((chars / 45) * 32 + 80))
+}
+
+/**
+ * Mounts a page's sentence spans only when it is near the viewport or
+ * inside the render window around the reading position. Books with
+ * hundreds of pages would otherwise build tens of thousands of DOM nodes
+ * up front and make opening a book crawl on phones. Once rendered, a page
+ * stays rendered so scrolling back never causes layout jumps.
+ */
+const LazyPage = memo(function LazyPage({
+  pageIndex,
+  sentences,
+  activeIndex,
+  forceRender,
+  onJump,
+}: {
+  pageIndex: number
+  sentences: PageSentence[]
+  activeIndex: number
+  forceRender: boolean
+  onJump: (index: number) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [nearViewport, setNearViewport] = useState(false)
+
+  useEffect(() => {
+    if (nearViewport) return
+    const element = ref.current
+    if (!element) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setNearViewport(true)
+        }
+      },
+      { rootMargin: '1500px 0px' },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [nearViewport])
+
+  const rendered = nearViewport || forceRender
+  return (
+    <div
+      ref={ref}
+      style={rendered ? undefined : { minHeight: estimatePageHeight(sentences) }}
+    >
+      {rendered ? (
+        <PageSection
+          pageIndex={pageIndex}
+          sentences={sentences}
+          activeIndex={activeIndex}
+          onJump={onJump}
+        />
+      ) : (
+        <div className="page-marker">Seite {pageIndex + 1}</div>
+      )}
+    </div>
+  )
+})
+
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>()
   const [book, setBook] = useState<Book | null | undefined>(undefined)
@@ -117,7 +188,7 @@ export default function ReaderPage() {
   const [rate, setRate] = useState(getSavedRate())
   const [state, setState] = useState<SpeakerState>('idle')
   const [current, setCurrent] = useState(0)
-  const [bookLang, setBookLang] = useState('na')
+  const [bookLang, setBookLang] = useState('de')
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   const [presentToast] = useIonToast()
 
@@ -205,32 +276,6 @@ export default function ReaderPage() {
     speaker.setSentences(speakItems)
   }, [speaker, speakItems])
 
-  // Progressive rendering: paint the pages around the reading position
-  // immediately, fill in the rest in the background – huge books (hundreds
-  // of pages) no longer freeze the UI when opening.
-  const [visiblePages, setVisiblePages] = useState(8)
-  useEffect(() => {
-    if (!book) return
-    const positionPage = pageOfSentence.get(book.position) ?? 0
-    const startIndex = pages.findIndex((p) => p.pageIndex === positionPage)
-    setVisiblePages(Math.max(8, startIndex + 4))
-  }, [book, pages, pageOfSentence])
-  useEffect(() => {
-    if (visiblePages >= pages.length) return
-    const timer = setTimeout(
-      () => setVisiblePages((v) => Math.min(v + 15, pages.length)),
-      100,
-    )
-    return () => clearTimeout(timer)
-  }, [visiblePages, pages.length])
-  // Jumping forward must always render the target page.
-  useEffect(() => {
-    const page = pageOfSentence.get(current)
-    if (page === undefined) return
-    const index = pages.findIndex((p) => p.pageIndex === page)
-    if (index >= 0) setVisiblePages((v) => Math.max(v, index + 2))
-  }, [current, pages, pageOfSentence])
-
   useEffect(() => {
     if (!book) return
     const detected = detectStudioLang(book.pages.join(' '))
@@ -240,6 +285,15 @@ export default function ReaderPage() {
 
   const voice: StudioVoiceMeta =
     studioVoiceById(voiceId) ?? STUDIO_VOICES[0]
+
+  // Warm the engine (and the selected voice's style) as soon as the reader
+  // opens – loading ~400 MB of sessions takes long, and doing it here makes
+  // the first press on Play feel instant instead of frozen.
+  useEffect(() => {
+    if (engineInstalled) {
+      studioWarmup(voice.id)
+    }
+  }, [engineInstalled, voice.id])
 
   useEffect(() => {
     speaker.setVoice(voice)
@@ -334,21 +388,16 @@ export default function ReaderPage() {
       return
     }
     if (!engineInstalled) {
-      // Re-check OPFS – the state can be stale (e.g. download finished in
-      // a second tab). Only the confirmed-missing case opens the sheet.
-      void isStudioEngineInstalled().then((installed) => {
-        setEngineInstalled(installed)
-        if (installed) {
-          speaker.play(current)
-        } else {
-          toastRef.current({
-            message: 'Lade zuerst das Sprachmodell herunter (einmalig).',
-            duration: 3000,
-            color: 'warning',
-          })
-          setVoiceSheetOpen(true)
-        }
+      // React instantly – never make the play button wait on OPFS, which
+      // can be slow on iOS. The sheet opens right away; a background
+      // re-check corrects stale state (e.g. download finished elsewhere).
+      setVoiceSheetOpen(true)
+      toastRef.current({
+        message: 'Lade zuerst einmalig das Sprachmodell herunter.',
+        duration: 3000,
+        color: 'warning',
       })
+      void isStudioEngineInstalled().then(setEngineInstalled)
       return
     }
     speaker.play(current)
@@ -437,12 +486,13 @@ export default function ReaderPage() {
               alt={`Cover: ${book.title}`}
             />
           )}
-          {pages.slice(0, visiblePages).map((page) => (
-            <PageSection
+          {pages.map((page) => (
+            <LazyPage
               key={page.pageIndex}
               pageIndex={page.pageIndex}
               sentences={page.sentences}
               activeIndex={page.pageIndex === activePage ? current : -1}
+              forceRender={Math.abs(page.pageIndex - activePage) <= RENDER_WINDOW}
               onJump={jumpTo}
             />
           ))}
