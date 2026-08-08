@@ -439,14 +439,17 @@ self.onmessage = (event: MessageEvent<Request>) => {
     return
   }
   if (request.type === 'synthesize' && request.priority) {
-    // Der letzte Play-Druck gewinnt absolut: Alle noch wartenden Synthesen
-    // (Prefetches wie ältere Play-Anfragen) werden verworfen und dem
-    // Client als abgebrochen gemeldet – er räumt seinen Cache auf und
-    // fordert später Nötiges neu an. Die bereits laufende Berechnung ist
-    // nicht abbrechbar, aber alles dahinter macht sofort Platz.
+    // Der letzte Play-Druck gewinnt: Wartende HINTERGRUND-Synthesen
+    // (Prefetch, Vorschau-Warmup) werden verworfen und dem Client als
+    // abgebrochen gemeldet – er räumt seinen Cache auf und fordert später
+    // Nötiges neu an. Vorrang-Anfragen untereinander bleiben bestehen und
+    // ordnen sich nur neu (neueste zuerst): Würden sie sich gegenseitig
+    // verwerfen, würgten sich z. B. Probehören und Vorlesen wechselseitig
+    // ab und der Player bliebe im Ladezustand hängen. Veraltete
+    // Vorrang-Ergebnisse sortiert der Client über seine Generation aus.
     for (let i = taskQueue.length - 1; i >= 0; i--) {
       const task = taskQueue[i]
-      if (task.type === 'synthesize') {
+      if (task.type === 'synthesize' && !task.priority) {
         taskQueue.splice(i, 1)
         self.postMessage({
           id: task.id,

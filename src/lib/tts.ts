@@ -138,6 +138,18 @@ export function warmVoicePreviews(voices: StudioVoiceMeta[]): void {
 
 let sharedCtx: AudioContext | null = null
 
+/**
+ * Alle Quellen spielen über einen MediaStream in ein verstecktes
+ * <audio>-Element statt direkt auf ctx.destination: iOS behandelt
+ * Medien-Elemente wie Hörbuch-/Musik-Wiedergabe und gibt sie auch bei
+ * aktiviertem Lautlos-Schalter aus – direkte Web-Audio-Ausgabe wird vom
+ * Schalter dagegen stummgeschaltet ("er liest, aber man hört nichts").
+ * Erkennen lässt sich der Schalter aus dem Web nicht, also umgehen wir
+ * ihn wie eine richtige Vorlese-App. Fallback: direkte Ausgabe.
+ */
+let outputNode: AudioNode | null = null
+let outputElement: HTMLAudioElement | null = null
+
 function getAudioContext(): AudioContext {
   if (!sharedCtx) {
     const Ctor =
@@ -149,20 +161,47 @@ function getAudioContext(): AudioContext {
   return sharedCtx
 }
 
+function getOutput(): AudioNode {
+  const ctx = getAudioContext()
+  if (!outputNode) {
+    try {
+      const destination = ctx.createMediaStreamDestination()
+      const element = document.createElement('audio')
+      element.setAttribute('playsinline', '')
+      element.style.display = 'none'
+      element.srcObject = destination.stream
+      document.body.appendChild(element)
+      outputElement = element
+      outputNode = destination
+    } catch {
+      outputNode = ctx.destination
+    }
+  }
+  return outputNode
+}
+
 /**
  * Must be called synchronously inside a user gesture once: resumes the
- * context and plays a one-sample silent buffer so iOS marks it as
- * user-activated.
+ * context, starts the output element and plays a one-sample silent
+ * buffer so iOS marks the pipeline as user-activated.
  */
 function unlockAudioContext(): void {
   const ctx = getAudioContext()
   if (ctx.state === 'suspended') {
     void ctx.resume()
   }
+  const output = getOutput()
+  if (outputElement && outputElement.paused) {
+    outputElement.play().catch(() => {
+      // Element-Wiedergabe verweigert – lieber direkt ausgeben als stumm
+      // bleiben (dann gilt allerdings wieder der Lautlos-Schalter).
+      outputNode = getAudioContext().destination
+    })
+  }
   const buffer = ctx.createBuffer(1, 1, 22050)
   const source = ctx.createBufferSource()
   source.buffer = buffer
-  source.connect(ctx.destination)
+  source.connect(output)
   source.start(0)
 }
 
@@ -205,7 +244,7 @@ export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
   if (ctx.state === 'suspended') await ctx.resume()
   const source = ctx.createBufferSource()
   source.buffer = buffer
-  source.connect(ctx.destination)
+  source.connect(getOutput())
   previewSource = source
   source.start()
   await new Promise<void>((resolve) => {
@@ -439,8 +478,12 @@ export class Speaker {
       buffer = await decodeBlob(blob)
     } catch (error) {
       if (generation !== this.generation) return
-      // Verdrängt durch einen neueren Play-Druck – der kümmert sich.
-      if (error instanceof Error && error.name === TTS_CANCELLED_ERROR) return
+      // Verdrängt, obwohl weiterhin gewollt (gleiche Generation): erneut
+      // anfordern statt für immer im Ladezustand hängen zu bleiben.
+      if (error instanceof Error && error.name === TTS_CANCELLED_ERROR) {
+        void this.speakCurrent()
+        return
+      }
       // Die Synthese läuft komplett lokal – ein Timeout heißt "Gerät zu
       // langsam / beschäftigt", nie "Internet weg". Nur wenn wirklich
       // etwas fehlt oder kaputt ist, hilft ein erneuter Modell-Download.
@@ -467,7 +510,7 @@ export class Speaker {
     }
     const source = ctx.createBufferSource()
     source.buffer = buffer
-    source.connect(ctx.destination)
+    source.connect(getOutput())
     source.onended = () => this.advance(generation)
     this.source = source
     this.sourceIndex = this.index

@@ -24,26 +24,17 @@ import {
 } from 'ionicons/icons'
 import { useEffect, useState } from 'react'
 import {
+  DOWNLOAD_ERRORS,
   downloadStudioEngine,
   isStudioEngineInstalled,
   removeStudioData,
   STUDIO_ENGINE_SIZE_MB,
   StudioDownloadError,
-  type StudioDownloadFailure,
 } from '../lib/supertonic/assets'
 import { resetStudioEngine } from '../lib/supertonic/client'
 import { isStorageAvailable } from '../lib/supertonic/opfs'
 import { previewVoice, warmVoicePreviews } from '../lib/tts'
 import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
-
-const DOWNLOAD_ERRORS: Record<StudioDownloadFailure, string> = {
-  storage:
-    'Dein Browser erlaubt hier keinen Speicher für das Sprachmodell, das passiert vor allem in privaten Fenstern. Öffne Booxnet in einem normalen Fenster und lade es dort herunter.',
-  quota:
-    `Auf deinem Gerät ist zu wenig Speicherplatz für das Sprachmodell frei (ca. ${STUDIO_ENGINE_SIZE_MB} MB). Schaffe etwas Platz und versuche es dann erneut. Bereits geladene Teile bleiben erhalten.`,
-  network:
-    'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal. Bereits geladene Teile bleiben erhalten.',
-}
 
 interface Props {
   isOpen: boolean
@@ -75,8 +66,14 @@ export default function VoiceSheet({
       isStudioEngineInstalled().then((ok) => {
         setInstalled(ok)
         // Fehlende Begrüßungen im Hintergrund fertig rendern, damit das
-        // Probehören sofort abspielt statt erst zu rechnen.
-        if (ok) warmVoicePreviews(STUDIO_VOICES)
+        // Probehören sofort abspielt statt erst zu rechnen – die gerade
+        // ausgewählte Stimme zuerst.
+        if (ok) {
+          warmVoicePreviews([
+            ...STUDIO_VOICES.filter((voice) => voice.id === selectedId),
+            ...STUDIO_VOICES.filter((voice) => voice.id !== selectedId),
+          ])
+        }
       })
       isStorageAvailable().then((available) => setStorageBlocked(!available))
     }
@@ -140,12 +137,12 @@ export default function VoiceSheet({
     }
   }
 
-  // Selecting a voice makes it introduce itself: "Hallo, ich bin Alex."
+  // Auswählen wechselt NUR die Stimme – die Vorstellung ("Hallo, ich
+  // bin Alex.") spielt ausschließlich über das Ton-Icon rechts. Die
+  // Auto-Vorstellung nervte beim Wechseln und konnte sich mit der
+  // laufenden Wiedergabe gegenseitig aus der Warteschlange werfen.
   const select = (voice: StudioVoiceMeta) => {
     onSelect(voice)
-    if (previewing === null) {
-      void preview(voice)
-    }
   }
 
   return (

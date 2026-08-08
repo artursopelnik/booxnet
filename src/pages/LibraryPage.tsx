@@ -25,6 +25,8 @@ import { useRef, useState } from 'react'
 import AppSection from '../components/AppSection'
 import { deleteBook, getAllBooks, putBook, type Book } from '../lib/db'
 import { ACCEPTED_FILES, importBook, unitCount } from '../lib/importers'
+import { isStudioEngineInstalled } from '../lib/supertonic/assets'
+import { markWelcomeSeen, WELCOME_SEEN_KEY } from './WelcomePage'
 
 export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([])
@@ -38,6 +40,22 @@ export default function LibraryPage() {
   }
 
   useIonViewWillEnter(refresh)
+
+  // Erststart ohne Sprachpaket: erst das Willkommen mit Erklärung und
+  // Download. Bestandsinstallationen (Paket vorhanden) sehen es nie.
+  useIonViewWillEnter(() => {
+    let seen = true
+    try {
+      seen = localStorage.getItem(WELCOME_SEEN_KEY) !== null
+    } catch {
+      // Ohne Speicher lieber nicht in eine Willkommens-Schleife laufen.
+    }
+    if (seen) return
+    void isStudioEngineInstalled().then((installed) => {
+      if (installed) markWelcomeSeen()
+      else router.push('/welcome', 'root', 'replace')
+    })
+  })
 
   const onFileChosen = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
