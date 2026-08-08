@@ -8,6 +8,19 @@ export default defineConfig({
   // The TTS worker code-splits (dynamic onnxruntime import), which
   // requires ES module workers.
   worker: { format: 'es' },
+  build: {
+    rollupOptions: {
+      output: {
+        // Framework getrennt vom App-Code: App-Updates invalidieren dann
+        // nur den kleinen App-Chunk, die grossen Framework-Chunks behalten
+        // ihren Hash und bleiben im Browser-/Service-Worker-Cache.
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router', 'react-router-dom'],
+          ionic: ['@ionic/react', '@ionic/react-router', 'ionicons'],
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

@@ -17,17 +17,9 @@ function localPrefix(): string {
   return `${import.meta.env.BASE_URL}ort/`
 }
 
-/** Laufzeitdateien, die dieser Browser tatsächlich anfordern würde. */
+/** Laufzeitdateien, die der Worker tatsächlich anfordert (reines WASM). */
 export function ortWasmFiles(): string[] {
-  const files = ['ort-wasm-simd-threaded.wasm', 'ort-wasm-simd-threaded.mjs']
-  if ('gpu' in navigator) {
-    // Der WebGPU-Pfad nutzt die JSEP-Variante.
-    files.push(
-      'ort-wasm-simd-threaded.jsep.wasm',
-      'ort-wasm-simd-threaded.jsep.mjs',
-    )
-  }
-  return files
+  return ['ort-wasm-simd-threaded.wasm', 'ort-wasm-simd-threaded.mjs']
 }
 
 /**
