@@ -14,6 +14,7 @@
  */
 import type { StudioVoiceId } from '../voices'
 import { ensureStudioStyle, loadStudioAsset } from './assets'
+import { assetSize } from './opfs'
 import { resolveOrtWasmPrefix } from './ortwasm'
 
 type Ort = typeof import('onnxruntime-web')
@@ -45,7 +46,23 @@ interface Engine {
 
 let enginePromise: Promise<Engine> | null = null
 
+/**
+ * Meldet den Stand des einmaligen Engine-Ladens (0..1) an den Client,
+ * damit die UI beim ersten Play-Druck einen echten Fortschrittsbalken
+ * zeigen kann statt eines endlos wirkenden Spinners. Byte-gewichtet:
+ * Jedes Modell zählt einmal fürs Lesen aus OPFS und einmal für den
+ * Session-Aufbau, so bewegt sich der Balken auch bei den großen Modellen
+ * sichtbar voran.
+ */
+function reportEngineProgress(value: number): void {
+  self.postMessage({
+    type: 'engine-progress',
+    value: Math.max(0, Math.min(1, value)),
+  })
+}
+
 async function loadEngine(): Promise<Engine> {
+  reportEngineProgress(0)
   const ort = (await import('onnxruntime-web/wasm')) as Ort
   // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers, siehe
   // public/_headers - Netlify setzt sie, GitHub Pages kann das nicht).
@@ -77,10 +94,19 @@ async function loadEngine(): Promise<Engine> {
     'onnx/vector_estimator.onnx',
     'onnx/vocoder.onnx',
   ]
+  const sizes = await Promise.all(modelPaths.map((path) => assetSize(path)))
+  const totalWork = sizes.reduce((sum, size) => sum + Math.max(0, size), 0) * 2
+  let doneWork = 0
+  const step = (bytes: number) => {
+    doneWork += Math.max(0, bytes)
+    reportEngineProgress(totalWork > 0 ? doneWork / totalWork : 0)
+  }
+
   const sessions: OrtSession[] = []
   let nextBuffer = loadStudioAsset(modelPaths[0])
   for (let i = 0; i < modelPaths.length; i++) {
     const buffer = await nextBuffer
+    step(sizes[i])
     if (i + 1 < modelPaths.length) {
       nextBuffer = loadStudioAsset(modelPaths[i + 1])
     }
@@ -89,9 +115,11 @@ async function loadEngine(): Promise<Engine> {
         executionProviders: ['wasm'],
       }),
     )
+    step(sizes[i])
   }
   const [dp, textEnc, vectorEst, vocoder] = sessions
 
+  reportEngineProgress(1)
   console.info('[booxnet-tts] Engine bereit: WASM')
   return {
     ort,
@@ -108,6 +136,9 @@ async function loadEngine(): Promise<Engine> {
 function getEngine(): Promise<Engine> {
   enginePromise ??= loadEngine().catch((error) => {
     enginePromise = null
+    // Sonst bliebe der Fortschrittsbalken beim nächsten Versuch auf dem
+    // alten Stand stehen.
+    reportEngineProgress(0)
     throw error
   })
   return enginePromise
@@ -407,7 +438,23 @@ interface BumpRequest {
   target: number
 }
 
-type Request = SynthesizeRequest | PreloadRequest | ResetRequest | BumpRequest
+/**
+ * Verwirft alle wartenden (und die laufende) Hintergrund-Vorlese-
+ * Berechnungen, z. B. nach einem Tempowechsel: Die alten Vorausberechnungen
+ * passen nicht mehr und würden nur die neuen blockieren. Vorschau-
+ * Berechnungen (channel 'preview') bleiben unberührt.
+ */
+interface FlushRequest {
+  id: number
+  type: 'flush'
+}
+
+type Request =
+  | SynthesizeRequest
+  | PreloadRequest
+  | ResetRequest
+  | BumpRequest
+  | FlushRequest
 
 /** Gerade rechnende Synthese – von Vorrang-Anfragen abbrechbar. */
 let runningTask: {
@@ -417,7 +464,9 @@ let runningTask: {
   aborted: boolean
 } | null = null
 
-async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
+async function handle(
+  request: Exclude<Request, BumpRequest | FlushRequest>,
+): Promise<void> {
   if (request.type === 'reset') {
     enginePromise = null
     self.postMessage({ id: request.id, ok: true })
@@ -478,7 +527,7 @@ async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
 // queue is a real list instead of a promise chain, so the sentence the
 // user is actually waiting for can overtake queued prefetches – on slow
 // devices those would otherwise add up to a timeout before playback.
-const taskQueue: Exclude<Request, BumpRequest>[] = []
+const taskQueue: Exclude<Request, BumpRequest | FlushRequest>[] = []
 let pumping = false
 
 async function pump(): Promise<void> {
@@ -494,6 +543,32 @@ async function pump(): Promise<void> {
 
 self.onmessage = (event: MessageEvent<Request>) => {
   const request = event.data
+  if (request.type === 'flush') {
+    for (let i = taskQueue.length - 1; i >= 0; i--) {
+      const task = taskQueue[i]
+      if (
+        task.type === 'synthesize' &&
+        !task.priority &&
+        task.channel !== 'preview'
+      ) {
+        taskQueue.splice(i, 1)
+        self.postMessage({
+          id: task.id,
+          ok: false,
+          cancelled: true,
+          error: 'Abgebrochen: Vorausberechnung verworfen',
+        })
+      }
+    }
+    if (
+      runningTask &&
+      !runningTask.priority &&
+      runningTask.channel !== 'preview'
+    ) {
+      runningTask.aborted = true
+    }
+    return
+  }
   if (request.type === 'bump') {
     const index = taskQueue.findIndex((task) => task.id === request.target)
     if (index > 0) {

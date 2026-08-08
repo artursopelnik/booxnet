@@ -210,6 +210,15 @@ html.ion-palette-dark .reader-text.hl-underline .sentence--active {
   --padding-bottom: 6px;
 }
 
+/* Hinweis unter dem Fortschrittsbalken beim einmaligen Engine-Laden. */
+.engine-loading-hint {
+  padding: 4px 16px 0;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--ion-color-medium);
+  font-variant-numeric: tabular-nums;
+}
+
 .player {
   display: flex;
   flex-direction: column;
