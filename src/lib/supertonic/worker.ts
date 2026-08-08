@@ -203,6 +203,9 @@ function gaussianArray(length: number): Float32Array {
   return result
 }
 
+/** Laufende Synthese wurde von einer Vorrang-Anfrage verdrängt. */
+class AbortedError extends Error {}
+
 async function inferChunk(
   engine: Engine,
   text: string,
@@ -210,6 +213,7 @@ async function inferChunk(
   style: Style,
   speed: number,
   steps: number,
+  shouldAbort: () => boolean,
 ): Promise<Float32Array> {
   const { ort, cfgs } = engine
 
@@ -264,8 +268,11 @@ async function inferChunk(
     [1],
   )
 
-  // Denoising loop.
+  // Denoising loop. Zwischen den Schritten abbrechbar: So blockiert eine
+  // laufende Hintergrund-Berechnung einen Play-Druck nur noch für einen
+  // einzelnen Schritt (~Sekunden) statt für die gesamte Synthese.
   for (let step = 0; step < steps; step++) {
+    if (shouldAbort()) throw new AbortedError('Von Play-Druck verdrängt')
     const out = await engine.vectorEst.run({
       noisy_latent: new ort.Tensor('float32', xt, [1, latentDim, latentLen]),
       text_emb: textEmb,
@@ -279,6 +286,7 @@ async function inferChunk(
   }
 
   // Latent → waveform.
+  if (shouldAbort()) throw new AbortedError('Von Play-Druck verdrängt')
   const vocoderOut = await engine.vocoder.run({
     latent: new ort.Tensor('float32', xt, [1, latentDim, latentLen]),
   })
@@ -321,12 +329,15 @@ async function synthesize(
   text: string,
   speed: number,
   steps: number,
+  shouldAbort: () => boolean,
 ): Promise<ArrayBuffer> {
   const style = await getStyle(engine, voiceId)
   const chunks = chunkText(text, lang)
   const parts: Float32Array[] = []
   for (const chunk of chunks) {
-    parts.push(await inferChunk(engine, chunk, lang, style, speed, steps))
+    parts.push(
+      await inferChunk(engine, chunk, lang, style, speed, steps, shouldAbort),
+    )
   }
   const sampleRate = engine.cfgs.ae.sample_rate
   const silence = Math.floor(SILENCE_SECONDS * sampleRate)
@@ -383,6 +394,14 @@ interface BumpRequest {
 
 type Request = SynthesizeRequest | PreloadRequest | ResetRequest | BumpRequest
 
+/** Gerade rechnende Synthese – von Vorrang-Anfragen abbrechbar. */
+let runningTask: {
+  id: number
+  priority: boolean
+  channel?: string
+  aborted: boolean
+} | null = null
+
 async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
   if (request.type === 'reset') {
     enginePromise = null
@@ -402,6 +421,12 @@ async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
         ` (prio=${request.priority === true}, wartend=${taskQueue.length})`,
     )
     const steps = Math.min(12, Math.max(1, Math.round(request.steps ?? 4)))
+    runningTask = {
+      id: request.id,
+      priority: request.priority === true,
+      channel: request.channel,
+      aborted: false,
+    }
     const wav = await synthesize(
       engine,
       request.voiceId,
@@ -409,15 +434,27 @@ async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
       request.text,
       request.speed,
       steps,
+      () => runningTask?.aborted === true,
     )
     // Transfer the buffer – no copy on the way back.
     self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })
   } catch (error) {
+    if (error instanceof AbortedError) {
+      self.postMessage({
+        id: request.id,
+        ok: false,
+        cancelled: true,
+        error: 'Abgebrochen: neuer Satz angefordert',
+      })
+      return
+    }
     self.postMessage({
       id: request.id,
       ok: false,
       error: error instanceof Error ? error.message : String(error),
     })
+  } finally {
+    runningTask = null
   }
 }
 
@@ -474,6 +511,17 @@ self.onmessage = (event: MessageEvent<Request>) => {
           error: 'Abgebrochen: neuer Satz angefordert',
         })
       }
+    }
+    // Auch die LAUFENDE Berechnung verdrängen, wenn sie Hintergrund ist
+    // oder eine ältere Vorrang-Anfrage derselben Quelle: Sie steigt am
+    // nächsten Rechenschritt aus (~Sekunden) statt z. B. eine lange
+    // Begrüßungs-Berechnung komplett zu Ende zu rechnen, während der
+    // Nutzer auf seinen Satz wartet.
+    if (
+      runningTask &&
+      (!runningTask.priority || runningTask.channel === request.channel)
+    ) {
+      runningTask.aborted = true
     }
     taskQueue.unshift(request)
   } else {
