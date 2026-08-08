@@ -11,6 +11,7 @@
 import {
   studioPrefetch,
   studioSynthesize,
+  TTS_CANCELLED_ERROR,
   TTS_TIMEOUT_ERROR,
 } from './supertonic/client'
 import type { StudioVoiceMeta } from './voices'
@@ -375,6 +376,8 @@ export class Speaker {
       buffer = await decodeBlob(blob)
     } catch (error) {
       if (generation !== this.generation) return
+      // Verdrängt durch einen neueren Play-Druck – der kümmert sich.
+      if (error instanceof Error && error.name === TTS_CANCELLED_ERROR) return
       // Die Synthese läuft komplett lokal – ein Timeout heißt "Gerät zu
       // langsam / beschäftigt", nie "Internet weg". Nur wenn wirklich
       // etwas fehlt oder kaputt ist, hilft ein erneuter Modell-Download.

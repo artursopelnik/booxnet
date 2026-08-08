@@ -1,52 +1,37 @@
 /**
- * Herkunft der onnxruntime WASM-Binärdateien und Browser-Weichen.
+ * Herkunft der onnxruntime WASM-Laufzeitdateien.
  *
- * Die Binärdateien werden beim Build nach public/ort/ kopiert
- * (scripts/copy-ort-wasm.mjs) und same-origin geladen: immer passend zur
- * gebündelten JS-Version, vom Service Worker cachebar und damit offline-
- * fähig. Das CDN bleibt nur als Fallback für Builds, in denen der
- * Kopierschritt nicht gelaufen ist.
+ * Die Dateien (WASM-Binärdateien + .mjs-Loader) werden beim Build nach
+ * public/ort/ kopiert (scripts/copy-ort-wasm.mjs) und same-origin geladen:
+ * immer passend zur gebündelten JS-Version, vom Service Worker cachebar
+ * und damit offline-fähig. Das CDN bleibt nur als Fallback für Builds,
+ * in denen der Kopierschritt nicht gelaufen ist.
  *
  * Läuft im Worker wie im Fenster (nur navigator/fetch, kein DOM).
  */
 
-export const ORT_CDN =
-  'https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/'
+/** Muss zur installierten onnxruntime-web-Version passen (package.json). */
+export const ORT_CDN = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/'
 
 function localPrefix(): string {
   return `${import.meta.env.BASE_URL}ort/`
 }
 
-/**
- * Safari/WebKit inklusive aller iOS-Browser: Das WebGPU-Backend von
- * onnxruntime 1.18 ist dort unzuverlässig und bleibt beim Laden der
- * Modelle hängen statt einen Fehler zu werfen – der Play-Knopf dreht
- * dann endlos. Reines WASM ist auf WebKit der verlässliche Pfad.
- */
-export function isWebKitSafari(): boolean {
-  const ua = navigator.userAgent
-  return /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg|OPR|Android/.test(ua)
-}
-
-export function mayUseWebGpu(): boolean {
-  return 'gpu' in navigator && !isWebKitSafari()
-}
-
-/** WASM-Dateien, die dieser Browser tatsächlich anfordern würde. */
+/** Laufzeitdateien, die dieser Browser tatsächlich anfordern würde. */
 export function ortWasmFiles(): string[] {
-  const threaded =
-    typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated
-  const files = [threaded ? 'ort-wasm-simd-threaded.wasm' : 'ort-wasm-simd.wasm']
-  if (mayUseWebGpu()) {
+  const files = ['ort-wasm-simd-threaded.wasm', 'ort-wasm-simd-threaded.mjs']
+  if ('gpu' in navigator) {
+    // Der WebGPU-Pfad nutzt die JSEP-Variante.
     files.push(
-      threaded ? 'ort-wasm-simd-threaded.jsep.wasm' : 'ort-wasm-simd.jsep.wasm',
+      'ort-wasm-simd-threaded.jsep.wasm',
+      'ort-wasm-simd-threaded.jsep.mjs',
     )
   }
   return files
 }
 
 /**
- * Liefert das lokale Verzeichnis, wenn die Binärdateien mit ausgeliefert
+ * Liefert das lokale Verzeichnis, wenn die Laufzeitdateien mit ausgeliefert
  * wurden, sonst das CDN. Der Probe-GET läuft durch den Service Worker und
  * wird von dessen Cache beantwortet – so funktioniert die Auflösung auch
  * offline. (Auf SPA-Hosts liefert eine fehlende Datei index.html zurück,
@@ -54,7 +39,7 @@ export function ortWasmFiles(): string[] {
  */
 export async function resolveOrtWasmPrefix(): Promise<string> {
   try {
-    const probe = await fetch(`${localPrefix()}ort-wasm-simd.wasm`)
+    const probe = await fetch(`${localPrefix()}ort-wasm-simd-threaded.wasm`)
     const type = probe.headers.get('Content-Type') ?? ''
     if (probe.ok && !type.includes('text/html')) return localPrefix()
   } catch {
@@ -64,9 +49,9 @@ export async function resolveOrtWasmPrefix(): Promise<string> {
 }
 
 /**
- * Lädt die benötigten WASM-Binärdateien einmal an, damit der Service
- * Worker sie cacht und die Sprachausgabe danach offline startet.
- * Best-effort: Online-Wiedergabe funktioniert auch ohne.
+ * Lädt die benötigten Laufzeitdateien einmal an, damit der Service Worker
+ * sie cacht und die Sprachausgabe danach offline startet. Best-effort:
+ * Online-Wiedergabe funktioniert auch ohne.
  */
 export async function warmOrtWasmCache(): Promise<void> {
   const prefix = await resolveOrtWasmPrefix()
