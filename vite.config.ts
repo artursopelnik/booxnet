@@ -11,7 +11,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': updates activate over the "Update installieren" button in
+      // the app instead of silently on the next visit.
+      registerType: 'prompt',
       includeAssets: ['icon.svg'],
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2}'],
