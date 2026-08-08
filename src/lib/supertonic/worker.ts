@@ -10,12 +10,12 @@
  */
 import type { StudioVoiceId } from '../voices'
 import { ensureStudioStyle, loadStudioAsset } from './assets'
+import { mayUseWebGpu, resolveOrtWasmPrefix } from './ortwasm'
 
 type Ort = typeof import('onnxruntime-web')
 type OrtSession = import('onnxruntime-web').InferenceSession
 type OrtTensor = import('onnxruntime-web').Tensor
 
-const ONNX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/'
 const SILENCE_SECONDS = 0.3
 
 interface Cfgs {
@@ -43,8 +43,28 @@ interface Engine {
 
 let enginePromise: Promise<Engine> | null = null
 
+/**
+ * WebGPU only counts as usable when an adapter actually materializes.
+ * requestAdapter can pend indefinitely on some drivers, so a hung probe
+ * falls back to WASM after a short deadline instead of blocking playback.
+ */
+async function webGpuAdapterAvailable(): Promise<boolean> {
+  try {
+    const gpu = (navigator as { gpu?: { requestAdapter(): Promise<unknown> } })
+      .gpu
+    if (!gpu) return false
+    const adapter = await Promise.race([
+      gpu.requestAdapter(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+    ])
+    return adapter != null
+  } catch {
+    return false
+  }
+}
+
 async function loadOrt(): Promise<{ ort: Ort; providers: string[] }> {
-  if ('gpu' in navigator) {
+  if (mayUseWebGpu() && (await webGpuAdapterAvailable())) {
     try {
       const ort = (await import('onnxruntime-web/webgpu')) as Ort
       return { ort, providers: ['webgpu', 'wasm'] }
@@ -65,7 +85,7 @@ async function loadEngine(): Promise<Engine> {
   ort.env.wasm.numThreads = self.crossOriginIsolated
     ? (navigator.hardwareConcurrency ?? 4)
     : 1
-  ort.env.wasm.wasmPaths = ONNX_CDN
+  ort.env.wasm.wasmPaths = await resolveOrtWasmPrefix()
 
   const [cfgsBuf, indexerBuf] = await Promise.all([
     loadStudioAsset('onnx/tts.json'),

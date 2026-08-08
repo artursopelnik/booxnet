@@ -18,10 +18,20 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        // onnxruntime-web loads its WASM binaries from a CDN at runtime.
-        // Cache them so synthesis works offline; the voice models
-        // themselves are stored in OPFS.
+        // onnxruntime-web loads its WASM binaries at runtime – same-origin
+        // from /ort/ (scripts/copy-ort-wasm.mjs), with cdnjs only as
+        // fallback. Cache both so synthesis works offline; the voice
+        // models themselves are stored in OPFS.
         runtimeCaching: [
+          {
+            urlPattern: /\/ort\/[^/]+\.wasm$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tts-wasm',
+              expiration: { maxEntries: 20 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/,
             handler: 'CacheFirst',

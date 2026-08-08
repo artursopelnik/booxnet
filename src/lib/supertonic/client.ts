@@ -4,6 +4,7 @@
  * manages the request/response bridge and a small sentence cache.
  */
 import type { StudioVoiceId } from '../voices'
+import { warmOrtWasmCache } from './ortwasm'
 
 interface WorkerResponse {
   id: number
@@ -97,7 +98,15 @@ const warmedVoices = new Set<string>()
  * The worker queues requests, so a Play during warm-up simply waits for
  * the already-running engine load instead of starting a second one.
  */
+let wasmCacheWarmed = false
+
 export function studioWarmup(voiceId: StudioVoiceId): void {
+  // Auch Bestandsinstallationen (Sprachpaket vor diesem Update geladen)
+  // bekommen die WASM-Laufzeit so in den Offline-Cache.
+  if (!wasmCacheWarmed) {
+    wasmCacheWarmed = true
+    void warmOrtWasmCache()
+  }
   if (warmedVoices.has(voiceId)) return
   warmedVoices.add(voiceId)
   request({ type: 'preload', voiceId }).catch(() => {

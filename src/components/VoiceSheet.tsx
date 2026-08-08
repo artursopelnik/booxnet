@@ -118,10 +118,13 @@ export default function VoiceSheet({
     setPreviewing(voice.id)
     try {
       await previewVoice(voice)
-    } catch {
+    } catch (error) {
+      // Mit technischem Detail – ohne bleibt "geht nicht" undiagnostizierbar.
+      const detail =
+        error instanceof Error && error.message ? ` (${error.message})` : ''
       presentToast({
-        message: 'Probehören fehlgeschlagen.',
-        duration: 2500,
+        message: `Probehören fehlgeschlagen.${detail}`,
+        duration: 4000,
         color: 'danger',
       })
     } finally {
