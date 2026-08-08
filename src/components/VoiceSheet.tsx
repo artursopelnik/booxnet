@@ -33,7 +33,7 @@ import {
 } from '../lib/supertonic/assets'
 import { resetStudioEngine } from '../lib/supertonic/client'
 import { isStorageAvailable } from '../lib/supertonic/opfs'
-import { previewVoice } from '../lib/tts'
+import { previewVoice, warmVoicePreviews } from '../lib/tts'
 import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
 
 const DOWNLOAD_ERRORS: Record<StudioDownloadFailure, string> = {
@@ -72,7 +72,12 @@ export default function VoiceSheet({
 
   useEffect(() => {
     if (isOpen) {
-      isStudioEngineInstalled().then(setInstalled)
+      isStudioEngineInstalled().then((ok) => {
+        setInstalled(ok)
+        // Fehlende Begrüßungen im Hintergrund fertig rendern, damit das
+        // Probehören sofort abspielt statt erst zu rechnen.
+        if (ok) warmVoicePreviews(STUDIO_VOICES)
+      })
       isStorageAvailable().then((available) => setStorageBlocked(!available))
     }
   }, [isOpen])
@@ -93,6 +98,9 @@ export default function VoiceSheet({
       )
       setInstalled(true)
       onEngineChange(true)
+      // Direkt nach dem Download alle Begrüßungen vorrendern – ab dann
+      // spielt jede Vorstellung sofort, dauerhaft und offline.
+      warmVoicePreviews(STUDIO_VOICES)
     } catch (error) {
       const reason =
         error instanceof StudioDownloadError ? error.reason : 'network'

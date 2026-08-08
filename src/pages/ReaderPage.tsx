@@ -67,6 +67,8 @@ function pauseForEnding(text: string): number {
 interface PageSentence {
   index: number
   text: string
+  /** False bei der Fortsetzung eines seitenübergreifenden Satzes. */
+  start: boolean
 }
 
 /**
@@ -95,7 +97,7 @@ const PageSection = memo(function PageSection({
         {sentences.map((sentence) => (
           <span
             key={sentence.index}
-            id={`sentence-${sentence.index}`}
+            id={sentence.start ? `sentence-${sentence.index}` : undefined}
             className={
               sentence.index === activeIndex
                 ? 'sentence sentence--active'
@@ -213,7 +215,9 @@ export default function ReaderPage() {
     [book],
   )
 
-  // Sentences grouped per page, computed once per book.
+  // Sentences grouped per page, computed once per book. Ein seiten-
+  // übergreifender Satz erscheint mit je einem Segment auf beiden Seiten
+  // (gleicher Index), damit die Markierung nicht an der Seitengrenze endet.
   const pages = useMemo(() => {
     if (!book) return []
     const result = book.pages.map((_, pageIndex) => ({
@@ -221,17 +225,26 @@ export default function ReaderPage() {
       sentences: [] as PageSentence[],
     }))
     sentences.forEach((sentence, index) => {
-      result[sentence.page]?.sentences.push({ index, text: sentence.text })
+      sentence.segments.forEach((segment, segmentIndex) => {
+        result[segment.page]?.sentences.push({
+          index,
+          text: segment.text,
+          start: segmentIndex === 0,
+        })
+      })
     })
     return result.filter((page) => page.sentences.length > 0)
   }, [book, sentences])
 
-  // Maps a sentence index to its page, for targeted re-rendering.
+  // Maps a sentence index to the page it STARTS on, for scroll targeting
+  // and the render window.
   const pageOfSentence = useMemo(() => {
     const map = new Map<number, number>()
     for (const page of pages) {
       for (const sentence of page.sentences) {
-        map.set(sentence.index, page.pageIndex)
+        if (!map.has(sentence.index)) {
+          map.set(sentence.index, page.pageIndex)
+        }
       }
     }
     return map
@@ -267,9 +280,14 @@ export default function ReaderPage() {
       sentences.map((sentence, index) => {
         const previous = sentences[index - 1]
         const next = sentences[index + 1]
+        // Ein seitenübergreifender Satz endet auf der Seite seines letzten
+        // Segments – Atem und Seitenwechsel-Pause richten sich danach.
+        const endPage = sentence.segments[sentence.segments.length - 1].page
+        const previousEndPage =
+          previous?.segments[previous.segments.length - 1].page
         const startsPage =
-          previous !== undefined && previous.page !== sentence.page
-        const endsPage = next !== undefined && next.page !== sentence.page
+          previousEndPage !== undefined && previousEndPage !== sentence.page
+        const endsPage = next !== undefined && next.page !== endPage
         const clean = sanitizeForSpeech(sentence.text)
         const speakable = isSpeakable(clean)
         return {
@@ -308,16 +326,23 @@ export default function ReaderPage() {
     speaker.setVoice(voice)
   }, [speaker, voice])
 
-  // Warm up the engine and the first sentences as soon as the reader is
+  /** Aktuelle Position für Effekte, die nicht pro Satz neu laufen sollen. */
+  const currentRef = useRef(current)
+  currentRef.current = current
+
+  // Warm up the engine and the next sentences as soon as the reader is
   // open – tapping Play then starts quickly instead of on a cold engine.
+  // Ab der LESEPOSITION, nicht ab Buchanfang: Wer mitten im Buch
+  // weiterhört, bekam sonst einen kalten Start.
   useEffect(() => {
     if (!engineInstalled || speakItems.length === 0) return
-    const first = speakItems
+    const next = speakItems
+      .slice(currentRef.current)
       .filter((item) => !item.skip)
       .slice(0, 2)
       .map((item) => item.text)
-    if (first.length > 0) {
-      studioPrefetch(voice.id, bookLang, first, engineSpeed(rate))
+    if (next.length > 0) {
+      studioPrefetch(voice.id, bookLang, next, engineSpeed(rate))
     }
   }, [engineInstalled, speakItems, voice.id, bookLang, rate])
 
@@ -502,7 +527,11 @@ export default function ReaderPage() {
               pageIndex={page.pageIndex}
               unitLabel={unitLabel}
               sentences={page.sentences}
-              activeIndex={page.pageIndex === activePage ? current : -1}
+              // Auch die Folgeseite markiert ihr Segment, wenn der aktive
+              // Satz über die Seitengrenze läuft.
+              activeIndex={
+                page.sentences.some((s) => s.index === current) ? current : -1
+              }
               forceRender={Math.abs(page.pageIndex - activePage) <= RENDER_WINDOW}
               onJump={jumpTo}
             />

@@ -14,6 +14,7 @@ import {
   TTS_CANCELLED_ERROR,
   TTS_TIMEOUT_ERROR,
 } from './supertonic/client'
+import { hasAsset, readAsset, writeAsset } from './supertonic/opfs'
 import type { StudioVoiceMeta } from './voices'
 
 export interface SpeakerEvents {
@@ -73,6 +74,64 @@ export function saveRate(rate: number): void {
 /** Builds the "Hallo, ich bin Alex." preview sentence. */
 export function previewTextFor(voice: StudioVoiceMeta): string {
   return `Hallo, ich bin ${voice.name}. So klinge ich, wenn ich dir dein Buch vorlese.`
+}
+
+/**
+ * Fertig gerenderte Begrüßungen liegen dauerhaft in OPFS (neben den
+ * Modellen, werden mit "Sprachmodell löschen" zusammen entfernt) – das
+ * Probehören spielt dann sofort ab statt erst zu rechnen. Bei Änderungen
+ * am Vorschautext die Version hochzählen, damit alte Dateien verfallen.
+ */
+const PREVIEW_CACHE_VERSION = 'v1'
+
+function previewAssetPath(voice: StudioVoiceMeta): string {
+  return `previews/${PREVIEW_CACHE_VERSION}-${voice.id}.wav`
+}
+
+async function renderPreview(
+  voice: StudioVoiceMeta,
+  priority: boolean,
+): Promise<Blob> {
+  const blob = await studioSynthesize(
+    voice.id,
+    'de',
+    previewTextFor(voice),
+    BASE_SPEED,
+    priority,
+  )
+  // Persistieren best-effort – das Abspielen wartet nicht darauf.
+  void blob
+    .arrayBuffer()
+    .then((buffer) => writeAsset(previewAssetPath(voice), buffer))
+    .catch(() => {})
+  return blob
+}
+
+let previewsWarming = false
+
+/**
+ * Rendert fehlende Begrüßungen im Hintergrund in den OPFS-Cache, z. B.
+ * direkt nach dem Sprachpaket-Download oder beim Öffnen der
+ * Stimmen-Auswahl. Fire-and-forget; läuft hinter aktiver Wiedergabe in
+ * der Warteschlange und holt Abgebrochenes beim nächsten Aufruf nach.
+ */
+export function warmVoicePreviews(voices: StudioVoiceMeta[]): void {
+  if (previewsWarming) return
+  previewsWarming = true
+  void (async () => {
+    try {
+      for (const voice of voices) {
+        try {
+          if (await hasAsset(previewAssetPath(voice))) continue
+          await renderPreview(voice, false)
+        } catch {
+          // Nächster Anlauf beim nächsten Öffnen der Stimmen-Auswahl.
+        }
+      }
+    } finally {
+      previewsWarming = false
+    }
+  })()
 }
 
 /* ---------------------------------------------------------------- audio */
@@ -135,13 +194,11 @@ function stopPreview(): void {
 export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
   unlockAudioContext()
   stopPreview()
-  const blob = await studioSynthesize(
-    voice.id,
-    'de',
-    previewTextFor(voice),
-    BASE_SPEED,
-    true,
-  )
+  // Fertig gespeicherte Begrüßung spielt sofort – ohne Engine-Rechnung.
+  const cached = await readAsset(previewAssetPath(voice)).catch(() => null)
+  const blob = cached
+    ? new Blob([cached], { type: 'audio/wav' })
+    : await renderPreview(voice, true)
   const buffer = await decodeBlob(blob)
   stopPreview()
   const ctx = getAudioContext()
