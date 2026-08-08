@@ -141,7 +141,7 @@ export default function VoiceSheet({
               button={progress === null}
               onClick={progress === null ? () => void startDownload() : undefined}
             >
-              <IonIcon slot="start" icon={sparklesOutline} color="primary" />
+              <IonIcon aria-hidden="true" slot="start" icon={sparklesOutline} color="primary" />
               <IonLabel>
                 <h2>Sprachmodell herunterladen</h2>
                 <IonNote>
@@ -157,7 +157,7 @@ export default function VoiceSheet({
                 )}
               </IonLabel>
               {progress === null && (
-                <IonIcon slot="end" icon={cloudDownloadOutline} />
+                <IonIcon aria-hidden="true" slot="end" icon={cloudDownloadOutline} />
               )}
             </IonItem>
           )}
@@ -177,7 +177,7 @@ export default function VoiceSheet({
                 </IonNote>
               </IonLabel>
               {voice.id === selectedId && (
-                <IonIcon slot="end" color="primary" icon={checkmark} />
+                <IonIcon aria-hidden="true" slot="end" color="primary" icon={checkmark} />
               )}
               {installed && (
                 <IonButton
@@ -193,7 +193,7 @@ export default function VoiceSheet({
                   {previewing === voice.id ? (
                     <IonSpinner name="crescent" />
                   ) : (
-                    <IonIcon slot="icon-only" icon={volumeMediumOutline} />
+                    <IonIcon aria-hidden="true" slot="icon-only" icon={volumeMediumOutline} />
                   )}
                 </IonButton>
               )}
@@ -201,7 +201,7 @@ export default function VoiceSheet({
           ))}
           {installed && (
             <IonItem button onClick={() => void deleteData()}>
-              <IonIcon slot="start" icon={trashOutline} color="medium" />
+              <IonIcon aria-hidden="true" slot="start" icon={trashOutline} color="medium" />
               <IonLabel color="medium">
                 Sprachmodell löschen ({STUDIO_ENGINE_SIZE_MB} MB freigeben)
               </IonLabel>

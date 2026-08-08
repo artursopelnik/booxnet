@@ -92,7 +92,7 @@ export default function LibraryPage() {
 
         {books.length === 0 && !importing && (
           <div className="empty-state">
-            <IonIcon icon={bookOutline} />
+            <IonIcon aria-hidden="true" icon={bookOutline} />
             <h2>Noch keine Bücher</h2>
             <p>
               Komplett kostenfreies Text-to-Speech: Booxnet liest dir PDFs
@@ -121,7 +121,7 @@ export default function LibraryPage() {
                     <img className="book-cover" src={book.cover} alt="" />
                   ) : (
                     <div className="book-cover book-cover--placeholder">
-                      <IonIcon icon={bookOutline} />
+                      <IonIcon aria-hidden="true" icon={bookOutline} />
                     </div>
                   )}
                   <IonLabel>
@@ -135,7 +135,7 @@ export default function LibraryPage() {
                 </IonItem>
                 <IonItemOptions side="end">
                   <IonItemOption color="danger" onClick={() => remove(book)}>
-                    <IonIcon slot="icon-only" icon={trashOutline} />
+                    <IonIcon aria-hidden="true" slot="icon-only" icon={trashOutline} />
                   </IonItemOption>
                 </IonItemOptions>
               </IonItemSliding>
@@ -155,8 +155,9 @@ export default function LibraryPage() {
           <IonFabButton
             onClick={() => fileInput.current?.click()}
             disabled={importing}
+            aria-label="PDF hochladen"
           >
-            <IonIcon icon={add} />
+            <IonIcon aria-hidden="true" icon={add} />
           </IonFabButton>
         </IonFab>
       </IonContent>
