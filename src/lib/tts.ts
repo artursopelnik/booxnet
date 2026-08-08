@@ -8,7 +8,12 @@
  * sources on a running context is never blocked by iOS Safari – this is
  * what keeps sentence N+1 playing without another tap.
  */
-import { studioPrefetch, studioSynthesize } from './supertonic/client'
+import {
+  studioPrefetch,
+  studioSynthesize,
+  TTS_CANCELLED_ERROR,
+  TTS_TIMEOUT_ERROR,
+} from './supertonic/client'
 import type { StudioVoiceMeta } from './voices'
 
 export interface SpeakerEvents {
@@ -31,7 +36,7 @@ export interface SentenceInput {
 
 const VOICE_KEY = 'vorleser.voice'
 const RATE_KEY = 'vorleser.rate'
-const PREFETCH_AHEAD = 3
+const PREFETCH_AHEAD = 4
 /** Pause between sentences at 1× speed. */
 const SENTENCE_PAUSE_MS = 350
 /** Supertonic's recommended neutral speed. */
@@ -131,6 +136,7 @@ export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
     'de',
     previewTextFor(voice),
     BASE_SPEED,
+    true,
   )
   const buffer = await decodeBlob(blob)
   stopPreview()
@@ -364,13 +370,23 @@ export class Speaker {
         this.langHint,
         text,
         speed,
+        true,
       )
       if (generation !== this.generation) return
       buffer = await decodeBlob(blob)
-    } catch {
+    } catch (error) {
       if (generation !== this.generation) return
+      // Verdrängt durch einen neueren Play-Druck – der kümmert sich.
+      if (error instanceof Error && error.name === TTS_CANCELLED_ERROR) return
+      // Die Synthese läuft komplett lokal – ein Timeout heißt "Gerät zu
+      // langsam / beschäftigt", nie "Internet weg". Nur wenn wirklich
+      // etwas fehlt oder kaputt ist, hilft ein erneuter Modell-Download.
+      const timedOut =
+        error instanceof Error && error.name === TTS_TIMEOUT_ERROR
       this.events.onError?.(
-        'Die Stimme konnte nicht geladen werden. Prüfe deine Internetverbindung oder lade das Sprachmodell erneut herunter.',
+        timedOut
+          ? 'Dein Gerät hat für diesen Satz ungewöhnlich lange gebraucht. Tippe erneut auf Play, es geht an derselben Stelle weiter.'
+          : 'Die Stimme konnte nicht erzeugt werden. Falls das wiederholt passiert, lade das Sprachmodell in der Stimmen-Auswahl erneut herunter.',
       )
       this.setState('paused')
       return

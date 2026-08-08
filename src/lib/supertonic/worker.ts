@@ -10,7 +10,7 @@
  */
 import type { StudioVoiceId } from '../voices'
 import { ensureStudioStyle, loadStudioAsset } from './assets'
-import { mayUseWebGpu, resolveOrtWasmPrefix } from './ortwasm'
+import { resolveOrtWasmPrefix } from './ortwasm'
 
 type Ort = typeof import('onnxruntime-web')
 type OrtSession = import('onnxruntime-web').InferenceSession
@@ -37,11 +37,47 @@ interface Engine {
   vectorEst: OrtSession
   vocoder: OrtSession
   styles: Map<StudioVoiceId, Style>
-  /** Denoising steps (5–12): more = better quality, slower synthesis. */
+  /** True when the sessions actually run on the WebGPU provider. */
+  gpu: boolean
+  /** Denoising steps: more = better quality, slower synthesis. */
   steps: number
 }
 
 let enginePromise: Promise<Engine> | null = null
+
+/**
+ * Self-healing GPU path: WebGPU is attempted wherever an adapter exists
+ * (including Safari/iOS). Because a broken driver can HANG instead of
+ * throwing, the first GPU engine load and the first GPU synthesis run
+ * under deadlines – on expiry (or any error before the first success)
+ * the engine is rebuilt on plain WASM, the client is notified so future
+ * sessions skip the attempt, and playback continues.
+ */
+let gpuBroken = false
+let gpuVerified = false
+const GPU_ENGINE_LOAD_DEADLINE_MS = 120_000
+const GPU_FIRST_TASK_DEADLINE_MS = 60_000
+
+class DeadlineError extends Error {}
+
+function withDeadline<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new DeadlineError('GPU-Pfad reagiert nicht')),
+      ms,
+    )
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
 
 /**
  * WebGPU only counts as usable when an adapter actually materializes.
@@ -63,22 +99,24 @@ async function webGpuAdapterAvailable(): Promise<boolean> {
   }
 }
 
-async function loadOrt(): Promise<{ ort: Ort; providers: string[] }> {
-  if (mayUseWebGpu() && (await webGpuAdapterAvailable())) {
+async function loadOrt(
+  allowWebGpu: boolean,
+): Promise<{ ort: Ort; providers: string[]; gpu: boolean }> {
+  if (allowWebGpu && !gpuBroken && (await webGpuAdapterAvailable())) {
     try {
-      const ort = (await import('onnxruntime-web/webgpu')) as Ort
-      return { ort, providers: ['webgpu', 'wasm'] }
+      // Das Hauptbundle enthält seit onnxruntime 1.19 WASM und WebGPU.
+      const ort = (await import('onnxruntime-web')) as Ort
+      return { ort, providers: ['webgpu', 'wasm'], gpu: true }
     } catch {
       // Fall through to the plain WASM build.
     }
   }
-  const ort = await import('onnxruntime-web')
-  return { ort, providers: ['wasm'] }
+  const ort = (await import('onnxruntime-web/wasm')) as Ort
+  return { ort, providers: ['wasm'], gpu: false }
 }
 
-async function loadEngine(): Promise<Engine> {
-  const { ort, providers } = await loadOrt()
-  ort.env.allowLocalModels = false
+async function loadEngine(allowWebGpu: boolean): Promise<Engine> {
+  const { ort, providers, gpu } = await loadOrt(allowWebGpu)
   // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers).
   // Without cross-origin isolation - e.g. on GitHub Pages - forcing
   // threads makes onnxruntime hang on iOS Safari instead of falling back.
@@ -121,17 +159,61 @@ async function loadEngine(): Promise<Engine> {
     vectorEst,
     vocoder,
     styles: new Map(),
-    // With GPU acceleration the higher quality tier stays fast enough.
-    steps: providers.includes('webgpu') ? 10 : 8,
+    gpu,
+    // With GPU acceleration the default quality tier stays fast. On plain
+    // WASM (single-threaded without cross-origin isolation, e.g. GitHub
+    // Pages on iPhones) every step costs real seconds per sentence –
+    // 2 is Supertonic's documented minimum; below that the denoiser
+    // produces mush, while the fixed per-sentence cost stays anyway.
+    steps: gpu ? 8 : 2,
   }
 }
 
-function getEngine(): Promise<Engine> {
-  enginePromise ??= loadEngine().catch((error) => {
+function getEngine(allowWebGpu: boolean): Promise<Engine> {
+  enginePromise ??= loadEngine(allowWebGpu).catch((error) => {
     enginePromise = null
     throw error
   })
   return enginePromise
+}
+
+/**
+ * Runs an engine task, guarding the unverified GPU path with deadlines.
+ * After the first successful GPU task no deadlines apply anymore; after a
+ * failure everything permanently runs on WASM (`gpuBroken`).
+ */
+async function runEngineTask<T>(
+  allowWebGpu: boolean,
+  task: (engine: Engine) => Promise<T>,
+): Promise<T> {
+  if (allowWebGpu && !gpuBroken && !gpuVerified) {
+    try {
+      const engine = await withDeadline(
+        getEngine(true),
+        GPU_ENGINE_LOAD_DEADLINE_MS,
+      )
+      if (!engine.gpu) {
+        // Es ist ohnehin die WASM-Engine geworden – nichts zu prüfen.
+        gpuVerified = true
+        return await task(engine)
+      }
+      const result = await withDeadline(
+        task(engine),
+        GPU_FIRST_TASK_DEADLINE_MS,
+      )
+      gpuVerified = true
+      return result
+    } catch {
+      // Hänger oder Fehler vor dem ersten GPU-Erfolg: dauerhaft auf WASM
+      // umschwenken und den Client informieren, damit künftige Sitzungen
+      // den GPU-Versuch überspringen.
+      gpuBroken = true
+      enginePromise = null
+      self.postMessage({ kind: 'gpuFallback' })
+    }
+  }
+  const engine = await getEngine(false)
+  return task(engine)
 }
 
 async function getStyle(
@@ -350,12 +432,12 @@ function toWav(audio: Float32Array, sampleRate: number): ArrayBuffer {
 }
 
 async function synthesize(
+  engine: Engine,
   voiceId: StudioVoiceId,
   lang: string,
   text: string,
   speed: number,
 ): Promise<ArrayBuffer> {
-  const engine = await getEngine()
   const style = await getStyle(engine, voiceId)
   const chunks = chunkText(text, lang)
   const parts: Float32Array[] = []
@@ -384,12 +466,17 @@ interface SynthesizeRequest {
   lang: string
   text: string
   speed: number
+  /** Wird gerade abgespielt/erwartet – verdrängt Vorab-Berechnungen. */
+  priority?: boolean
+  /** False, wenn der Client GPU dauerhaft abgeschaltet hat. */
+  allowWebGpu?: boolean
 }
 
 interface PreloadRequest {
   id: number
   type: 'preload'
   voiceId: StudioVoiceId
+  allowWebGpu?: boolean
 }
 
 interface ResetRequest {
@@ -397,50 +484,100 @@ interface ResetRequest {
   type: 'reset'
 }
 
-type Request = SynthesizeRequest | PreloadRequest | ResetRequest
+/** Zieht eine bereits eingereihte Anfrage an die Spitze der Warteschlange. */
+interface BumpRequest {
+  id: number
+  type: 'bump'
+  target: number
+}
 
-// Requests are processed strictly one at a time: parallel denoising loops
-// would fight over CPU/GPU without finishing any sentence sooner.
-let queue: Promise<unknown> = Promise.resolve()
+type Request = SynthesizeRequest | PreloadRequest | ResetRequest | BumpRequest
 
-self.onmessage = (event: MessageEvent<Request>) => {
-  const request = event.data
-  const task = async () => {
-    if (request.type === 'reset') {
-      enginePromise = null
+async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
+  if (request.type === 'reset') {
+    enginePromise = null
+    self.postMessage({ id: request.id, ok: true })
+    return
+  }
+  const allowWebGpu = request.allowWebGpu !== false
+  try {
+    if (request.type === 'preload') {
+      await runEngineTask(allowWebGpu, (engine) =>
+        getStyle(engine, request.voiceId),
+      )
       self.postMessage({ id: request.id, ok: true })
       return
     }
-    if (request.type === 'preload') {
-      try {
-        const engine = await getEngine()
-        await getStyle(engine, request.voiceId)
-        self.postMessage({ id: request.id, ok: true })
-      } catch (error) {
-        self.postMessage({
-          id: request.id,
-          ok: false,
-          error: error instanceof Error ? error.message : String(error),
-        })
-      }
-      return
-    }
-    try {
-      const wav = await synthesize(
+    const wav = await runEngineTask(allowWebGpu, (engine) =>
+      synthesize(
+        engine,
         request.voiceId,
         request.lang,
         request.text,
         request.speed,
-      )
-      // Transfer the buffer – no copy on the way back.
-      self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })
-    } catch (error) {
-      self.postMessage({
-        id: request.id,
-        ok: false,
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
+      ),
+    )
+    // Transfer the buffer – no copy on the way back.
+    self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })
+  } catch (error) {
+    self.postMessage({
+      id: request.id,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
-  queue = queue.then(task, task)
+}
+
+// Requests are processed strictly one at a time: parallel denoising loops
+// would fight over CPU/GPU without finishing any sentence sooner. The
+// queue is a real list instead of a promise chain, so the sentence the
+// user is actually waiting for can overtake queued prefetches – on slow
+// devices those would otherwise add up to a timeout before playback.
+const taskQueue: Exclude<Request, BumpRequest>[] = []
+let pumping = false
+
+async function pump(): Promise<void> {
+  if (pumping) return
+  pumping = true
+  for (;;) {
+    const request = taskQueue.shift()
+    if (!request) break
+    await handle(request)
+  }
+  pumping = false
+}
+
+self.onmessage = (event: MessageEvent<Request>) => {
+  const request = event.data
+  if (request.type === 'bump') {
+    const index = taskQueue.findIndex((task) => task.id === request.target)
+    if (index > 0) {
+      const [task] = taskQueue.splice(index, 1)
+      taskQueue.unshift(task)
+    }
+    return
+  }
+  if (request.type === 'synthesize' && request.priority) {
+    // Der letzte Play-Druck gewinnt absolut: Alle noch wartenden Synthesen
+    // (Prefetches wie ältere Play-Anfragen) werden verworfen und dem
+    // Client als abgebrochen gemeldet – er räumt seinen Cache auf und
+    // fordert später Nötiges neu an. Die bereits laufende Berechnung ist
+    // nicht abbrechbar, aber alles dahinter macht sofort Platz.
+    for (let i = taskQueue.length - 1; i >= 0; i--) {
+      const task = taskQueue[i]
+      if (task.type === 'synthesize') {
+        taskQueue.splice(i, 1)
+        self.postMessage({
+          id: task.id,
+          ok: false,
+          cancelled: true,
+          error: 'Abgebrochen: neuer Satz angefordert',
+        })
+      }
+    }
+    taskQueue.unshift(request)
+  } else {
+    taskQueue.push(request)
+  }
+  void pump()
 }

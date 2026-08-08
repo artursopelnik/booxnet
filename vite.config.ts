@@ -17,6 +17,10 @@ export default defineConfig({
       includeAssets: ['icon.svg'],
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2}'],
+        // Die onnxruntime-Laufzeit (bis ~25 MB pro Datei) gehört nicht in
+        // den Precache jedes Besuchers – die runtimeCaching-Route unten
+        // cacht sie beim ersten Gebrauch bzw. beim Sprachpaket-Download.
+        globIgnores: ['ort/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // onnxruntime-web loads its WASM binaries at runtime – same-origin
         // from /ort/ (scripts/copy-ort-wasm.mjs), with cdnjs only as
@@ -24,7 +28,7 @@ export default defineConfig({
         // models themselves are stored in OPFS.
         runtimeCaching: [
           {
-            urlPattern: /\/ort\/[^/]+\.wasm$/,
+            urlPattern: /\/ort\/[^/]+\.(wasm|mjs)$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'tts-wasm',

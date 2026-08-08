@@ -10,7 +10,7 @@
  *
  * Läuft automatisch vor `npm run dev` und `npm run build`.
  */
-import { copyFile, mkdir } from 'node:fs/promises'
+import { copyFile, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const SOURCE = new URL('../node_modules/onnxruntime-web/dist', import.meta.url)
@@ -18,14 +18,18 @@ const SOURCE = new URL('../node_modules/onnxruntime-web/dist', import.meta.url)
 const TARGET = new URL('../public/ort', import.meta.url).pathname
 
 const FILES = [
-  'ort-wasm.wasm',
-  'ort-wasm-simd.wasm',
-  'ort-wasm-threaded.wasm',
   'ort-wasm-simd-threaded.wasm',
-  'ort-wasm-simd.jsep.wasm',
+  'ort-wasm-simd-threaded.mjs',
   'ort-wasm-simd-threaded.jsep.wasm',
+  'ort-wasm-simd-threaded.jsep.mjs',
+  'ort-wasm-simd-threaded.jspi.wasm',
+  'ort-wasm-simd-threaded.jspi.mjs',
+  'ort-wasm-simd-threaded.asyncify.wasm',
+  'ort-wasm-simd-threaded.asyncify.mjs',
 ]
 
+// Reste älterer onnxruntime-Versionen nicht mit ausliefern.
+await rm(TARGET, { recursive: true, force: true })
 await mkdir(TARGET, { recursive: true })
 for (const file of FILES) {
   await copyFile(join(SOURCE, file), join(TARGET, file))
