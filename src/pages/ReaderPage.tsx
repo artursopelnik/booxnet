@@ -8,6 +8,7 @@ import {
   IonIcon,
   IonNote,
   IonPage,
+  IonProgressBar,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -34,9 +35,10 @@ import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
 import { detectStudioLang, langLabel } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
-import { studioWarmup } from '../lib/supertonic/client'
-import { toSentences } from '../lib/text'
+import { studioPrefetch, studioWarmup } from '../lib/supertonic/client'
+import { isSpeakable, sanitizeForSpeech, toSentences } from '../lib/text'
 import {
+  engineSpeed,
   getSavedRate,
   getSavedVoiceId,
   saveRate,
@@ -247,9 +249,10 @@ export default function ReaderPage() {
     isStudioEngineInstalled().then(setEngineInstalled)
   }, [])
 
-  // What the voice actually speaks: a subtle <breath> expression tag at
-  // page starts (natively supported by Supertonic 3), longer pauses at
-  // page breaks, and punctuation-aware pauses make the reading human.
+  // What the voice actually speaks: sanitized text (no PDF artifacts), a
+  // subtle <breath> expression tag at page starts (natively supported by
+  // Supertonic 3), longer pauses at page breaks, punctuation-aware pauses.
+  // Fragments without real words (page numbers, ornaments) are skipped.
   const speakItems = useMemo(
     () =>
       sentences.map((sentence, index) => {
@@ -258,9 +261,12 @@ export default function ReaderPage() {
         const startsPage =
           previous !== undefined && previous.page !== sentence.page
         const endsPage = next !== undefined && next.page !== sentence.page
+        const clean = sanitizeForSpeech(sentence.text)
+        const speakable = isSpeakable(clean)
         return {
-          text: startsPage ? `<breath> ${sentence.text}` : sentence.text,
+          text: startsPage && speakable ? `<breath> ${clean}` : clean,
           pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),
+          skip: !speakable,
         }
       }),
     [sentences],
@@ -292,6 +298,19 @@ export default function ReaderPage() {
   useEffect(() => {
     speaker.setVoice(voice)
   }, [speaker, voice])
+
+  // Warm up the engine and the first sentences as soon as the reader is
+  // open – tapping Play then starts quickly instead of on a cold engine.
+  useEffect(() => {
+    if (!engineInstalled || speakItems.length === 0) return
+    const first = speakItems
+      .filter((item) => !item.skip)
+      .slice(0, 2)
+      .map((item) => item.text)
+    if (first.length > 0) {
+      studioPrefetch(voice.id, bookLang, first, engineSpeed(rate))
+    }
+  }, [engineInstalled, speakItems, voice.id, bookLang, rate])
 
   useEffect(() => {
     speaker.setRate(rate)
@@ -481,12 +500,16 @@ export default function ReaderPage() {
       </IonContent>
 
       <IonFooter translucent>
+        {state === 'loading' && (
+          <IonProgressBar type="indeterminate" aria-label="Stimme lädt" />
+        )}
         <IonToolbar className="player-toolbar">
           <div className="player">
             <div className="player__meta">
-              <IonNote>
-                Satz {Math.min(current + 1, sentences.length)} von{' '}
-                {sentences.length} · {voice.name} · {langLabel(bookLang)}
+              <IonNote aria-live="polite">
+                {state === 'loading'
+                  ? 'Stimme wird vorbereitet …'
+                  : `Satz ${Math.min(current + 1, sentences.length)} von ${sentences.length} · ${voice.name} · ${langLabel(bookLang)}`}
               </IonNote>
             </div>
             <div className="player__controls">
