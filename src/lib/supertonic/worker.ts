@@ -47,11 +47,14 @@ let enginePromise: Promise<Engine> | null = null
 
 async function loadEngine(): Promise<Engine> {
   const ort = (await import('onnxruntime-web/wasm')) as Ort
-  // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers).
-  // Without cross-origin isolation - e.g. on GitHub Pages - forcing
-  // threads makes onnxruntime hang on iOS Safari instead of falling back.
+  // Multi-threaded WASM needs SharedArrayBuffer (COOP/COEP headers, siehe
+  // public/_headers - Netlify setzt sie, GitHub Pages kann das nicht).
+  // Without cross-origin isolation forcing threads makes onnxruntime hang
+  // on iOS Safari instead of falling back. Gedeckelt auf 4: mehr Threads
+  // bringen bei diesen Modellen kaum noch Tempo, wuerden aber UI- und
+  // Audio-Threads des Geraets verdraengen.
   ort.env.wasm.numThreads = self.crossOriginIsolated
-    ? (navigator.hardwareConcurrency ?? 4)
+    ? Math.min(4, navigator.hardwareConcurrency ?? 4)
     : 1
   ort.env.wasm.wasmPaths = await resolveOrtWasmPrefix()
 

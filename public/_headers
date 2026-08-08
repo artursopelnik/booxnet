@@ -1,0 +1,8 @@
+# Cross-Origin-Isolation: schaltet SharedArrayBuffer und damit
+# Multi-Threading fuer die Sprach-Engine frei (der Worker nutzt dann
+# automatisch mehrere Kerne statt einem - siehe worker.ts numThreads).
+# GitHub Pages kann solche Header nicht setzen, Netlify liest diese Datei
+# direkt aus dem Deploy-Verzeichnis.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
