@@ -354,6 +354,13 @@ interface SynthesizeRequest {
   steps?: number
   /** Wird gerade abgespielt/erwartet – verdrängt Vorab-Berechnungen. */
   priority?: boolean
+  /**
+   * Quelle der Vorrang-Anfrage ('speech' | 'preview'): Eine neue
+   * Vorrang-Anfrage verwirft wartende Vorrang-Anfragen DERSELBEN Quelle
+   * – der Sprecher will immer nur seinen neuesten Satz, schnelle
+   * Stimmwechsel/Tipper dürfen keine Berechnungs-Schlange auftürmen.
+   */
+  channel?: string
 }
 
 interface PreloadRequest {
@@ -389,6 +396,11 @@ async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
       self.postMessage({ id: request.id, ok: true })
       return
     }
+    // Diagnose: Welche Stimme rechnet gerade, wie lang ist der Rückstau?
+    console.info(
+      `[booxnet-tts] Synthese ${request.voiceId}` +
+        ` (prio=${request.priority === true}, wartend=${taskQueue.length})`,
+    )
     const steps = Math.min(12, Math.max(1, Math.round(request.steps ?? 4)))
     const wav = await synthesize(
       engine,
@@ -439,17 +451,21 @@ self.onmessage = (event: MessageEvent<Request>) => {
     return
   }
   if (request.type === 'synthesize' && request.priority) {
-    // Der letzte Play-Druck gewinnt: Wartende HINTERGRUND-Synthesen
-    // (Prefetch, Vorschau-Warmup) werden verworfen und dem Client als
-    // abgebrochen gemeldet – er räumt seinen Cache auf und fordert später
-    // Nötiges neu an. Vorrang-Anfragen untereinander bleiben bestehen und
-    // ordnen sich nur neu (neueste zuerst): Würden sie sich gegenseitig
-    // verwerfen, würgten sich z. B. Probehören und Vorlesen wechselseitig
-    // ab und der Player bliebe im Ladezustand hängen. Veraltete
-    // Vorrang-Ergebnisse sortiert der Client über seine Generation aus.
+    // Der letzte Play-Druck gewinnt: Verworfen werden alle wartenden
+    // HINTERGRUND-Synthesen (Prefetch, Vorschau-Warmup) sowie wartende
+    // Vorrang-Anfragen DERSELBEN Quelle (channel) – der Sprecher will
+    // immer nur seinen neuesten Satz; ohne das tuermte jeder schnelle
+    // Stimmwechsel/Tipper eine volle Berechnung obenauf und die
+    // Warteschlange wuchs ins scheinbar Endlose. Vorrang-Anfragen
+    // ANDERER Quellen bleiben bestehen (Probehören und Vorlesen dürfen
+    // sich nicht gegenseitig abwürgen). Verdrängte Anfragen werden dem
+    // Client als abgebrochen gemeldet – er räumt seinen Cache auf.
     for (let i = taskQueue.length - 1; i >= 0; i--) {
       const task = taskQueue[i]
-      if (task.type === 'synthesize' && !task.priority) {
+      if (
+        task.type === 'synthesize' &&
+        (!task.priority || task.channel === request.channel)
+      ) {
         taskQueue.splice(i, 1)
         self.postMessage({
           id: task.id,
