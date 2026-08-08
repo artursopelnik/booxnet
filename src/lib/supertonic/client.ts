@@ -15,6 +15,38 @@ interface WorkerResponse {
   cancelled?: boolean
 }
 
+/** Fortschrittsmeldung des einmaligen Engine-Ladens (0..1). */
+interface EngineProgressMessage {
+  type: 'engine-progress'
+  value: number
+}
+
+let engineProgress = 0
+const engineProgressListeners = new Set<(value: number) => void>()
+
+function setEngineProgress(value: number): void {
+  engineProgress = value
+  for (const listener of engineProgressListeners) {
+    listener(value)
+  }
+}
+
+/**
+ * Abonniert den Fortschritt des einmaligen Engine-Ladens (0..1, 1 =
+ * geladen). Der Listener wird sofort mit dem aktuellen Stand aufgerufen –
+ * so zeigt die UI auch dann den richtigen Wert, wenn das Laden schon vor
+ * dem Abonnieren begann (Warmstart beim App-Start) oder längst fertig ist.
+ */
+export function subscribeEngineProgress(
+  listener: (value: number) => void,
+): () => void {
+  listener(engineProgress)
+  engineProgressListeners.add(listener)
+  return () => {
+    engineProgressListeners.delete(listener)
+  }
+}
+
 let worker: Worker | null = null
 let nextId = 1
 const pending = new Map<
@@ -27,8 +59,15 @@ function getWorker(): Worker {
     worker = new Worker(new URL('./worker.ts', import.meta.url), {
       type: 'module',
     })
-    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-      const { id, ok, wav, error, cancelled } = event.data
+    worker.onmessage = (
+      event: MessageEvent<WorkerResponse | EngineProgressMessage>,
+    ) => {
+      const data = event.data
+      if ('type' in data) {
+        setEngineProgress(data.value)
+        return
+      }
+      const { id, ok, wav, error, cancelled } = data
       const entry = pending.get(id)
       if (!entry) return
       pending.delete(id)
@@ -49,6 +88,7 @@ function getWorker(): Worker {
       pending.clear()
       worker?.terminate()
       worker = null
+      setEngineProgress(0)
     }
   }
   return worker
@@ -148,6 +188,7 @@ export function studioWarmup(voiceId: StudioVoiceId): void {
 export function resetStudioEngine(): void {
   cache.clear()
   warmedVoices.clear()
+  setEngineProgress(0)
   if (worker) {
     worker.terminate()
     worker = null
@@ -156,6 +197,18 @@ export function resetStudioEngine(): void {
     }
     pending.clear()
   }
+}
+
+/**
+ * Verwirft wartende und laufende Hintergrund-Vorausberechnungen des
+ * Vorlesens (nicht die Vorschau-Begrüßungen), z. B. nach einem
+ * Tempowechsel: Die alten Berechnungen passen nicht mehr und würden die
+ * im neuen Tempo nur ausbremsen. VOR dem Einreihen der neuen Prefetches
+ * aufrufen.
+ */
+export function studioFlushPrefetches(): void {
+  if (!worker) return
+  worker.postMessage({ type: 'flush', id: nextId++ })
 }
 
 const MAX_CACHED_SENTENCES = 24

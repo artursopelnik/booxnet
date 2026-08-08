@@ -42,7 +42,12 @@ import { getBook, savePosition, type Book } from '../lib/db'
 import { unitName } from '../lib/importers'
 import { detectStudioLang } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
-import { studioPrefetch, studioWarmup } from '../lib/supertonic/client'
+import {
+  studioFlushPrefetches,
+  studioPrefetch,
+  studioWarmup,
+  subscribeEngineProgress,
+} from '../lib/supertonic/client'
 import {
   FONT_SCALE_MAX,
   FONT_SCALE_MIN,
@@ -219,6 +224,8 @@ export default function ReaderPage() {
   const [bookLang, setBookLang] = useState('de')
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   const [displayOpen, setDisplayOpen] = useState(false)
+  /** 0..1 – Stand des einmaligen Engine-Ladens, 1 = Engine bereit. */
+  const [engineProgress, setEngineProgress] = useState(0)
   const [fontScale, setFontScale] = useState(getFontScale())
   const [highlightStyle, setHighlightStyle] = useState<HighlightStyle>(
     getHighlightStyle(),
@@ -293,6 +300,8 @@ export default function ReaderPage() {
     isStudioEngineInstalled().then(setEngineInstalled)
   }, [])
 
+  useEffect(() => subscribeEngineProgress(setEngineProgress), [])
+
   // What the voice actually speaks: sanitized text (no PDF artifacts), a
   // subtle <breath> expression tag at page starts (natively supported by
   // Supertonic 3), longer pauses at page breaks, punctuation-aware pauses.
@@ -361,6 +370,11 @@ export default function ReaderPage() {
   // weiterhört, bekam sonst einen kalten Start.
   useEffect(() => {
     if (!engineInstalled || speakItems.length === 0) return
+    // Nur solange nichts läuft: Während der Wiedergabe berechnet der
+    // Speaker selbst voraus (ab dem NÄCHSTEN Satz) – der aktuelle spielt
+    // bei Tempo-/Stimmwechsel hörbar weiter und braucht keine neue Fassung.
+    const speakerState = speaker.getState()
+    if (speakerState === 'playing' || speakerState === 'loading') return
     const next = speakItems
       .slice(currentRef.current)
       .filter((item) => !item.skip)
@@ -369,7 +383,7 @@ export default function ReaderPage() {
     if (next.length > 0) {
       studioPrefetch(voice.id, bookLang, next, engineSpeed(rate))
     }
-  }, [engineInstalled, speakItems, voice.id, bookLang, rate])
+  }, [engineInstalled, speakItems, voice.id, bookLang, rate, speaker])
 
   useEffect(() => {
     speaker.setRate(rate)
@@ -464,6 +478,10 @@ export default function ReaderPage() {
 
   const cycleRate = () => {
     const next = RATES[(RATES.indexOf(rate) + 1) % RATES.length] ?? 1
+    // Vorausberechnungen im alten Tempo sind ab jetzt wertlos und würden
+    // die im neuen Tempo nur blockieren – verwerfen, BEVOR die Effekte
+    // nach dem Re-Render die neuen Prefetches einreihen.
+    studioFlushPrefetches()
     setRate(next)
     saveRate(next)
   }
@@ -579,9 +597,25 @@ export default function ReaderPage() {
       </IonContent>
 
       <IonFooter translucent>
-        {state === 'loading' && (
-          <IonProgressBar type="indeterminate" aria-label="Stimme lädt" />
-        )}
+        {/* Beim einmaligen Engine-Laden (App-Kaltstart) zeigt der Balken
+            echten Fortschritt plus Hinweis – sonst wirkte die App bei
+            40+ Sekunden Ladezeit wie eingefroren. Danach reicht für die
+            kurze Satz-Synthese der unbestimmte Balken. */}
+        {state === 'loading' &&
+          (engineProgress < 1 ? (
+            <>
+              <IonProgressBar
+                value={engineProgress}
+                aria-label="Sprachmodell wird geladen"
+              />
+              <div className="engine-loading-hint" role="status">
+                Die Vorlesestimme wird einmalig vorbereitet –{' '}
+                {Math.round(engineProgress * 100)} %
+              </div>
+            </>
+          ) : (
+            <IonProgressBar type="indeterminate" aria-label="Stimme lädt" />
+          ))}
         <IonToolbar className="player-toolbar">
           <div className="player">
             <div className="player__controls">

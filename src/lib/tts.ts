@@ -284,10 +284,21 @@ export class Speaker {
   setRate(rate: number): void {
     if (this.rate === rate) return
     this.rate = rate
-    // Speed is baked into the synthesis, so the current sentence restarts
-    // with the new tempo when playing.
-    if (this.state === 'playing' || this.state === 'loading') {
+    // Das Tempo ist in die Synthese eingebacken. Den laufenden Satz neu zu
+    // berechnen hieße aber: Wiedergabe stoppt und der Nutzer wartet
+    // sekundenlang auf die Neuberechnung. Deshalb spielt der aktuelle Satz
+    // hörbar weiter und das neue Tempo greift ab dem nächsten Satz – die
+    // kommenden Sätze werden sofort im neuen Tempo vorausberechnet.
+    if (this.state === 'loading') {
+      // Noch nichts hörbar – direkt im neuen Tempo starten.
       this.play(this.index)
+    } else if (this.state === 'playing' && this.voice) {
+      studioPrefetch(
+        this.voice.id,
+        this.langHint,
+        this.upcoming(PREFETCH_AHEAD),
+        engineSpeed(rate),
+      )
     }
   }
 
