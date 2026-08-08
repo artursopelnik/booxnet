@@ -11,9 +11,38 @@
  * disappears. Everything is stored in OPFS for offline use.
  */
 import type { StudioVoiceId } from '../voices'
-import { hasAsset, readAsset, removeAllAssets, writeAsset } from './opfs'
+import {
+  hasAsset,
+  isStorageAvailable,
+  readAsset,
+  removeAllAssets,
+  writeAsset,
+} from './opfs'
 
 export const STUDIO_ENGINE_SIZE_MB = 400
+
+export type StudioDownloadFailure = 'storage' | 'quota' | 'network'
+
+/** Download error with a coarse cause so the UI can give accurate advice. */
+export class StudioDownloadError extends Error {
+  constructor(
+    readonly reason: StudioDownloadFailure,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'StudioDownloadError'
+  }
+}
+
+function classifyWriteError(error: unknown, path: string): StudioDownloadError {
+  if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+    return new StudioDownloadError('quota', `Quota exceeded storing ${path}`)
+  }
+  return new StudioDownloadError(
+    'storage',
+    `Storage rejected ${path}: ${error instanceof Error ? error.message : String(error)}`,
+  )
+}
 
 const HF_BASE = 'https://huggingface.co/Supertone/supertonic-3/resolve/main'
 
@@ -95,38 +124,72 @@ export async function ensureStudioStyle(
  * is weighted by bytes; sizes come from Content-Length with the known total
  * as fallback. Already-stored files are skipped, so an interrupted download
  * resumes where it stopped.
+ *
+ * Fails fast with a typed StudioDownloadError before fetching anything when
+ * the browser refuses OPFS (private windows) or the quota clearly cannot
+ * hold a fresh download – no point streaming 400 MB that can't be stored.
  */
 export async function downloadStudioEngine(
   onProgress: (percent: number) => void,
 ): Promise<void> {
   const totalEstimate = STUDIO_ENGINE_SIZE_MB * 1024 * 1024
-  let loadedBefore = 0
 
+  if (!(await isStorageAvailable())) {
+    throw new StudioDownloadError('storage', 'OPFS unavailable')
+  }
+  const stored = await Promise.all(ENGINE_ASSETS.map((path) => hasAsset(path)))
+  if (stored.every(Boolean)) {
+    onProgress(100)
+    return
+  }
+  if (!stored.some(Boolean)) {
+    const estimate = await navigator.storage.estimate?.().catch(() => undefined)
+    if (estimate?.quota != null) {
+      const free = estimate.quota - (estimate.usage ?? 0)
+      if (free < totalEstimate) {
+        throw new StudioDownloadError(
+          'quota',
+          `Insufficient quota: ${free} bytes free`,
+        )
+      }
+    }
+  }
+
+  let loadedBefore = 0
   for (const [index, path] of ENGINE_ASSETS.entries()) {
-    if (await hasAsset(path)) {
+    if (stored[index]) {
       continue
     }
-    const response = await fetchAsset(path)
-    if (!response.body) {
-      throw new Error(`Download failed for ${path}: empty body`)
-    }
-    const contentLength = Number(response.headers.get('Content-Length')) || 0
-    const reader = response.body.getReader()
+    let response: Response
+    let contentLength: number
     const chunks: Uint8Array[] = []
     let loaded = 0
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      chunks.push(value)
-      loaded += value.byteLength
-      const fileShare = contentLength
-        ? Math.min(loaded / contentLength, 1)
-        : 0
-      const overall =
-        (loadedBefore + fileShare * (contentLength || 0)) / totalEstimate
-      const fallback = (index + fileShare) / ENGINE_ASSETS.length
-      onProgress(
-        Math.min(99, Math.round((contentLength ? overall : fallback) * 100)),
+    try {
+      response = await fetchAsset(path)
+      if (!response.body) {
+        throw new Error(`Download failed for ${path}: empty body`)
+      }
+      contentLength = Number(response.headers.get('Content-Length')) || 0
+      const reader = response.body.getReader()
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        loaded += value.byteLength
+        const fileShare = contentLength
+          ? Math.min(loaded / contentLength, 1)
+          : 0
+        const overall =
+          (loadedBefore + fileShare * (contentLength || 0)) / totalEstimate
+        const fallback = (index + fileShare) / ENGINE_ASSETS.length
+        onProgress(
+          Math.min(99, Math.round((contentLength ? overall : fallback) * 100)),
+        )
+      }
+    } catch (error) {
+      throw new StudioDownloadError(
+        'network',
+        error instanceof Error ? error.message : String(error),
       )
     }
     const data = new Uint8Array(loaded)
@@ -135,7 +198,11 @@ export async function downloadStudioEngine(
       data.set(chunk, offset)
       offset += chunk.byteLength
     }
-    await writeAsset(path, data)
+    try {
+      await writeAsset(path, data)
+    } catch (error) {
+      throw classifyWriteError(error, path)
+    }
     loadedBefore += loaded
   }
   onProgress(100)
