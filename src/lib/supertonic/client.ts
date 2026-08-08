@@ -15,9 +15,13 @@ interface WorkerResponse {
   cancelled?: boolean
 }
 
-/** Fortschrittsmeldung des einmaligen Engine-Ladens (0..1). */
-interface EngineProgressMessage {
-  type: 'engine-progress'
+/**
+ * Fortschrittsmeldung des Workers (0..1): 'engine-progress' für das
+ * einmalige Engine-Laden, 'synth-progress' für die Rechenschritte der
+ * laufenden Satz-Berechnung.
+ */
+interface ProgressMessage {
+  type: 'engine-progress' | 'synth-progress'
   value: number
 }
 
@@ -27,6 +31,16 @@ const engineProgressListeners = new Set<(value: number) => void>()
 function setEngineProgress(value: number): void {
   engineProgress = value
   for (const listener of engineProgressListeners) {
+    listener(value)
+  }
+}
+
+let synthProgress = 0
+const synthProgressListeners = new Set<(value: number) => void>()
+
+function setSynthProgress(value: number): void {
+  synthProgress = value
+  for (const listener of synthProgressListeners) {
     listener(value)
   }
 }
@@ -47,6 +61,22 @@ export function subscribeEngineProgress(
   }
 }
 
+/**
+ * Abonniert den Rechenschritt-Fortschritt der laufenden Satz-Berechnung
+ * (0..1). Die UI zeigt ihn nur, solange sie tatsächlich auf einen Satz
+ * wartet – Hintergrund-Vorausberechnungen melden sich zwar auch, sind
+ * dann aber nicht sichtbar.
+ */
+export function subscribeSynthProgress(
+  listener: (value: number) => void,
+): () => void {
+  listener(synthProgress)
+  synthProgressListeners.add(listener)
+  return () => {
+    synthProgressListeners.delete(listener)
+  }
+}
+
 let worker: Worker | null = null
 let nextId = 1
 const pending = new Map<
@@ -60,11 +90,12 @@ function getWorker(): Worker {
       type: 'module',
     })
     worker.onmessage = (
-      event: MessageEvent<WorkerResponse | EngineProgressMessage>,
+      event: MessageEvent<WorkerResponse | ProgressMessage>,
     ) => {
       const data = event.data
       if ('type' in data) {
-        setEngineProgress(data.value)
+        if (data.type === 'engine-progress') setEngineProgress(data.value)
+        else setSynthProgress(data.value)
         return
       }
       const { id, ok, wav, error, cancelled } = data
@@ -89,6 +120,7 @@ function getWorker(): Worker {
       worker?.terminate()
       worker = null
       setEngineProgress(0)
+      setSynthProgress(0)
     }
   }
   return worker
@@ -189,6 +221,7 @@ export function resetStudioEngine(): void {
   cache.clear()
   warmedVoices.clear()
   setEngineProgress(0)
+  setSynthProgress(0)
   if (worker) {
     worker.terminate()
     worker = null
@@ -242,6 +275,11 @@ export function studioSynthesize(
 ): Promise<Blob> {
   const key = `${voiceId} ${lang} ${speed} ${text}`
   const hit = cache.get(key)
+  // Der Nutzer wartet ab jetzt aktiv auf eine NEUE Berechnung: Den
+  // Rest-Fortschritt der vorigen nicht als vollen Balken aufblitzen
+  // lassen. Läuft der gewünschte Satz schon (wartender Cache-Treffer),
+  // stimmt der gemeldete Fortschritt dagegen bereits.
+  if (priority && !hit?.pending) setSynthProgress(0)
   if (hit) {
     cache.delete(key)
     cache.set(key, hit)

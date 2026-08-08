@@ -210,13 +210,23 @@ html.ion-palette-dark .reader-text.hl-underline .sentence--active {
   --padding-bottom: 6px;
 }
 
-/* Hinweis unter dem Fortschrittsbalken beim einmaligen Engine-Laden. */
+/* Hinweis unter dem Fortschrittsbalken (Engine-Laden / Satz-Berechnung).
+   Leicht verzögert eingeblendet, damit er bei den normalen, nur kurz
+   aufleuchtenden Ladephasen vorausberechneter Sätze nicht flackert. */
 .engine-loading-hint {
   padding: 4px 16px 0;
   font-size: 0.8rem;
   text-align: center;
   color: var(--ion-color-medium);
   font-variant-numeric: tabular-nums;
+  opacity: 0;
+  animation: engine-hint-appear 0.25s ease-in 0.6s forwards;
+}
+
+@keyframes engine-hint-appear {
+  to {
+    opacity: 1;
+  }
 }
 
 .player {

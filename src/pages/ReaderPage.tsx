@@ -47,6 +47,7 @@ import {
   studioPrefetch,
   studioWarmup,
   subscribeEngineProgress,
+  subscribeSynthProgress,
 } from '../lib/supertonic/client'
 import {
   FONT_SCALE_MAX,
@@ -226,6 +227,8 @@ export default function ReaderPage() {
   const [displayOpen, setDisplayOpen] = useState(false)
   /** 0..1 – Stand des einmaligen Engine-Ladens, 1 = Engine bereit. */
   const [engineProgress, setEngineProgress] = useState(0)
+  /** 0..1 – Rechenschritte der gerade laufenden Satz-Berechnung. */
+  const [synthProgress, setSynthProgress] = useState(0)
   const [fontScale, setFontScale] = useState(getFontScale())
   const [highlightStyle, setHighlightStyle] = useState<HighlightStyle>(
     getHighlightStyle(),
@@ -301,6 +304,7 @@ export default function ReaderPage() {
   }, [])
 
   useEffect(() => subscribeEngineProgress(setEngineProgress), [])
+  useEffect(() => subscribeSynthProgress(setSynthProgress), [])
 
   // What the voice actually speaks: sanitized text (no PDF artifacts), a
   // subtle <breath> expression tag at page starts (natively supported by
@@ -597,25 +601,33 @@ export default function ReaderPage() {
       </IonContent>
 
       <IonFooter translucent>
-        {/* Beim einmaligen Engine-Laden (App-Kaltstart) zeigt der Balken
-            echten Fortschritt plus Hinweis – sonst wirkte die App bei
-            40+ Sekunden Ladezeit wie eingefroren. Danach reicht für die
-            kurze Satz-Synthese der unbestimmte Balken. */}
-        {state === 'loading' &&
-          (engineProgress < 1 ? (
-            <>
+        {/* Jede Wartephase zeigt echten Fortschritt mit Prozent und
+            Erklärtext – sonst wirkte die App bei langen Ladezeiten wie
+            eingefroren: erst das einmalige Engine-Laden (App-Kaltstart,
+            byte-gewichtet), danach die Rechenschritte der Satz-Berechnung.
+            Solange noch kein Fortschritt gemeldet wurde, läuft der Balken
+            unbestimmt; der Text (per CSS leicht verzögert eingeblendet)
+            steht trotzdem da. */}
+        {state === 'loading' && (
+          <>
+            {(engineProgress < 1 ? engineProgress : synthProgress) > 0 ? (
               <IonProgressBar
-                value={engineProgress}
-                aria-label="Sprachmodell wird geladen"
+                value={engineProgress < 1 ? engineProgress : synthProgress}
+                aria-label="Fortschritt der Sprachvorbereitung"
               />
-              <div className="engine-loading-hint" role="status">
-                Die Vorlesestimme wird einmalig vorbereitet –{' '}
-                {Math.round(engineProgress * 100)} %
-              </div>
-            </>
-          ) : (
-            <IonProgressBar type="indeterminate" aria-label="Stimme lädt" />
-          ))}
+            ) : (
+              <IonProgressBar
+                type="indeterminate"
+                aria-label="Sprachvorbereitung läuft"
+              />
+            )}
+            <div className="engine-loading-hint" role="status">
+              {engineProgress < 1
+                ? `Die Vorlesestimme wird einmalig vorbereitet – ${Math.round(engineProgress * 100)} %`
+                : `Der Satz wird berechnet – ${Math.round(synthProgress * 100)} %`}
+            </div>
+          </>
+        )}
         <IonToolbar className="player-toolbar">
           <div className="player">
             <div className="player__controls">
