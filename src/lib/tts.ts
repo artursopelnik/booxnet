@@ -133,8 +133,15 @@ export function warmVoicePreviews(voices: StudioVoiceMeta[]): void {
         try {
           if (await hasAsset(previewAssetPath(voice))) continue
           await renderPreview(voice, false)
-        } catch {
-          // Nächster Anlauf beim nächsten Öffnen der Stimmen-Auswahl.
+        } catch (error) {
+          // Verdrängt durch einen Play-Druck: Der Nutzer braucht die
+          // Engine JETZT – ganz aufhören statt die Warteschlange sofort
+          // wieder mit langen Renderings zu füllen. Nächster Anlauf beim
+          // nächsten Öffnen der Stimmen-Auswahl.
+          if (error instanceof Error && error.name === TTS_CANCELLED_ERROR) {
+            return
+          }
+          // Anderer Fehler: nächste Stimme versuchen.
         }
       }
     } finally {

@@ -61,7 +61,6 @@ import {
   saveRate,
   saveVoiceId,
   Speaker,
-  warmVoicePreviews,
   type SpeakerState,
 } from '../lib/tts'
 import {
@@ -338,16 +337,13 @@ export default function ReaderPage() {
 
   // Warm the engine (and the selected voice's style) as soon as the reader
   // opens – loading ~400 MB of sessions takes long, and doing it here makes
-  // the first press on Play feel instant instead of frozen. Nebenbei
-  // fehlende Stimmen-Begrüßungen vorrendern (gewählte Stimme zuerst),
-  // damit das Probehören später sofort abspielt.
+  // the first press on Play feel instant instead of frozen. Bewusst KEIN
+  // Begrüßungs-Vorrendern hier: Diese langen Renderings blockierten als
+  // laufende Warteschlangen-Köpfe jeden Play-Druck mit neuer Stimme
+  // minutenlang – Begrüßungen wärmt nur noch die Stimmen-Auswahl.
   useEffect(() => {
     if (engineInstalled) {
       studioWarmup(voice.id)
-      warmVoicePreviews([
-        ...STUDIO_VOICES.filter((v) => v.id === voice.id),
-        ...STUDIO_VOICES.filter((v) => v.id !== voice.id),
-      ])
     }
   }, [engineInstalled, voice.id])
 
@@ -649,6 +645,7 @@ export default function ReaderPage() {
         onSelect={selectVoice}
         onEngineChange={setEngineInstalled}
         onDismiss={() => setVoiceSheetOpen(false)}
+        canWarmPreviews={state === 'idle'}
       />
 
       {/* Anzeige-Einstellungen als halbhohes Sheet: Der Text dahinter
