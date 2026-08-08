@@ -23,6 +23,9 @@ export async function importPdf(file: File): Promise<Book> {
         text += textItem.hasEOL ? '\n' : ' '
       }
     }
+    // Re-join words hyphenated across line breaks ("Bei-\nspiel" → "Beispiel"),
+    // otherwise the voice reads the fragments as separate words.
+    text = text.replace(/([A-Za-zÄÖÜäöüß])-\s*\n\s*(?=[a-zäöüß])/g, '$1')
     pages.push(text.trim())
   }
 
