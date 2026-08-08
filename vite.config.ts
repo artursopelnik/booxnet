@@ -12,11 +12,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Framework getrennt vom App-Code: App-Updates invalidieren dann
-        // nur den kleinen App-Chunk, die grossen Framework-Chunks behalten
-        // ihren Hash und bleiben im Browser-/Service-Worker-Cache.
+        // nur den kleinen App-Chunk, der grosse Framework-Chunk behaelt
+        // seinen Hash und bleibt im Browser-/Service-Worker-Cache.
+        // Bewusst EIN gemeinsamer Chunk: React und Ionic getrennt zu
+        // buendeln erzeugt zirkulaere Chunk-Importe und laesst die App
+        // beim Start mit einem TDZ-Fehler sterben (weisse Seite).
         manualChunks: {
-          react: ['react', 'react-dom', 'react-router', 'react-router-dom'],
-          ionic: ['@ionic/react', '@ionic/react-router', 'ionicons'],
+          framework: [
+            'react',
+            'react-dom',
+            'react-router',
+            'react-router-dom',
+            '@ionic/react',
+            '@ionic/react-router',
+            'ionicons',
+          ],
         },
       },
     },
