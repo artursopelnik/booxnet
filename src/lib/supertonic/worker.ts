@@ -121,8 +121,11 @@ async function loadEngine(): Promise<Engine> {
     vectorEst,
     vocoder,
     styles: new Map(),
-    // With GPU acceleration the higher quality tier stays fast enough.
-    steps: providers.includes('webgpu') ? 10 : 8,
+    // With GPU acceleration the higher quality tier stays fast enough. On
+    // plain WASM (single-threaded without cross-origin isolation, e.g.
+    // GitHub Pages on iPhones) every step costs real seconds per sentence –
+    // the lowest supported tier keeps sentence-to-sentence gaps bearable.
+    steps: providers.includes('webgpu') ? 10 : 5,
   }
 }
 
@@ -384,6 +387,8 @@ interface SynthesizeRequest {
   lang: string
   text: string
   speed: number
+  /** Wird gerade abgespielt/erwartet – überholt Vorab-Berechnungen. */
+  priority?: boolean
 }
 
 interface PreloadRequest {
@@ -397,43 +402,26 @@ interface ResetRequest {
   type: 'reset'
 }
 
-type Request = SynthesizeRequest | PreloadRequest | ResetRequest
+/** Zieht eine bereits eingereihte Anfrage an die Spitze der Warteschlange. */
+interface BumpRequest {
+  id: number
+  type: 'bump'
+  target: number
+}
 
-// Requests are processed strictly one at a time: parallel denoising loops
-// would fight over CPU/GPU without finishing any sentence sooner.
-let queue: Promise<unknown> = Promise.resolve()
+type Request = SynthesizeRequest | PreloadRequest | ResetRequest | BumpRequest
 
-self.onmessage = (event: MessageEvent<Request>) => {
-  const request = event.data
-  const task = async () => {
-    if (request.type === 'reset') {
-      enginePromise = null
-      self.postMessage({ id: request.id, ok: true })
-      return
-    }
-    if (request.type === 'preload') {
-      try {
-        const engine = await getEngine()
-        await getStyle(engine, request.voiceId)
-        self.postMessage({ id: request.id, ok: true })
-      } catch (error) {
-        self.postMessage({
-          id: request.id,
-          ok: false,
-          error: error instanceof Error ? error.message : String(error),
-        })
-      }
-      return
-    }
+async function handle(request: Exclude<Request, BumpRequest>): Promise<void> {
+  if (request.type === 'reset') {
+    enginePromise = null
+    self.postMessage({ id: request.id, ok: true })
+    return
+  }
+  if (request.type === 'preload') {
     try {
-      const wav = await synthesize(
-        request.voiceId,
-        request.lang,
-        request.text,
-        request.speed,
-      )
-      // Transfer the buffer – no copy on the way back.
-      self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })
+      const engine = await getEngine()
+      await getStyle(engine, request.voiceId)
+      self.postMessage({ id: request.id, ok: true })
     } catch (error) {
       self.postMessage({
         id: request.id,
@@ -441,6 +429,63 @@ self.onmessage = (event: MessageEvent<Request>) => {
         error: error instanceof Error ? error.message : String(error),
       })
     }
+    return
   }
-  queue = queue.then(task, task)
+  try {
+    const wav = await synthesize(
+      request.voiceId,
+      request.lang,
+      request.text,
+      request.speed,
+    )
+    // Transfer the buffer – no copy on the way back.
+    self.postMessage({ id: request.id, ok: true, wav }, { transfer: [wav] })
+  } catch (error) {
+    self.postMessage({
+      id: request.id,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
+// Requests are processed strictly one at a time: parallel denoising loops
+// would fight over CPU/GPU without finishing any sentence sooner. The
+// queue is a real list instead of a promise chain, so the sentence the
+// user is actually waiting for can overtake queued prefetches – on slow
+// devices those would otherwise add up to a timeout before playback.
+const taskQueue: Exclude<Request, BumpRequest>[] = []
+let pumping = false
+
+async function pump(): Promise<void> {
+  if (pumping) return
+  pumping = true
+  for (;;) {
+    const request = taskQueue.shift()
+    if (!request) break
+    await handle(request)
+  }
+  pumping = false
+}
+
+self.onmessage = (event: MessageEvent<Request>) => {
+  const request = event.data
+  if (request.type === 'bump') {
+    const index = taskQueue.findIndex((task) => task.id === request.target)
+    if (index > 0) {
+      const [task] = taskQueue.splice(index, 1)
+      taskQueue.unshift(task)
+    }
+    return
+  }
+  if (request.type === 'synthesize' && request.priority) {
+    const index = taskQueue.findIndex(
+      (task) => task.type === 'synthesize' && !task.priority,
+    )
+    if (index >= 0) taskQueue.splice(index, 0, request)
+    else taskQueue.push(request)
+  } else {
+    taskQueue.push(request)
+  }
+  void pump()
 }
