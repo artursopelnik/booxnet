@@ -22,6 +22,7 @@ import {
 } from '@ionic/react'
 import { add, bookOutline, trashOutline } from 'ionicons/icons'
 import { useRef, useState } from 'react'
+import AppSection from '../components/AppSection'
 import { deleteBook, getAllBooks, putBook, type Book } from '../lib/db'
 import { importPdf } from '../lib/pdf'
 
@@ -145,6 +146,8 @@ export default function LibraryPage() {
             )
           })}
         </IonList>
+
+        <AppSection />
 
         <input
           ref={fileInput}

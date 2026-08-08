@@ -33,6 +33,27 @@ export async function writeAsset(
   await writable.close()
 }
 
+/**
+ * True when this page may store assets in OPFS. Private windows (Firefox
+ * blocks OPFS entirely, others hand out tiny ephemeral quotas) and browsers
+ * without writable file streams report false.
+ */
+export async function isStorageAvailable(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.getDirectory) return false
+    if (
+      typeof FileSystemFileHandle !== 'undefined' &&
+      !('createWritable' in FileSystemFileHandle.prototype)
+    ) {
+      return false
+    }
+    await dir()
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function hasAsset(path: string): Promise<boolean> {
   try {
     await (await dir()).getFileHandle(fileName(path))

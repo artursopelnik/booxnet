@@ -28,10 +28,22 @@ import {
   isStudioEngineInstalled,
   removeStudioData,
   STUDIO_ENGINE_SIZE_MB,
+  StudioDownloadError,
+  type StudioDownloadFailure,
 } from '../lib/supertonic/assets'
 import { resetStudioEngine } from '../lib/supertonic/client'
+import { isStorageAvailable } from '../lib/supertonic/opfs'
 import { previewVoice } from '../lib/tts'
 import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
+
+const DOWNLOAD_ERRORS: Record<StudioDownloadFailure, string> = {
+  storage:
+    'Dein Browser erlaubt hier keinen Speicher für das Sprachmodell – das passiert vor allem in privaten Fenstern. Öffne Booxnet in einem normalen Fenster und lade es dort herunter.',
+  quota:
+    `Auf deinem Gerät ist zu wenig Speicherplatz für das Sprachmodell frei (ca. ${STUDIO_ENGINE_SIZE_MB} MB). Schaffe etwas Platz und versuche es dann erneut – bereits geladene Teile bleiben erhalten.`,
+  network:
+    'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal. Bereits geladene Teile bleiben erhalten.',
+}
 
 interface Props {
   isOpen: boolean
@@ -50,6 +62,7 @@ export default function VoiceSheet({
   onDismiss,
 }: Props) {
   const [installed, setInstalled] = useState(false)
+  const [storageBlocked, setStorageBlocked] = useState(false)
   const [progress, setProgress] = useState<{
     percent: number
     mb: number
@@ -60,6 +73,7 @@ export default function VoiceSheet({
   useEffect(() => {
     if (isOpen) {
       isStudioEngineInstalled().then(setInstalled)
+      isStorageAvailable().then((available) => setStorageBlocked(!available))
     }
   }, [isOpen])
 
@@ -80,12 +94,10 @@ export default function VoiceSheet({
       setInstalled(true)
       onEngineChange(true)
     } catch (error) {
+      const reason =
+        error instanceof StudioDownloadError ? error.reason : 'network'
       presentToast({
-        message: `${
-          error instanceof Error
-            ? error.message
-            : 'Download des Sprachmodells fehlgeschlagen.'
-        } Bereits geladene Teile bleiben erhalten.`,
+        message: DOWNLOAD_ERRORS[reason],
         duration: 5000,
         color: 'danger',
       })
@@ -150,16 +162,22 @@ export default function VoiceSheet({
         <IonList inset>
           {!installed && (
             <IonItem
-              button={progress === null}
-              onClick={progress === null ? () => void startDownload() : undefined}
+              button={progress === null && !storageBlocked}
+              onClick={
+                progress === null && !storageBlocked
+                  ? () => void startDownload()
+                  : undefined
+              }
             >
               <IonIcon aria-hidden="true" slot="start" icon={sparklesOutline} color="primary" />
               <IonLabel>
                 <h2>Sprachmodell herunterladen</h2>
                 <IonNote>
-                  {progress === null
-                    ? `Einmalig ca. ${STUDIO_ENGINE_SIZE_MB} MB – schaltet alle 10 Stimmen frei`
-                    : `Wird geladen … ${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB. Lass die App dabei geöffnet.`}
+                  {storageBlocked
+                    ? 'Hier nicht möglich: Dein Browser blockiert den Speicher dafür (z. B. im privaten Fenster). Bitte in einem normalen Fenster öffnen.'
+                    : progress === null
+                      ? `Einmalig ca. ${STUDIO_ENGINE_SIZE_MB} MB – schaltet alle 10 Stimmen frei`
+                      : `Wird geladen … ${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB. Lass die App dabei geöffnet.`}
                 </IonNote>
                 {progress !== null && (
                   <IonProgressBar
@@ -168,7 +186,7 @@ export default function VoiceSheet({
                   />
                 )}
               </IonLabel>
-              {progress === null && (
+              {progress === null && !storageBlocked && (
                 <IonIcon aria-hidden="true" slot="end" icon={cloudDownloadOutline} />
               )}
             </IonItem>

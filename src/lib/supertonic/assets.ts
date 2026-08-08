@@ -13,6 +13,7 @@
 import { STUDIO_VOICES, type StudioVoiceId } from '../voices'
 import {
   assetSize,
+  isStorageAvailable,
   readAsset,
   removeAllAssets,
   writeAsset,
@@ -20,6 +21,19 @@ import {
 } from './opfs'
 
 export const STUDIO_ENGINE_SIZE_MB = 400
+
+export type StudioDownloadFailure = 'storage' | 'quota' | 'network'
+
+/** Download error with a coarse cause so the UI can give accurate advice. */
+export class StudioDownloadError extends Error {
+  constructor(
+    readonly reason: StudioDownloadFailure,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'StudioDownloadError'
+  }
+}
 
 const HF_BASE = 'https://huggingface.co/Supertone/supertonic-3/resolve/main'
 
@@ -102,10 +116,17 @@ export async function ensureStudioStyle(
  * full-file buffering, which matters for the ~200 MB models on memory-tight
  * mobile devices. Already-stored files are skipped and incomplete files are
  * never committed, so an interrupted download resumes where it stopped.
+ *
+ * Fails fast with a typed StudioDownloadError before fetching anything when
+ * the browser refuses OPFS (private windows) or the quota clearly cannot
+ * hold a fresh download – no point streaming 400 MB that can't be stored.
  */
 export async function downloadStudioEngine(
   onProgress: (percent: number, loadedMB: number) => void,
 ): Promise<void> {
+  if (!(await isStorageAvailable())) {
+    throw new StudioDownloadError('storage', 'OPFS unavailable')
+  }
   // Ask the browser not to evict the ~400 MB store under storage pressure –
   // without this, Safari may silently wipe OPFS after a few days.
   try {
@@ -119,6 +140,21 @@ export async function downloadStudioEngine(
     ...STUDIO_VOICES.map((voice) => styleAsset(voice.id)),
   ]
   const totalEstimate = STUDIO_ENGINE_SIZE_MB * 1024 * 1024
+  const sizes = await Promise.all(assets.map((path) => assetSize(path)))
+
+  if (!sizes.some((size) => size > 0)) {
+    const estimate = await navigator.storage.estimate?.().catch(() => undefined)
+    if (estimate?.quota != null) {
+      const free = estimate.quota - (estimate.usage ?? 0)
+      if (free < totalEstimate) {
+        throw new StudioDownloadError(
+          'quota',
+          `Insufficient quota: ${free} bytes free`,
+        )
+      }
+    }
+  }
+
   let storedBytes = 0
   const report = (fileBytes: number) => {
     const loaded = storedBytes + fileBytes
@@ -128,8 +164,8 @@ export async function downloadStudioEngine(
     )
   }
 
-  for (const path of assets) {
-    const existing = await assetSize(path)
+  for (const [index, path] of assets.entries()) {
+    const existing = sizes[index]
     if (existing > 0) {
       storedBytes += existing
       report(0)
@@ -173,14 +209,13 @@ async function downloadAsset(
       onBytes(0)
       // A full store won't fix itself by retrying – tell the user directly.
       if ((error as DOMException | null)?.name === 'QuotaExceededError') {
-        throw new Error(
-          'Auf deinem Gerät ist zu wenig Speicherplatz frei. Schaffe etwas Platz und versuche es dann erneut.',
-        )
+        throw new StudioDownloadError('quota', `Quota exceeded storing ${path}`)
       }
     }
   }
   console.error(`Supertonic download failed for ${path}:`, lastError)
-  throw new Error(
-    'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal.',
+  throw new StudioDownloadError(
+    'network',
+    lastError instanceof Error ? lastError.message : String(lastError),
   )
 }
