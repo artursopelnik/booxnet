@@ -32,7 +32,7 @@ import {
 import { useParams } from 'react-router'
 import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
-import { detectStudioLang } from '../lib/lang'
+import { detectStudioLang, langLabel } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { toSentences } from '../lib/text'
 import {
@@ -50,6 +50,16 @@ import {
 } from '../lib/voices'
 
 const RATES = [1, 1.25, 1.5, 1.75, 2, 0.5, 0.75]
+
+/** Punctuation-aware pause: questions/exclamations breathe a bit longer,
+ * colons and semicolons connect more tightly to what follows. */
+function pauseForEnding(text: string): number {
+  const end = text.trim().slice(-1)
+  if (end === '?' || end === '!' || end === '…' || end === '！' || end === '？')
+    return 480
+  if (end === ':' || end === ';') return 280
+  return 350
+}
 
 interface PageSentence {
   index: number
@@ -104,6 +114,7 @@ export default function ReaderPage() {
   const [rate, setRate] = useState(getSavedRate())
   const [state, setState] = useState<SpeakerState>('idle')
   const [current, setCurrent] = useState(0)
+  const [bookLang, setBookLang] = useState('na')
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   const [presentToast] = useIonToast()
 
@@ -165,8 +176,8 @@ export default function ReaderPage() {
   }, [])
 
   // What the voice actually speaks: a subtle <breath> expression tag at
-  // page starts (natively supported by Supertonic 3) and longer pauses at
-  // page breaks make the reading sound more human.
+  // page starts (natively supported by Supertonic 3), longer pauses at
+  // page breaks, and punctuation-aware pauses make the reading human.
   const speakItems = useMemo(
     () =>
       sentences.map((sentence, index) => {
@@ -177,7 +188,7 @@ export default function ReaderPage() {
         const endsPage = next !== undefined && next.page !== sentence.page
         return {
           text: startsPage ? `<breath> ${sentence.text}` : sentence.text,
-          pauseAfter: endsPage ? 750 : 350,
+          pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),
         }
       }),
     [sentences],
@@ -189,7 +200,9 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (!book) return
-    speaker.setLangHint(detectStudioLang(book.pages.join(' ')))
+    const detected = detectStudioLang(book.pages.join(' '))
+    setBookLang(detected)
+    speaker.setLangHint(detected)
   }, [speaker, book])
 
   const voice: StudioVoiceMeta =
@@ -339,7 +352,7 @@ export default function ReaderPage() {
             <div className="player__meta">
               <IonNote>
                 Satz {Math.min(current + 1, sentences.length)} von{' '}
-                {sentences.length} · {voice.name}
+                {sentences.length} · {voice.name} · {langLabel(bookLang)}
               </IonNote>
             </div>
             <div className="player__controls">

@@ -13,18 +13,22 @@ offline und im Look einer nativen iOS-App.
   Emma, …) in Studioqualität (44,1 kHz), jede spricht 31 Sprachen. Das
   gemeinsame Sprachmodell wird einmalig geladen (ca. 400 MB → OPFS), die
   einzelnen Stimmen sind winzige Style-Dateien und laden bei Bedarf. Die
-  Buchsprache wird per Stopwort-Heuristik erkannt, unklare Texte laufen im
-  sprachagnostischen Modus (`na`). Personalisiertes Probehören („Hallo,
-  ich bin Alex.").
+  Buchsprache wird automatisch erkannt: nicht-lateinische Schriften
+  (Japanisch, Koreanisch, Arabisch, Griechisch, Hindi, Kyrillisch) direkt
+  am Schriftsystem, lateinische über Stopwort-Listen für 15 Sprachen;
+  unklare Texte laufen im sprachagnostischen Modus (`na`).
+  Personalisiertes Probehören („Hallo, ich bin Alex.").
 - **Ruckelfrei:** Die komplette ONNX-Inferenz (onnxruntime-web, WebGPU mit
   WASM-Fallback, Sessions werden wiederverwendet) läuft in einem Web
   Worker – die Oberfläche bleibt beim Vorlesen und Scrollen flüssig.
   Off-Screen-Seiten werden per `content-visibility` vom Layout
   ausgenommen, Seiten rendern memoisiert.
-- **Natürlicher Lesefluss:** Pausen an Satzenden mit leichtem Zufalls-
-  Jitter (kein metronomischer Gleichtakt), längere Pausen an
-  Seitenwechseln, hörbare Atmer an Absatzanfängen über Supertonics
-  `<breath>`-Expression-Tag, höhere Denoising-Qualität bei WebGPU. Das
+- **Natürlicher Lesefluss:** satzzeichen-präzise Pausen (Fragen/Ausrufe
+  atmen länger nach, Doppelpunkte binden enger) mit leichtem Zufalls-
+  Jitter, längere Pausen an Seitenwechseln, hörbare Atmer an
+  Absatzanfängen über Supertonics `<breath>`-Expression-Tag, höhere
+  Denoising-Qualität bei WebGPU. Abkürzungen wie „z. B." oder „Prof. Dr."
+  erzeugen keine falschen Satzbrüche. Das
   Lesetempo (0,5×–2×) wird nativ in der Synthese umgesetzt statt das
   Audio zu beschleunigen, und über Zeilenumbrüche getrennte Wörter
   („Bei-spiel") werden beim PDF-Import wieder zusammengefügt. Beim
