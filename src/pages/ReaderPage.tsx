@@ -41,6 +41,7 @@ import {
 } from '../lib/bookStructure'
 import { unitName } from '../lib/importers'
 import { detectStudioLang, langLabel } from '../lib/lang'
+import { useBackDismiss } from '../lib/useBackDismiss'
 import { useT } from '../lib/useT'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import {
@@ -245,6 +246,10 @@ export default function ReaderPage() {
   const [langOverride, setLangOverride] = useState(LANG_AUTO)
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   const [displayOpen, setDisplayOpen] = useState(false)
+  // Android: Zurueck schliesst das offene Blatt, statt das Buch zu
+  // verlassen. Ohne das landete man mitten im Lesen in der Bibliothek.
+  useBackDismiss(voiceSheetOpen, () => setVoiceSheetOpen(false))
+  useBackDismiss(displayOpen, () => setDisplayOpen(false))
   /** 0..1 – Stand des einmaligen Engine-Ladens, 1 = Engine bereit. */
   const [engineProgress, setEngineProgress] = useState(0)
   /** 0..1 – Rechenschritte der gerade laufenden Satz-Berechnung. */

@@ -3,11 +3,11 @@
  * voices. Sentences are synthesized in a Web Worker (the UI never blocks),
  * prefetched ahead of playback and separated by natural pauses.
  *
- * Die Ausgabe laeuft ueber ein Medien-Element (siehe audioOutput.ts),
- * damit das Vorlesen im Hintergrund weiterlaeuft und auf dem
- * Sperrbildschirm steuerbar ist. Nur das kurze Probehoeren in der
- * Stimmen-Auswahl nutzt weiterhin Web Audio – es laeuft ohnehin nur im
- * Vordergrund und darf die Medien-Anmeldung des Buchs nicht ueberschreiben.
+ * Die Ausgabe laeuft ueber Medien-Elemente (siehe audioOutput.ts), damit
+ * das Vorlesen im Hintergrund weiterlaeuft und auf dem Sperrbildschirm
+ * steuerbar ist. Das Probehoeren in der Stimmen-Auswahl nutzt ein zweites,
+ * eigenes Element: gleicher Ausgabeweg, aber ohne die Stelle im laufenden
+ * Satz zu ueberschreiben.
  */
 import {
   studioSynthesize,
@@ -18,11 +18,14 @@ import {
   hasPausedAudio,
   pauseAudioOutput,
   playAudioBlob,
+  playPreviewBlob,
   resumeAudioOutput,
   setMediaSessionState,
   setupMediaSession,
   stopAudioOutput,
+  stopPreviewOutput,
   unlockAudioOutput,
+  unlockPreviewOutput,
   updateMediaSessionInfo,
   withTrailingSilence,
 } from './audioOutput'
@@ -242,91 +245,31 @@ export function warmVoicePreviews(voices: StudioVoiceMeta[]): void {
   })()
 }
 
-/* ---------------------------------------------------------------- audio */
-
-let sharedCtx: AudioContext | null = null
-
-function getAudioContext(): AudioContext {
-  if (!sharedCtx) {
-    const Ctor =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext
-    sharedCtx = new Ctor()
-  }
-  return sharedCtx
-}
-
-/**
- * Bewusst DIREKTE Web-Audio-Ausgabe: Der Umweg über MediaStream +
- * <audio>-Element (um den iOS-Lautlos-Schalter wie eine Hörbuch-App zu
- * umgehen) erzeugte beim Pausieren/Fortsetzen und Stimmenwechsel ein
- * hängendes Stotter-Geräusch, das erst ein App-Neustart beendete.
- * Konsequenz: Bei stummgeschaltetem iPhone bleibt die Stimme lautlos –
- * die Willkommensseite weist darauf hin (Stummschalter aus oder
- * Kopfhörer nutzen); erkennen lässt sich der Schalter aus dem Web nicht.
- *
- * Must be called synchronously inside a user gesture once: resumes the
- * context and plays a one-sample silent buffer so iOS marks it as
- * user-activated.
- */
-function unlockAudioContext(): void {
-  const ctx = getAudioContext()
-  if (ctx.state === 'suspended') {
-    void ctx.resume()
-  }
-  const buffer = ctx.createBuffer(1, 1, 22050)
-  const source = ctx.createBufferSource()
-  source.buffer = buffer
-  source.connect(ctx.destination)
-  source.start(0)
-}
-
-async function decodeBlob(blob: Blob): Promise<AudioBuffer> {
-  const data = await blob.arrayBuffer()
-  return getAudioContext().decodeAudioData(data)
-}
-
 /* -------------------------------------------------------------- preview */
-
-let previewSource: AudioBufferSourceNode | null = null
-
-function stopPreview(): void {
-  if (previewSource) {
-    previewSource.onended = null
-    try {
-      previewSource.stop()
-    } catch {
-      // Already stopped.
-    }
-    previewSource = null
-  }
-}
 
 /**
  * Speaks a short personalized sample sentence with the given voice.
  * Must be called from a user gesture (tap on the voice row).
  */
 export async function previewVoice(voice: StudioVoiceMeta): Promise<void> {
-  unlockAudioContext()
-  stopPreview()
+  // Synchron in der Geste, sonst blockiert iOS das spaetere Abspielen.
+  unlockPreviewOutput()
+  stopPreviewOutput()
   // Fertig gespeicherte Begrüßung spielt sofort – ohne Engine-Rechnung.
   const cached = await readAsset(previewAssetPath(voice)).catch(() => null)
-  const blob = cached
-    ? new Blob([cached], { type: 'audio/wav' })
-    : await renderPreview(voice, true)
-  const buffer = await decodeBlob(blob)
-  stopPreview()
-  const ctx = getAudioContext()
-  if (ctx.state === 'suspended') await ctx.resume()
-  const source = ctx.createBufferSource()
-  source.buffer = buffer
-  source.connect(ctx.destination)
-  previewSource = source
-  source.start()
-  await new Promise<void>((resolve) => {
-    source.onended = () => resolve()
-  })
+  if (cached && cached.byteLength > 0) {
+    try {
+      await playPreviewBlob(new Blob([cached], { type: 'audio/wav' }))
+      return
+    } catch {
+      // Gespeicherte Datei unbrauchbar. Das ist kein exotischer Fall: Der
+      // Cache wird nebenher geschrieben, ein Schliessen der App mitten im
+      // Schreiben hinterlaesst eine halbe Datei. Einmal neu rechnen
+      // ueberschreibt sie – sonst bliebe genau diese Stimme dauerhaft
+      // stumm, ohne dass der Nutzer etwas dagegen tun koennte.
+    }
+  }
+  await playPreviewBlob(await renderPreview(voice, true))
 }
 
 /* -------------------------------------------------------------- speaker */

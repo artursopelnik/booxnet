@@ -19,16 +19,40 @@
 const SILENT_WAV =
   'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
 
-let element: HTMLAudioElement | null = null
-let objectUrl: string | null = null
-let unlocked = false
+interface Channel {
+  element: HTMLAudioElement | null
+  objectUrl: string | null
+  unlocked: boolean
+}
 
-function audio(): HTMLAudioElement {
-  if (!element) {
-    element = new Audio()
-    element.preload = 'auto'
+function makeChannel(): Channel {
+  return { element: null, objectUrl: null, unlocked: false }
+}
+
+/**
+ * Zwei getrennte Elemente, mit Absicht.
+ *
+ * Das Vorlesen merkt sich die Stelle im laufenden Satz, damit "Pause" und
+ * "Weiter" mittendrin funktionieren. Liefe die Stimmen-Vorstellung über
+ * dasselbe Element, überschriebe sie diese Stelle – "Weiter" spielte
+ * danach die Begrüßung statt des Buchs.
+ *
+ * Die Vorstellung lief früher über Web Audio. Das war der stillere Fehler:
+ * Sobald das Vorlesen die Tonsitzung des Geräts übernommen hatte, ging der
+ * Web-Audio-Kontext auf iOS in einen unterbrochenen Zustand, aus dem ihn
+ * ein blosses resume() nicht mehr holte. Die Vorstellung spielte dann
+ * lautlos und meldete auch kein Ende – der Ladekringel drehte endlos und
+ * jeder weitere Antipper prallte am deaktivierten Knopf ab.
+ */
+const read = makeChannel()
+const preview = makeChannel()
+
+function audio(channel: Channel): HTMLAudioElement {
+  if (!channel.element) {
+    channel.element = new Audio()
+    channel.element.preload = 'auto'
   }
-  return element
+  return channel.element
 }
 
 /**
@@ -36,16 +60,43 @@ function audio(): HTMLAudioElement {
  * Element von sich aus abspielen. Ohne das bliebe jeder spätere
  * play()-Aufruf – etwa beim Satzwechsel – von iOS blockiert.
  */
-export function unlockAudioOutput(): void {
-  if (unlocked) return
-  unlocked = true
-  const player = audio()
+function unlock(channel: Channel): void {
+  if (channel.unlocked) return
+  channel.unlocked = true
+  const player = audio(channel)
   player.src = SILENT_WAV
   void player.play().catch(() => {
-    // Kein Ton möglich (z. B. Geste zu spät) – der nächste Play-Druck
+    // Kein Ton möglich (z. B. Geste zu spät) – der nächste Druck
     // versucht es erneut.
-    unlocked = false
+    channel.unlocked = false
   })
+}
+
+/** Hängt einen Blob ins Element und räumt den vorigen Verweis weg. */
+function attach(channel: Channel, blob: Blob): HTMLAudioElement {
+  const player = audio(channel)
+  player.onended = null
+  player.onerror = null
+  if (channel.objectUrl) URL.revokeObjectURL(channel.objectUrl)
+  channel.objectUrl = URL.createObjectURL(blob)
+  player.src = channel.objectUrl
+  return player
+}
+
+function release(channel: Channel): void {
+  const player = channel.element
+  if (!player) return
+  player.onended = null
+  player.onerror = null
+  player.pause()
+  if (channel.objectUrl) {
+    URL.revokeObjectURL(channel.objectUrl)
+    channel.objectUrl = null
+  }
+}
+
+export function unlockAudioOutput(): void {
+  unlock(read)
 }
 
 /** Spielt einen fertig gerechneten Satz; `onEnded` folgt am Satzende. */
@@ -53,42 +104,89 @@ export async function playAudioBlob(
   blob: Blob,
   onEnded: () => void,
 ): Promise<void> {
-  const player = audio()
-  player.onended = null
-  if (objectUrl) URL.revokeObjectURL(objectUrl)
-  objectUrl = URL.createObjectURL(blob)
-  player.src = objectUrl
+  const player = attach(read, blob)
   player.onended = onEnded
   await player.play()
 }
 
 export function pauseAudioOutput(): void {
-  element?.pause()
+  read.element?.pause()
 }
 
 /** Setzt an derselben Stelle im Satz fort. */
 export async function resumeAudioOutput(): Promise<void> {
-  if (element) await element.play()
+  if (read.element) await read.element.play()
 }
 
 export function stopAudioOutput(): void {
-  if (!element) return
-  element.onended = null
-  element.pause()
-  if (objectUrl) {
-    URL.revokeObjectURL(objectUrl)
-    objectUrl = null
-  }
+  release(read)
 }
 
 /** True, wenn ein Satz angefangen, aber noch nicht zu Ende gespielt ist. */
 export function hasPausedAudio(): boolean {
+  const player = read.element
   return (
-    element !== null &&
-    element.paused &&
-    element.currentTime > 0 &&
-    !element.ended
+    player !== null &&
+    player.paused &&
+    player.currentTime > 0 &&
+    !player.ended
   )
+}
+
+/* --------------------------------------------------- Stimmen-Vorstellung */
+
+export function unlockPreviewOutput(): void {
+  unlock(preview)
+}
+
+/**
+ * Beendet die laufende Vorstellung. Bewusst NICHT über das pause-Ereignis:
+ * pause() auf einem bereits stehenden Element löst gar kein Ereignis aus,
+ * ein wartendes Versprechen bliebe dann für immer hängen.
+ */
+let finishPreview: ((error?: Error) => void) | null = null
+
+export function stopPreviewOutput(): void {
+  finishPreview?.()
+  release(preview)
+}
+
+/**
+ * Spielt eine Stimmen-Vorstellung und wartet, bis sie durch ist.
+ *
+ * Das Versprechen löst sich in JEDEM Fall auf – am Ende, beim Abbruch von
+ * aussen, bei einer Unterbrechung durch das Betriebssystem und im Fehler-
+ * fall. Ein hängendes Versprechen wäre hier besonders teuer: Die Stimmen-
+ * Auswahl sperrt währenddessen alle Probehör-Knöpfe, ein einziges
+ * verschlucktes Ende legte also die ganze Liste lahm.
+ */
+export function playPreviewBlob(blob: Blob): Promise<void> {
+  // Eine noch wartende Vorstellung gilt ab jetzt als beendet.
+  finishPreview?.()
+  const player = attach(preview, blob)
+  return new Promise<void>((resolve, reject) => {
+    let settled = false
+    const finish = (error?: Error) => {
+      if (settled) return
+      settled = true
+      if (finishPreview === finish) finishPreview = null
+      player.onended = null
+      player.onerror = null
+      player.onpause = null
+      if (error) reject(error)
+      else resolve()
+    }
+    finishPreview = finish
+    player.onended = () => finish()
+    // Am natürlichen Ende feuert kein pause-Ereignis; hier landet nur eine
+    // Unterbrechung von aussen (Anruf, andere App). Kein Fehler.
+    player.onpause = () => finish()
+    player.onerror = () =>
+      finish(new Error('Die Tondatei ließ sich nicht abspielen.'))
+    player.play().catch((error: unknown) => {
+      finish(error instanceof Error ? error : new Error(String(error)))
+    })
+  })
 }
 
 /* ------------------------------------------------------ Sprechpausen */
