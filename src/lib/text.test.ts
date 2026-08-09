@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { isSpeakable, sanitizeForSpeech, splitSentences, toSentences } from './text'
+import {
+  cleanExtractedText,
+  isSpeakable,
+  sanitizeForSpeech,
+  splitSentences,
+  toSentences,
+} from './text'
 
 describe('splitSentences', () => {
   it('trennt an Satzzeichen', () => {
@@ -118,5 +124,56 @@ describe('toSentences', () => {
 
   it('kommt mit leeren Seiten zurecht', () => {
     expect(toSentences(['', '   '])).toEqual([])
+  })
+})
+
+describe('cleanExtractedText', () => {
+  it('lässt sauberen Text unverändert', () => {
+    const text = 'Ein ganz normaler Satz mit Umlauten: schön, größer, Käse.'
+    expect(cleanExtractedText(text)).toBe(text)
+  })
+
+  it('löst typografische Ligaturen auf', () => {
+    expect(cleanExtractedText('e\uFB00ektiv')).toBe('effektiv')
+    expect(cleanExtractedText('\uFB01nden')).toBe('finden')
+    expect(cleanExtractedText('\uFB02iegen')).toBe('fliegen')
+  })
+
+  it('entfernt unsichtbaren Müll', () => {
+    // Weicher Trennstrich, Breiten-Null-Zeichen, Steuerzeichen,
+    // Ersatzzeichen und ein Zeichen aus dem privaten Bereich.
+    expect(cleanExtractedText('Wor\u00ADtren\u200Bnung')).toBe('Wortrennung')
+    expect(cleanExtractedText('Text\u0001mit\uFFFDMüll\uE001')).toBe(
+      'TextmitMüll',
+    )
+  })
+
+  it('behält Zeilenumbrüche und Tabulatoren', () => {
+    expect(cleanExtractedText('erste\nzweite\tdritte')).toBe(
+      'erste\nzweite\tdritte',
+    )
+  })
+
+  // Der gemeldete Fall: "… hatte 00000D" am Satzende.
+  it('entfernt Reste aus den PDF-Verwaltungstabellen', () => {
+    expect(cleanExtractedText('unwillkürlich hatte 00000D').trim()).toBe(
+      'unwillkürlich hatte',
+    )
+    expect(cleanExtractedText('0000000000 65535 f').trim()).toBe('65535 f')
+  })
+
+  it('lässt echte Zahlen und Jahreszahlen in Ruhe', () => {
+    const text = 'Im Jahr 1984 waren es 2000 Menschen, 007 kam später.'
+    expect(cleanExtractedText(text)).toBe(text)
+  })
+
+  it('setzt freistehende Trema wieder zusammen', () => {
+    // Manche PDFs speichern "ü" als "u" plus kombinierendes Trema.
+    expect(cleanExtractedText('u\u0308ber')).toBe('über')
+  })
+
+  it('greift auch beim Aufbau der Satzliste', () => {
+    const [satz] = toSentences(['Er blieb ru\u00ADhig 00000D sitzen.'])
+    expect(satz.text).toBe('Er blieb ruhig sitzen.')
   })
 })
