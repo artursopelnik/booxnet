@@ -16,7 +16,7 @@ import type { StudioVoiceId } from '../voices'
 import { ensureStudioStyle, loadStudioAsset } from './assets'
 import { chunkText } from './chunk'
 import { assetSize } from './opfs'
-import { resolveOrtWasmPrefix } from './ortwasm'
+import { ortWasmPrefix } from './ortwasm'
 
 type Ort = typeof import('onnxruntime-web')
 type OrtSession = import('onnxruntime-web').InferenceSession
@@ -106,7 +106,7 @@ async function loadEngine(ortOpt: OrtOptLevel): Promise<Engine> {
       ` Kerne=${navigator.hardwareConcurrency ?? '?'},` +
       ` Optimierung=${ortOpt})`,
   )
-  ort.env.wasm.wasmPaths = await resolveOrtWasmPrefix()
+  ort.env.wasm.wasmPaths = ortWasmPrefix()
 
   const [cfgsBuf, indexerBuf] = await Promise.all([
     loadStudioAsset('onnx/tts.json'),
