@@ -7,6 +7,7 @@ import {
   removeInt8Leftovers,
 } from './lib/supertonic/assets'
 import { studioWarmup } from './lib/supertonic/client'
+import { removeSetting } from './lib/storage'
 import { getSavedVoiceId } from './lib/tts'
 import { STUDIO_VOICES, studioVoiceById } from './lib/voices'
 import LibraryPage from './pages/LibraryPage'
@@ -24,11 +25,7 @@ export default function App() {
       .then((root) => root.removeEntry('piper', { recursive: true }))
       .catch(() => {})
     void removeInt8Leftovers().catch(() => {})
-    try {
-      localStorage.removeItem('vorleser.variante')
-    } catch {
-      // Ohne Speicher gab es die Einstellung ohnehin nie.
-    }
+    removeSetting('vorleser.variante')
   }, [])
 
   // Engine-Warmstart beim App-Start, nicht erst beim Öffnen des Readers:

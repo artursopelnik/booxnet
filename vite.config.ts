@@ -65,9 +65,12 @@ export default defineConfig({
         globIgnores: ['ort/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // onnxruntime-web loads its WASM binaries at runtime – same-origin
-        // from /ort/ (scripts/copy-ort-wasm.mjs), with cdnjs only as
-        // fallback. Cache both so synthesis works offline; the voice
-        // models themselves are stored in OPFS.
+        // from /ort/ (scripts/copy-ort-wasm.mjs), mit jsDelivr nur als
+        // Rueckfall. Beide cachen, damit die Synthese offline laeuft; die
+        // Sprachmodelle selbst liegen in OPFS. Der Rueckfall-Host MUSS zu
+        // ORT_CDN in src/lib/supertonic/ortwasm.ts passen – stimmen sie
+        // nicht ueberein, wird die Rueckfall-Datei nie gecacht und die
+        // Wiedergabe scheitert offline, sobald die lokale Kopie fehlt.
         runtimeCaching: [
           {
             urlPattern: /\/ort\/.+\.(wasm|mjs)$/,
@@ -79,7 +82,7 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/,
+            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/npm\/onnxruntime-web@.*/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'tts-wasm',

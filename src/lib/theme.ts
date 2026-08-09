@@ -6,6 +6,8 @@
  * (dark.class.css / high-contrast.class.css).
  */
 
+import { readSetting, removeSetting, writeSetting } from './storage'
+
 export type ThemeChoice = 'auto' | 'light' | 'dark' | 'eink'
 
 const THEME_KEY = 'booxnet.theme'
@@ -16,13 +18,10 @@ const EINK_CLASS = 'theme-eink'
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
 
 export function getTheme(): ThemeChoice {
-  try {
-    const value = localStorage.getItem(THEME_KEY)
-    if (value === 'light' || value === 'dark' || value === 'eink') return value
-  } catch {
-    // Ohne Speicher bleibt es bei Automatisch.
-  }
-  return 'auto'
+  const value = readSetting(THEME_KEY)
+  return value === 'light' || value === 'dark' || value === 'eink'
+    ? value
+    : 'auto'
 }
 
 function apply(choice: ThemeChoice): void {
@@ -34,12 +33,8 @@ function apply(choice: ThemeChoice): void {
 }
 
 export function setTheme(choice: ThemeChoice): void {
-  try {
-    if (choice === 'auto') localStorage.removeItem(THEME_KEY)
-    else localStorage.setItem(THEME_KEY, choice)
-  } catch {
-    // Gilt dann nur für diese Sitzung.
-  }
+  if (choice === 'auto') removeSetting(THEME_KEY)
+  else writeSetting(THEME_KEY, choice)
   apply(choice)
 }
 

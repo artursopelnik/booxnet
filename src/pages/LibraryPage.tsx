@@ -31,6 +31,7 @@ import {
   bookOutline,
   contrastOutline,
   createOutline,
+  ellipsisVertical,
   trashOutline,
 } from 'ionicons/icons'
 import { useRef, useState } from 'react'
@@ -40,15 +41,16 @@ import {
   getAllBooks,
   putBook,
   saveBookOrder,
-  type Book,
+  renameBook,
+  type BookMeta,
 } from '../lib/db'
 import { ACCEPTED_FILES, importBook, unitCount } from '../lib/importers'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { getTheme, setTheme, THEME_LABELS, type ThemeChoice } from '../lib/theme'
-import { markWelcomeSeen, WELCOME_SEEN_KEY } from './WelcomePage'
+import { hasSeenWelcome, markWelcomeSeen } from './WelcomePage'
 
 export default function LibraryPage() {
-  const [books, setBooks] = useState<Book[]>([])
+  const [books, setBooks] = useState<BookMeta[]>([])
   const [importing, setImporting] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const router = useIonRouter()
@@ -65,13 +67,7 @@ export default function LibraryPage() {
   // Erststart ohne Sprachpaket: erst das Willkommen mit Erklärung und
   // Download. Bestandsinstallationen (Paket vorhanden) sehen es nie.
   useIonViewWillEnter(() => {
-    let seen = true
-    try {
-      seen = localStorage.getItem(WELCOME_SEEN_KEY) !== null
-    } catch {
-      // Ohne Speicher lieber nicht in eine Willkommens-Schleife laufen.
-    }
-    if (seen) return
+    if (hasSeenWelcome()) return
     void isStudioEngineInstalled().then((installed) => {
       if (installed) markWelcomeSeen()
       else router.push('/welcome', 'root', 'replace')
@@ -111,12 +107,39 @@ export default function LibraryPage() {
     }
   }
 
-  const remove = async (book: Book) => {
+  const remove = async (book: BookMeta) => {
     await deleteBook(book.id)
     refresh()
   }
 
-  const rename = (book: Book) => {
+  /**
+   * Umbenennen und Löschen auch ohne Wischgeste erreichbar: Die
+   * IonItemOptions dahinter kennen weder Tastatur noch Screenreader, es
+   * gab also für Tastatur- und Screenreader-Nutzer bisher überhaupt
+   * keinen Weg, ein Buch zu löschen (WCAG 2.1.1, 2.5.1). Die Wischgeste
+   * bleibt als Abkürzung erhalten.
+   */
+  const openBookMenu = (book: BookMeta) => {
+    void presentActionSheet({
+      header: book.title,
+      buttons: [
+        {
+          text: 'Titel ändern',
+          icon: createOutline,
+          handler: () => rename(book),
+        },
+        {
+          text: 'Buch löschen',
+          icon: trashOutline,
+          role: 'destructive',
+          handler: () => void remove(book),
+        },
+        { text: 'Abbrechen', role: 'cancel' },
+      ],
+    })
+  }
+
+  const rename = (book: BookMeta) => {
     void presentAlert({
       header: 'Titel ändern',
       inputs: [
@@ -134,7 +157,7 @@ export default function LibraryPage() {
           handler: (data: { title?: string }) => {
             const title = (data.title ?? '').trim()
             if (title && title !== book.title) {
-              void putBook({ ...book, title }).then(refresh)
+              void renameBook(book.id, title).then(refresh)
             }
           },
         },
@@ -144,7 +167,7 @@ export default function LibraryPage() {
 
   // Drag-and-drop-Reihenfolge sofort anzeigen und dauerhaft speichern.
   const onReorder = (event: CustomEvent<ItemReorderEventDetail>) => {
-    const reordered = event.detail.complete(books) as Book[]
+    const reordered = event.detail.complete(books) as BookMeta[]
     setBooks(reordered)
     void saveBookOrder(reordered.map((book) => book.id))
   }
@@ -187,7 +210,7 @@ export default function LibraryPage() {
             src={`${import.meta.env.BASE_URL}icon.svg`}
             alt="Booxnet"
           />
-          <IonTitle>Bibliothek</IonTitle>
+          <IonTitle role="heading" aria-level={1}>Bibliothek</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={chooseTheme} aria-label="Darstellung ändern">
               <IonIcon aria-hidden="true" slot="icon-only" icon={contrastOutline} />
@@ -202,7 +225,17 @@ export default function LibraryPage() {
           </IonToolbar>
         </IonHeader>
 
-        {importing && <IonProgressBar type="indeterminate" />}
+        {importing && (
+          <>
+            <IonProgressBar
+              type="indeterminate"
+              aria-label="Buch wird eingelesen"
+            />
+            <div className="visually-hidden" role="status">
+              Buch wird eingelesen
+            </div>
+          </>
+        )}
 
         {books.length === 0 && !importing && (
           <div className="empty-state">
@@ -249,6 +282,23 @@ export default function LibraryPage() {
                       </IonNote>
                     </IonLabel>
                     <IonReorder slot="end" />
+                    <IonButton
+                      slot="end"
+                      fill="clear"
+                      className="book-menu-button"
+                      onClick={(event) => {
+                        // Sonst öffnet der Klick zusätzlich das Buch.
+                        event.stopPropagation()
+                        openBookMenu(book)
+                      }}
+                      aria-label={`Aktionen für ${book.title}`}
+                    >
+                      <IonIcon
+                        aria-hidden="true"
+                        slot="icon-only"
+                        icon={ellipsisVertical}
+                      />
+                    </IonButton>
                   </IonItem>
                   <IonItemOptions side="end">
                     <IonItemOption

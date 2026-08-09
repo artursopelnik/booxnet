@@ -25,20 +25,17 @@ import {
 } from 'ionicons/icons'
 import { useEffect, useState } from 'react'
 import {
-  DOWNLOAD_ERRORS,
-  downloadStudioEngine,
   isStudioEngineInstalled,
   removeStudioData,
   STUDIO_ENGINE_SIZE_MB,
-  StudioDownloadError,
 } from '../lib/supertonic/assets'
 import {
   resetStudioEngine,
   subscribeEngineInfo,
   type EngineInfo,
 } from '../lib/supertonic/client'
-import { isStorageAvailable } from '../lib/supertonic/opfs'
 import { previewVoice, warmVoicePreviews } from '../lib/tts'
+import { useEngineDownload } from '../lib/useEngineDownload'
 import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
 
 /** Deutsche Zahl mit einer Nachkommastelle (Komma statt Punkt). */
@@ -60,7 +57,7 @@ function diagnosticLines(info: EngineInfo): string[] {
   const lines = [
     engine.isolated
       ? `Rechenkerne: ${engine.threads} Threads von ${engine.cores ?? '?'} Kernen`
-      : `⚠️ Nur ${engine.threads} Thread: Mehrkern-Modus nicht aktiv (das bremst stark)`,
+      : `Achtung: nur ${engine.threads} Thread – Mehrkern-Modus nicht aktiv (das bremst stark)`,
     `Vorbereitung: ${num(engine.loadSeconds)} s`,
   ]
   if (synth && synth.audioSeconds > 0) {
@@ -101,11 +98,7 @@ export default function VoiceSheet({
   canWarmPreviews = true,
 }: Props) {
   const [installed, setInstalled] = useState(false)
-  const [storageBlocked, setStorageBlocked] = useState(false)
-  const [progress, setProgress] = useState<{
-    percent: number
-    mb: number
-  } | null>(null)
+  const { progress, storageBlocked, start } = useEngineDownload()
   const [previewing, setPreviewing] = useState<string | null>(null)
   const [presentToast] = useIonToast()
   const [presentAlert] = useIonAlert()
@@ -128,41 +121,16 @@ export default function VoiceSheet({
           ])
         }
       })
-      isStorageAvailable().then((available) => setStorageBlocked(!available))
     }
   }, [isOpen])
 
   const startDownload = async () => {
-    setProgress({ percent: 0, mb: 0 })
-    // Keep the screen on: if it locks, iOS suspends the tab and the
-    // download dies mid-file. Best-effort – not all browsers support it.
-    let wakeLock: WakeLockSentinel | null = null
-    try {
-      wakeLock = (await navigator.wakeLock?.request('screen')) ?? null
-    } catch {
-      // Wake lock unavailable – the hint text still asks to keep the app open.
-    }
-    try {
-      await downloadStudioEngine((percent, mb) =>
-        setProgress({ percent, mb }),
-      )
-      setInstalled(true)
-      onEngineChange(true)
-      // Direkt nach dem Download alle Begrüßungen vorrendern – ab dann
-      // spielt jede Vorstellung sofort, dauerhaft und offline.
-      warmVoicePreviews(STUDIO_VOICES)
-    } catch (error) {
-      const reason =
-        error instanceof StudioDownloadError ? error.reason : 'network'
-      presentToast({
-        message: DOWNLOAD_ERRORS[reason],
-        duration: 5000,
-        color: 'danger',
-      })
-    } finally {
-      void wakeLock?.release().catch(() => {})
-      setProgress(null)
-    }
+    if (!(await start())) return
+    setInstalled(true)
+    onEngineChange(true)
+    // Direkt nach dem Download alle Begrüßungen vorrendern – ab dann
+    // spielt jede Vorstellung sofort, dauerhaft und offline.
+    warmVoicePreviews(STUDIO_VOICES)
   }
 
   const deleteData = async () => {
@@ -224,7 +192,7 @@ export default function VoiceSheet({
     >
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Stimmen</IonTitle>
+          <IonTitle role="heading" aria-level={1}>Stimmen</IonTitle>
           <IonButtons slot="end">
             <IonButton strong onClick={onDismiss}>
               Fertig
@@ -256,6 +224,7 @@ export default function VoiceSheet({
                 {progress !== null && (
                   <IonProgressBar
                     value={progress.percent / 100}
+                    aria-label="Sprachmodell wird heruntergeladen"
                     style={{ marginTop: 6 }}
                   />
                 )}
@@ -271,9 +240,18 @@ export default function VoiceSheet({
               button={installed}
               disabled={!installed}
               onClick={installed ? () => select(voice) : undefined}
+              // Das Haekchen rechts ist rein visuell; ohne diese Angabe
+              // hoeren Screenreader vier gleichwertige Eintraege und
+              // erfahren nie, welche Stimme gerade aktiv ist.
+              aria-current={voice.id === selectedId ? 'true' : undefined}
             >
               <IonLabel>
-                <h2>{voice.name}</h2>
+                <h2>
+                  {voice.name}
+                  {voice.id === selectedId && (
+                    <span className="visually-hidden"> (ausgewählt)</span>
+                  )}
+                </h2>
                 <IonNote>
                   {voice.gender === 'm' ? 'Männlich' : 'Weiblich'}
                   {!installed && ' · benötigt das Sprachmodell'}
@@ -286,6 +264,7 @@ export default function VoiceSheet({
                 <IonButton
                   slot="end"
                   fill="clear"
+                  className="voice-preview-button"
                   disabled={previewing !== null}
                   onClick={(event) => {
                     event.stopPropagation()

@@ -27,6 +27,31 @@ const PREFIX = 'sentences/'
 const MAX_ENTRIES = 24
 
 /**
+ * Nach so vielen Schreibvorgaengen wird aufgeraeumt. Zwischendurch darf
+ * der Vorrat kurz ueber MAX_ENTRIES hinauswachsen – ein paar Dateien
+ * mehr kosten wenige Megabyte, jedes Mal aufzuraeumen kostet auf iOS
+ * spuerbar Zeit.
+ */
+const PRUNE_EVERY = 8
+let writesSincePrune = 0
+
+/**
+ * Identität eines gerechneten Satzes. Bewusst hier und nirgends sonst
+ * gebildet: Der flüchtige Zwischenspeicher im Client und dieser
+ * dauerhafte Speicher MÜSSEN dieselbe Identität benutzen. Würde einer
+ * von beiden ein Merkmal ergänzen (etwa die Schrittzahl), schriebe der
+ * Vorrat stillschweigend Dateien, die die Wiedergabe nie wiederfindet.
+ */
+export function sentenceKey(
+  voiceId: string,
+  lang: string,
+  speed: number,
+  text: string,
+): string {
+  return `${voiceId} ${lang} ${speed} ${text}`
+}
+
+/**
  * Kurzer Streuwert des Schlüssels als Dateiname. Web-Crypto liefert das
  * kollisionsfreie Ergebnis; fehlt es (unsicherer Kontext), tut es ein
  * einfacher FNV-1a-Wert samt Textlänge – bei zwei Dutzend Einträgen ist
@@ -55,7 +80,7 @@ async function pathFor(
   speed: number,
   text: string,
 ): Promise<string> {
-  return `${PREFIX}${await digest(`${voiceId} ${lang} ${speed} ${text}`)}.wav`
+  return `${PREFIX}${await digest(sentenceKey(voiceId, lang, speed, text))}.wav`
 }
 
 /** Fertig gerechneter Satz aus dem Speicher, oder null. */
@@ -95,7 +120,15 @@ export async function writeCachedSentence(
 ): Promise<void> {
   try {
     await writeAsset(await pathFor(voiceId, lang, speed, text), data)
-    await pruneAssets(PREFIX, MAX_ENTRIES)
+    // Aufraeumen mit Hysterese statt nach jedem Schreiben: Der Durchlauf
+    // listet das Verzeichnis und oeffnet jede Cache-Datei einmal, was auf
+    // iOS traege ist. So faellt er nur bei jedem achten Satz an und
+    // raeumt dann gleich mehrere weg.
+    writesSincePrune++
+    if (writesSincePrune >= PRUNE_EVERY) {
+      writesSincePrune = 0
+      await pruneAssets(PREFIX, MAX_ENTRIES)
+    }
   } catch {
     // Kein Platz oder kein Speicher: Das Vorlesen rechnet dann eben neu.
   }

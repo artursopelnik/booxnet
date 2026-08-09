@@ -193,12 +193,19 @@ export async function downloadStudioEngine(
   }
 
   let storedBytes = 0
+  // Nur melden, wenn sich die angezeigte Zahl wirklich aendert: Der
+  // Datenstrom liefert 16-64 KB pro Stueck, also bis zu 25.000 Meldungen
+  // fuer 400 MB - jede davon wuerde die Oberflaeche neu zeichnen.
+  let lastPercent = -1
+  let lastMB = -1
   const report = (fileBytes: number) => {
     const loaded = storedBytes + fileBytes
-    onProgress(
-      Math.min(99, Math.round((loaded / totalEstimate) * 100)),
-      Math.round(loaded / 1024 / 1024),
-    )
+    const percent = Math.min(99, Math.round((loaded / totalEstimate) * 100))
+    const mb = Math.round(loaded / 1024 / 1024)
+    if (percent === lastPercent && mb === lastMB) return
+    lastPercent = percent
+    lastMB = mb
+    onProgress(percent, mb)
   }
 
   for (const [index, path] of assets.entries()) {
