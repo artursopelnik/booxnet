@@ -270,6 +270,23 @@ html.ion-palette-dark .reader-text.hl-underline .sentence--active {
   color: var(--ion-color-medium);
 }
 
+/* Eingeklappte Diagnose in der Stimmen-Auswahl. */
+.engine-details summary {
+  cursor: pointer;
+  padding: 6px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ion-color-medium);
+  /* Der Standard-Marker sitzt in Safari zu eng am Text. */
+  list-style-position: inside;
+}
+
+.engine-details summary:focus-visible {
+  outline: 3px solid var(--ion-color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Messwerte-Block in der Stimmen-Auswahl (Diagnose ohne Browser-Konsole). */
 .engine-diagnostics {
   margin-top: 4px;
