@@ -293,17 +293,22 @@ export default function VoiceSheet({
 
         {/* Messwerte direkt in der App: Am Handy gibt es keine
             Browser-Konsole, in der sich Threads, Ladezeit und Rechentempo
-            ablesen liessen. */}
+            ablesen liessen. Eingeklappt, weil sie im Alltag niemanden
+            interessieren – gebraucht werden sie erst, wenn etwas zaeh
+            laeuft. <details> statt eigenem Zustand: Auf- und Zuklappen
+            kann der Browser selbst, inklusive Tastatur und Screenreader. */}
         {installed && (
           <IonList inset>
             <IonItem lines="none">
               <IonLabel className="ion-text-wrap">
-                <h2>Technische Details</h2>
-                <div className="engine-diagnostics">
-                  {diagnosticLines(info).map((line) => (
-                    <div key={line}>{line}</div>
-                  ))}
-                </div>
+                <details className="engine-details">
+                  <summary>Technische Details</summary>
+                  <div className="engine-diagnostics">
+                    {diagnosticLines(info).map((line) => (
+                      <div key={line}>{line}</div>
+                    ))}
+                  </div>
+                </details>
               </IonLabel>
             </IonItem>
           </IonList>

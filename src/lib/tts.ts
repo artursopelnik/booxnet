@@ -3,16 +3,29 @@
  * voices. Sentences are synthesized in a Web Worker (the UI never blocks),
  * prefetched ahead of playback and separated by natural pauses.
  *
- * Playback uses the Web Audio API with one shared AudioContext that is
- * resumed inside the user's tap. Unlike <audio>.play(), starting buffer
- * sources on a running context is never blocked by iOS Safari – this is
- * what keeps sentence N+1 playing without another tap.
+ * Die Ausgabe laeuft ueber ein Medien-Element (siehe audioOutput.ts),
+ * damit das Vorlesen im Hintergrund weiterlaeuft und auf dem
+ * Sperrbildschirm steuerbar ist. Nur das kurze Probehoeren in der
+ * Stimmen-Auswahl nutzt weiterhin Web Audio – es laeuft ohnehin nur im
+ * Vordergrund und darf die Medien-Anmeldung des Buchs nicht ueberschreiben.
  */
 import {
   studioSynthesize,
   TTS_CANCELLED_ERROR,
   TTS_TIMEOUT_ERROR,
 } from './supertonic/client'
+import {
+  hasPausedAudio,
+  pauseAudioOutput,
+  playAudioBlob,
+  resumeAudioOutput,
+  setMediaSessionState,
+  setupMediaSession,
+  stopAudioOutput,
+  unlockAudioOutput,
+  updateMediaSessionInfo,
+  withTrailingSilence,
+} from './audioOutput'
 import { hasAsset, readAsset, writeAsset } from './supertonic/opfs'
 import { readNumberSetting, readSetting, writeSetting } from './storage'
 import {
@@ -307,14 +320,28 @@ export class Speaker {
   private state: SpeakerState = 'idle'
   /** Guards against stale async callbacks after pause/skip/stop. */
   private generation = 0
-  private source: AudioBufferSourceNode | null = null
-  /** Index the paused source belongs to, for mid-sentence resume. */
-  private sourceIndex = -1
+  /** Satz, zu dem das angehaltene Medien-Element gehoert. */
+  private pausedIndex = -1
   private pauseTimer: ReturnType<typeof setTimeout> | null = null
   private events: SpeakerEvents
+  /** Fuer die Anzeige auf dem Sperrbildschirm. */
+  private title = ''
+  private cover: string | undefined
 
   constructor(events: SpeakerEvents = {}) {
     this.events = events
+    setupMediaSession({
+      onPlay: () => this.play(),
+      onPause: () => this.pause(),
+      onNext: () => this.skip(1),
+      onPrevious: () => this.skip(-1),
+    })
+  }
+
+  /** Buchangaben fuer den Sperrbildschirm. */
+  setBookInfo(title: string, cover?: string): void {
+    this.title = title
+    this.cover = cover
   }
 
   setSentences(items: SentenceInput[]): void {
@@ -372,17 +399,23 @@ export class Speaker {
     }
     this.generation++
     this.clearPauseTimer()
-    // Inside the user gesture: resume/unlock the context.
-    unlockAudioContext()
+    // Muss synchron in der Geste passieren, sonst blockiert iOS jedes
+    // spaetere Abspielen.
+    unlockAudioOutput()
+    if (this.voice) {
+      updateMediaSessionInfo(this.title, this.voice.name, this.cover)
+    }
 
-    // Resume paused audio mid-sentence.
-    if (
-      this.state === 'paused' &&
-      this.source &&
-      this.sourceIndex === this.index
-    ) {
+    // Mitten im Satz angehalten: einfach weiterlaufen lassen. Das
+    // Medien-Element merkt sich die Stelle selbst.
+    if (this.state === 'paused' && this.pausedIndex === this.index &&
+        hasPausedAudio()) {
       this.setState('playing')
-      void getAudioContext().resume()
+      setMediaSessionState('playing')
+      void resumeAudioOutput().catch(() => {
+        // Konnte nicht fortsetzen – Satz neu abspielen.
+        void this.speakCurrent()
+      })
       return
     }
 
@@ -395,9 +428,10 @@ export class Speaker {
     if (this.state !== 'playing' && this.state !== 'loading') return
     this.generation++
     this.clearPauseTimer()
-    // Suspending freezes the current source so play() can resume it.
-    void getAudioContext().suspend()
+    pauseAudioOutput()
+    this.pausedIndex = this.index
     this.setState('paused')
+    setMediaSessionState('paused')
   }
 
   toggle(): void {
@@ -424,6 +458,7 @@ export class Speaker {
     this.clearPauseTimer()
     this.stopSource()
     this.setState('idle')
+    setMediaSessionState('none')
   }
 
   private clearPauseTimer(): void {
@@ -434,21 +469,8 @@ export class Speaker {
   }
 
   private stopSource(): void {
-    if (this.source) {
-      this.source.onended = null
-      try {
-        this.source.stop()
-      } catch {
-        // Already stopped.
-      }
-      this.source = null
-    }
-    this.sourceIndex = -1
-    // A suspended context would silently swallow the next start().
-    const ctx = sharedCtx
-    if (ctx && ctx.state === 'suspended') {
-      void ctx.resume()
-    }
+    stopAudioOutput()
+    this.pausedIndex = -1
   }
 
   private setState(state: SpeakerState): void {
@@ -463,6 +485,7 @@ export class Speaker {
     if (this.index >= this.sentences.length - 1) {
       this.stopSource()
       this.setState('idle')
+      setMediaSessionState('none')
       this.events.onDone?.()
       return
     }
@@ -475,13 +498,26 @@ export class Speaker {
     }, delayMs)
   }
 
+  /**
+   * Die Sprechpause steckt bereits als Stille am Ende der Audiodatei
+   * (siehe silenceAfter), deshalb geht es hier ohne Verzoegerung weiter.
+   * Ein Zeitgeber an dieser Stelle wuerde im Hintergrund gedrosselt und
+   * das Medien-Element still stehen lassen – dann gaebe das
+   * Betriebssystem die Tonsitzung frei und die Wiedergabe endet.
+   */
   private advance(generation: number): void {
-    // Natural pause at the sentence end: per-sentence length (longer at
-    // paragraph/page breaks), scaled with the tempo, with a little jitter
-    // so the rhythm doesn't feel metronomic.
+    this.scheduleNext(generation, 0)
+  }
+
+  /**
+   * Laenge der Pause nach dem aktuellen Satz in Sekunden: laenger an
+   * Absatz- und Seitengrenzen, mit dem Tempo skaliert und leicht
+   * schwankend, damit der Rhythmus nicht wie ein Metronom wirkt.
+   */
+  private silenceAfter(): number {
     const base = this.pauses[this.index] ?? SENTENCE_PAUSE_MS
     const jitter = 0.85 + Math.random() * 0.3
-    this.scheduleNext(generation, (base * jitter) / this.rate)
+    return (base * jitter) / this.rate / 1000
   }
 
   /** Upcoming sentences worth synthesizing, for the prefetch warm-up. */
@@ -521,7 +557,7 @@ export class Speaker {
 
     const speed = engineSpeed(this.rate)
     this.setState('loading')
-    let buffer: AudioBuffer
+    let audio: Blob
     try {
       // Erst der dauerhafte Speicher: Liegt der Satz dort schon fertig,
       // spielt er sofort – ohne auf das Laden der Engine zu warten. Genau
@@ -539,7 +575,10 @@ export class Speaker {
         ? new Blob([stored], { type: 'audio/wav' })
         : await studioSynthesize(voice.id, this.langHint, text, speed, true)
       if (generation !== this.generation) return
-      buffer = await decodeBlob(blob)
+      // Sprechpause direkt anhaengen statt sie spaeter abzuwarten – so
+      // laeuft das Medien-Element durch und behaelt im Hintergrund die
+      // Tonsitzung.
+      audio = await withTrailingSilence(blob, this.silenceAfter())
     } catch (error) {
       if (generation !== this.generation) return
       // Verdrängt, obwohl weiterhin gewollt (gleiche Generation): erneut
@@ -571,22 +610,22 @@ export class Speaker {
     if (generation !== this.generation) return
 
     this.stopSource()
-    const ctx = getAudioContext()
-    if (ctx.state === 'suspended') {
-      try {
-        await ctx.resume()
-      } catch {
-        // start() below still works once the context recovers.
-      }
+    try {
+      await playAudioBlob(audio, () => this.advance(generation))
+    } catch {
+      // iOS verweigert das Abspielen, wenn die Entsperrung in der Geste
+      // nicht geklappt hat. Ehrlich melden statt stumm haengen zu bleiben.
+      if (generation !== this.generation) return
+      this.events.onError?.(
+        'Die Wiedergabe konnte nicht starten. Tippe noch einmal auf Play.',
+      )
+      this.setState('paused')
+      return
     }
-    const source = ctx.createBufferSource()
-    source.buffer = buffer
-    source.connect(ctx.destination)
-    source.onended = () => this.advance(generation)
-    this.source = source
-    this.sourceIndex = this.index
+    if (generation !== this.generation) return
+    this.pausedIndex = this.index
     this.setState('playing')
-    source.start()
+    setMediaSessionState('playing')
 
     prefetchSentences(
       voice.id,
