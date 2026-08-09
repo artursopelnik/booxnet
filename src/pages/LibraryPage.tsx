@@ -29,7 +29,9 @@ import {
 import {
   add,
   bookOutline,
+  clipboardOutline,
   contrastOutline,
+  documentTextOutline,
   languageOutline,
   createOutline,
   ellipsisVertical,
@@ -37,6 +39,7 @@ import {
 } from 'ionicons/icons'
 import { useRef, useState } from 'react'
 import AppSection from '../components/AppSection'
+import PasteSheet from '../components/PasteSheet'
 import {
   deleteBook,
   getAllBooks,
@@ -45,7 +48,13 @@ import {
   renameBook,
   type BookMeta,
 } from '../lib/db'
-import { ACCEPTED_FILES, importBook, unitCount } from '../lib/importers'
+import {
+  ACCEPTED_FILES,
+  bookFromText,
+  importBook,
+  titleFromText,
+  unitCount,
+} from '../lib/importers'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { getTheme, setTheme, themeLabel, type ThemeChoice } from '../lib/theme'
 import { getUiLang, setUiLang, UI_LANGUAGES, type UiLang } from '../lib/i18n'
@@ -58,6 +67,7 @@ export default function LibraryPage() {
   const t = useT()
   const [books, setBooks] = useState<BookMeta[]>([])
   const [importing, setImporting] = useState(false)
+  const [pasteOpen, setPasteOpen] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const router = useIonRouter()
   const [presentToast] = useIonToast()
@@ -111,6 +121,47 @@ export default function LibraryPage() {
     } finally {
       setImporting(false)
     }
+  }
+
+  /**
+   * Eingefügten Text als Buch anlegen und sofort öffnen.
+   *
+   * Läuft ohne die Ladeanzeige des Datei-Imports: Hier gibt es kein PDF zu
+   * zerlegen, das Zerteilen in Abschnitte dauert Millisekunden.
+   */
+  const readPastedText = (text: string) => {
+    const book = bookFromText(text, titleFromText(text, t('paste.defaultTitle')))
+    if (book.sentenceCount === 0) return
+    setPasteOpen(false)
+    void putBook(book).then(() => {
+      refresh()
+      router.push(`/reader/${book.id}`)
+    })
+  }
+
+  /**
+   * Woher kommt der Text? Früher führte das Pluszeichen direkt zum
+   * Dateiwähler. Der zweite Weg – Text einfügen – wäre daneben unsichtbar
+   * geblieben, und ein zweiter Knopf in der Ecke hätte die Bibliothek
+   * unruhig gemacht.
+   */
+  const chooseSource = () => {
+    presentSheet({
+      header: t('library.addBook'),
+      buttons: [
+        {
+          text: t('library.fromFile'),
+          icon: documentTextOutline,
+          handler: () => fileInput.current?.click(),
+        },
+        {
+          text: t('library.fromText'),
+          icon: clipboardOutline,
+          handler: () => setPasteOpen(true),
+        },
+        { text: t('common.cancel'), role: 'cancel' },
+      ],
+    })
   }
 
   const remove = async (book: BookMeta) => {
@@ -286,6 +337,9 @@ export default function LibraryPage() {
             <IonButton onClick={() => fileInput.current?.click()}>
               {t('library.empty.action')}
             </IonButton>
+            <IonButton fill="clear" onClick={() => setPasteOpen(true)}>
+              {t('library.fromText')}
+            </IonButton>
           </div>
         )}
 
@@ -363,6 +417,12 @@ export default function LibraryPage() {
 
         <AppSection />
 
+        <PasteSheet
+          isOpen={pasteOpen}
+          onDismiss={() => setPasteOpen(false)}
+          onSubmit={readPastedText}
+        />
+
         <input
           ref={fileInput}
           type="file"
@@ -373,9 +433,9 @@ export default function LibraryPage() {
 
         <IonFab slot="fixed" vertical="bottom" horizontal="end">
           <IonFabButton
-            onClick={() => fileInput.current?.click()}
+            onClick={chooseSource}
             disabled={importing}
-            aria-label={t('library.upload')}
+            aria-label={t('library.addBook')}
           >
             <IonIcon aria-hidden="true" icon={add} />
           </IonFabButton>

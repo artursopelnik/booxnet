@@ -9,11 +9,37 @@ export const ACCEPTED_FILES =
 /** Target size of one reader section when importing plain text. */
 const SECTION_CHARS = 6000
 
-/** Parses a plain-text (or Markdown) file into a Book. The text is packed
- * into sections of a few thousand characters at paragraph boundaries so the
- * reader's lazy rendering keeps working for very large files. */
-async function importPlainText(file: File): Promise<Book> {
-  const raw = (await file.text())
+/** Laengster Titel, der noch aus der ersten Zeile uebernommen wird. */
+const TITLE_MAX = 70
+
+/**
+ * Titel fuer eingefuegten Text. Die erste Zeile ist fast immer die
+ * Ueberschrift eines Artikels oder der Betreff einer Nachricht – sie
+ * taugt besser als jedes generische "Eingefuegter Text". Ist sie zu lang
+ * (der Text beginnt direkt mit einem Absatz), wird an der Wortgrenze
+ * gekuerzt, statt mitten im Wort abzuschneiden.
+ */
+export function titleFromText(raw: string, fallback: string): string {
+  const erste = raw.split('\n').find((zeile) => zeile.trim().length > 0)
+  if (!erste) return fallback
+  const zeile = erste.trim().replace(/^#{1,6}\s+/, '')
+  if (zeile.length <= TITLE_MAX) return zeile
+  const gekuerzt = zeile.slice(0, TITLE_MAX)
+  const letzteLuecke = gekuerzt.lastIndexOf(' ')
+  return `${(letzteLuecke > 20 ? gekuerzt.slice(0, letzteLuecke) : gekuerzt).trimEnd()}…`
+}
+
+/**
+ * Baut aus reinem Text (oder Markdown) ein Buch. Der Text wird an
+ * Absatzgrenzen in Abschnitte von ein paar tausend Zeichen gepackt, damit
+ * das haeppchenweise Rendern des Readers auch bei sehr langen Texten
+ * greift.
+ *
+ * Getrennt vom Datei-Import, weil derselbe Weg auch fuer eingefuegten
+ * Text gebraucht wird – da gibt es keine Datei, aus der ein Titel faellt.
+ */
+export function bookFromText(text: string, title: string): Book {
+  const raw = text
     // Strip the most disruptive Markdown syntax so headings and links are
     // read as their text instead of as symbols.
     .replace(/^#{1,6}\s+/gm, '')
@@ -30,13 +56,15 @@ async function importPlainText(file: File): Promise<Book> {
       sections.push(current)
       current = ''
     }
-    current = current ? `${current}\n${trimmed}` : trimmed
+    // Leerzeile zwischen den Absaetzen: Sie ist die Grenze, an der die
+    // Satztrennung nicht darueber hinweglesen darf (siehe splitSentences).
+    current = current ? `${current}\n\n${trimmed}` : trimmed
   }
   if (current) sections.push(current)
 
   return {
     id: crypto.randomUUID(),
-    title: file.name.replace(/\.(txt|md)$/i, ''),
+    title,
     addedAt: Date.now(),
     pageCount: sections.length,
     pages: sections,
@@ -44,6 +72,10 @@ async function importPlainText(file: File): Promise<Book> {
     position: 0,
     sentenceCount: toSentences(sections).length,
   }
+}
+
+async function importPlainText(file: File): Promise<Book> {
+  return bookFromText(await file.text(), file.name.replace(/\.(txt|md)$/i, ''))
 }
 
 /** Imports a book file, choosing the parser by file type. The heavy parsers

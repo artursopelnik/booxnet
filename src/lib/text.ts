@@ -87,8 +87,21 @@ const SENTENCE_SEGMENTER =
     ? new Intl.Segmenter(undefined, { granularity: 'sentence' })
     : null
 
-/** Splits plain text into sentences, preferring Intl.Segmenter when available. */
+/**
+ * Splits plain text into sentences, preferring Intl.Segmenter when available.
+ *
+ * Leerzeilen trennen zuerst: Ein Satz laeuft nie ueber eine Absatzgrenze.
+ * Ohne diesen Schritt verschmolz eine Ueberschrift – die endet ja ohne
+ * Punkt – mit dem ersten Satz darunter zu einem einzigen langen Satz
+ * ("Warum wir schlecht zuhoeren Wer zuhoert, wartet meistens ..."). Bei
+ * eingefuegten Artikeln ist genau das der Normalfall.
+ *
+ * EINZELNE Zeilenumbrueche bleiben bewusst blosser Leerraum: In PDFs
+ * bricht jede Zeile um, mitten im Satz.
+ */
 export function splitSentences(text: string): string[] {
+  const absaetze = text.split(/\n[^\S\n]*\n\s*/)
+  if (absaetze.length > 1) return absaetze.flatMap(splitSentences)
   const clean = text.replace(/\s+/g, ' ').trim()
   if (!clean) return []
   let parts: string[]

@@ -465,3 +465,31 @@ html.theme-eink .sentence--active {
   color: #ffffff;
   border-radius: 2px;
 }
+
+/* ---- Text einfügen ---- */
+
+/* Ein einziges, bildschirmfüllendes Eingabefeld: Wer Text einfügt, will
+   ihn sehen, nicht durch ein Guckloch scrollen. */
+.paste-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px 16px 16px;
+}
+
+.paste-sheet__field {
+  flex: 1;
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ion-text-color);
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.paste-sheet__field::placeholder {
+  color: var(--booxnet-muted);
+}

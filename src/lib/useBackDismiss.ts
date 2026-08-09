@@ -54,8 +54,14 @@ export function claimBackGesture(onDismiss: () => void): () => void {
   return () => {
     // Schon per Geste geschlossen: nichts mehr zu tun.
     if (!offeneBlaetter.includes(marke)) return
+    // Liegt inzwischen ein Blatt obenauf, gehoert der oberste Eintrag im
+    // Verlauf ihm - ein history.back() naehme SEINEN und schloesse damit
+    // das falsche Blatt. Dann lieber einen Eintrag liegen lassen: ein
+    // wirkungsloser Zurueck-Druck ist harmloser als ein Blatt, das sich
+    // von selbst schliesst.
+    const oberstes = offeneBlaetter[offeneBlaetter.length - 1] === marke
     abmelden()
-    if (eigenerEintrag) history.back()
+    if (eigenerEintrag && oberstes) history.back()
   }
 }
 
