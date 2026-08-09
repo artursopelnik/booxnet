@@ -21,7 +21,9 @@ describe('Messwerte der Aufbereitung', () => {
       )
       const stats = horcher.get()!
       expect(stats.sentences).toBe(120)
-      expect(stats.yields).toBeGreaterThan(0)
+      // Ein kurzes Buch braucht gar keine Pause - das ist der Normalfall
+      // und kein Fehler.
+      expect(stats.yields).toBe(0)
       // Die Rechenzeit ist ein Teil der Gesamtzeit, nie mehr.
       expect(stats.busySeconds).toBeGreaterThan(0)
       expect(stats.busySeconds).toBeLessThanOrEqual(stats.totalSeconds + 1e-6)
@@ -30,18 +32,25 @@ describe('Messwerte der Aufbereitung', () => {
     }
   })
 
-  it('zaehlt die Wartezeit zur Gesamtdauer, nicht zur Rechenzeit', async () => {
+  // Der eigentliche Befund aus der Messung auf einem echten Geraet: Ein
+  // Buch mit 21.567 Saetzen kam auf 933 Pausen und zahlte dafuer 7,0 s,
+  // fuer 0,3 s Rechenarbeit. Pausen gehoeren an die Rechenzeit gebunden,
+  // nicht an die Laenge des Buchs - sonst bezahlt jedes dicke Buch fuer
+  // Unterbrechungen, die niemand braucht.
+  it('haelt die Pausen an der Rechenzeit fest, nicht an der Buchlaenge', async () => {
     const horcher = letzterWert()
     try {
-      // Genug Seiten fuer mehrere Unterbrechungen: Jede davon kostet
-      // Wartezeit, waehrend die Rechenarbeit gleich klein bleibt.
+      const seite = 'Ein Satz. Noch ein Satz. Und ein dritter Satz. '.repeat(8)
       await buildBookStructure(
-        Array.from({ length: 300 }, () => 'Kurz.'),
+        Array.from({ length: 1200 }, () => seite),
         { cancelled: false },
       )
       const stats = horcher.get()!
-      expect(stats.yields).toBeGreaterThanOrEqual(12)
-      expect(stats.totalSeconds).toBeGreaterThanOrEqual(stats.busySeconds)
+      expect(stats.sentences).toBeGreaterThan(20000)
+      // Stur alle 25 Eintraege waeren es ueber 900 gewesen.
+      expect(stats.yields).toBeLessThan(100)
+      // Und die Pausen duerfen die Rechenarbeit nicht mehr dominieren.
+      expect(stats.totalSeconds).toBeLessThan(stats.busySeconds * 3 + 0.2)
     } finally {
       horcher.stop()
     }

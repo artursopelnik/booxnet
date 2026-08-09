@@ -70,6 +70,7 @@ function diagnosticLines(
         sentences: build.sentences,
         total: num(build.totalSeconds),
         busy: num(build.busySeconds),
+        yields: build.yields,
       }),
     )
     // Der eigentliche Befund in einem Satz: Wer die Zeit verbraucht hat.

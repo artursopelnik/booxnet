@@ -146,7 +146,7 @@ const de = {
     'Achtung: nur {threads} Thread – Mehrkern-Modus nicht aktiv (das bremst stark)',
   'voices.prepareTime': 'Vorbereitung: {seconds} s',
   'voices.bookPrepared':
-    'Buch aufbereitet: {sentences} Sätze, {total} s gesamt, davon {busy} s Rechenzeit',
+    'Buch aufbereitet: {sentences} Sätze, {total} s gesamt, davon {busy} s Rechenzeit, {yields} Pausen',
   'voices.bookWaited':
     'Die Zeit ging fast ganz fürs Warten drauf – das Gerät war nebenher beschäftigt.',
   'voices.bookComputed': 'Die Zeit ging in die Aufbereitung selbst.',
@@ -309,7 +309,7 @@ const en: Record<MessageKey, string> = {
     'Warning: only {threads} thread – multi-core mode is off (this slows things down a lot)',
   'voices.prepareTime': 'Preparation: {seconds} s',
   'voices.bookPrepared':
-    'Book prepared: {sentences} sentences, {total} s total, {busy} s of it computing',
+    'Book prepared: {sentences} sentences, {total} s total, {busy} s of it computing, {yields} pauses',
   'voices.bookWaited':
     'Almost all of that was waiting – the device was busy with something else.',
   'voices.bookComputed': 'That time went into the preparation itself.',
@@ -451,7 +451,7 @@ const es: Record<MessageKey, string> = {
   'voices.singleThread': 'Atención: solo {threads} hilo. El modo multinúcleo está desactivado (eso frena mucho)',
   'voices.prepareTime': 'Preparación: {seconds} s',
   'voices.bookPrepared':
-    'Libro preparado: {sentences} frases, {total} s en total, {busy} s de cálculo',
+    'Libro preparado: {sentences} frases, {total} s en total, {busy} s de cálculo, {yields} pausas',
   'voices.bookWaited':
     'Casi todo ese tiempo fue espera: el dispositivo estaba ocupado con otra cosa.',
   'voices.bookComputed': 'Ese tiempo se fue en la preparación misma.',
@@ -583,7 +583,7 @@ const fr: Record<MessageKey, string> = {
   'voices.singleThread': 'Attention : un seul fil ({threads}). Le mode multicœur est désactivé, ce qui ralentit beaucoup',
   'voices.prepareTime': 'Préparation : {seconds} s',
   'voices.bookPrepared':
-    'Livre préparé : {sentences} phrases, {total} s au total, dont {busy} s de calcul',
+    'Livre préparé : {sentences} phrases, {total} s au total, dont {busy} s de calcul, {yields} pauses',
   'voices.bookWaited':
     'Ce temps est presque entièrement de l\'attente : l\'appareil était occupé ailleurs.',
   'voices.bookComputed': 'Ce temps est passé dans la préparation elle-même.',
@@ -715,7 +715,7 @@ const ru: Record<MessageKey, string> = {
   'voices.singleThread': 'Внимание: только {threads} поток. Многоядерный режим выключен, это сильно замедляет работу',
   'voices.prepareTime': 'Подготовка: {seconds} с',
   'voices.bookPrepared':
-    'Книга подготовлена: {sentences} предложений, {total} с всего, из них {busy} с вычислений',
+    'Книга подготовлена: {sentences} предложений, {total} с всего, из них {busy} с вычислений, пауз: {yields}',
   'voices.bookWaited':
     'Почти всё это время ушло на ожидание — устройство было занято другим.',
   'voices.bookComputed': 'Это время ушло на саму подготовку.',
@@ -847,7 +847,7 @@ const tr: Record<MessageKey, string> = {
   'voices.singleThread': 'Dikkat: yalnızca {threads} iş parçacığı. Çok çekirdekli mod kapalı, bu çok yavaşlatır',
   'voices.prepareTime': 'Hazırlık: {seconds} s',
   'voices.bookPrepared':
-    'Kitap hazırlandı: {sentences} cümle, toplam {total} sn, bunun {busy} sn\'si hesaplama',
+    'Kitap hazırlandı: {sentences} cümle, toplam {total} sn, bunun {busy} sn\'si hesaplama, {yields} duraklama',
   'voices.bookWaited':
     'Bu sürenin neredeyse tamamı bekleme oldu – cihaz baska seyle mesguldu.',
   'voices.bookComputed': 'Bu süre hazırlığın kendisine gitti.',
