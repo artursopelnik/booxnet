@@ -2,7 +2,10 @@ import { IonApp, IonRouterOutlet } from '@ionic/react'
 import { IonReactRouter } from '@ionic/react-router'
 import { useEffect } from 'react'
 import { Redirect, Route } from 'react-router-dom'
-import { isStudioEngineInstalled } from './lib/supertonic/assets'
+import {
+  isStudioEngineInstalled,
+  removeInt8Leftovers,
+} from './lib/supertonic/assets'
 import { studioWarmup } from './lib/supertonic/client'
 import { getSavedVoiceId } from './lib/tts'
 import { STUDIO_VOICES, studioVoiceById } from './lib/voices'
@@ -12,12 +15,20 @@ import WelcomePage from './pages/WelcomePage'
 
 export default function App() {
   // One-time cleanup: earlier versions stored Piper voice models under
-  // OPFS "piper"; that engine is gone, so free the space.
+  // OPFS "piper"; that engine is gone, so free the space. Ebenso die
+  // Reste des entfernten int8-Experiments (~65 MB) samt Einstellung –
+  // ohne das läge die Datei ohne Bedienelement für immer auf dem Gerät.
   useEffect(() => {
     navigator.storage
       ?.getDirectory?.()
       .then((root) => root.removeEntry('piper', { recursive: true }))
       .catch(() => {})
+    void removeInt8Leftovers().catch(() => {})
+    try {
+      localStorage.removeItem('vorleser.variante')
+    } catch {
+      // Ohne Speicher gab es die Einstellung ohnehin nie.
+    }
   }, [])
 
   // Engine-Warmstart beim App-Start, nicht erst beim Öffnen des Readers:
