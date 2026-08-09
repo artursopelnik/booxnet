@@ -58,8 +58,11 @@ export function sentenceKey(
  * weiter die alten Aufnahmen ab und die Änderung bliebe unhörbar; die
  * überzähligen alten Dateien laufen über die Mengenbegrenzung aus.
  * v2: Qualität von 4 auf 6 Entrausch-Schritte.
+ * v3: Lange Sätze werden an Satzzeichen statt an Wortgrenzen geteilt,
+ *     mit deutlich kürzerer Pause an der Nahtstelle.
+ * v4: Atem-Zeichen an Kommas und Gedankenstrichen.
  */
-const CACHE_VERSION = 'v2'
+const CACHE_VERSION = 'v4'
 
 /**
  * Kurzer Streuwert des Schlüssels als Dateiname. Web-Crypto liefert das

@@ -60,6 +60,55 @@ function yieldToBrowser(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
+/**
+ * Setzt an Kommas und Gedankenstrichen ein Atem-Zeichen.
+ *
+ * Das Modell verschluckt beide hörbar. "Doch er denkt nicht ans
+ * Aufgeben, macht weiter." kommt ohne jede Pause heraus, und bei einem
+ * Einschub in Gedankenstrichen ebenso. Die Zeichen gehen dabei nicht
+ * verloren – sie erreichen die Synthese unversehrt.
+ *
+ * Beim Gedankenstrich kommt ein zweiter Grund dazu: Die Vorverarbeitung
+ * der Synthese ersetzt „–" und „—" durch einen gewöhnlichen Bindestrich
+ * (so macht es auch die Referenz-Umsetzung des Herstellers). Was beim
+ * Modell ankommt, sieht damit aus wie der Bindestrich in „E-Mail" – als
+ * Sprechpause ist er dort nicht mehr erkennbar.
+ *
+ * <breath> ist eines der zehn Ausdrucks-Zeichen von Supertonic 3 und
+ * wird in der App bereits an Seitenanfängen verwendet. Entscheidend ist,
+ * dass es INNERHALB derselben Berechnung steht: Den Satz am Komma zu
+ * teilen und beide Hälften getrennt zu vertonen würde zwar auch eine
+ * Pause erzeugen, aber die Betonung an der Nahtstelle zerreißen – genau
+ * das Problem, das die Teilung langer Sätze bis vor Kurzem hatte.
+ *
+ * Die beiden Schwellen sind die Stellschraube, falls es zu kurzatmig
+ * klingt: Ein Atemzug kommt nur, wenn seit dem letzten mindestens ein
+ * halber Satz vergangen ist und danach mehr folgt als ein angehängtes
+ * Wort. Das hält auch Aufzählungen mit vielen kurzen Gliedern in Ruhe.
+ */
+const BREATH_MIN_BEFORE = 30
+const BREATH_MIN_AFTER = 8
+
+function markSpeechPauses(text: string): string {
+  let result = ''
+  let lastCut = 0
+  for (let i = 0; i < text.length; i++) {
+    const isComma = text[i] === ',' && text[i + 1] === ' '
+    // Gedankenstrich nur MIT Leerzeichen auf beiden Seiten – sonst träfe
+    // es den Bindestrich in Wörtern wie „Schwarz-Weiß".
+    const isDash =
+      (text[i] === '-' || text[i] === '–' || text[i] === '—') &&
+      text[i - 1] === ' ' &&
+      text[i + 1] === ' '
+    if (!isComma && !isDash) continue
+    if (i - lastCut < BREATH_MIN_BEFORE) continue
+    if (text.length - (i + 2) < BREATH_MIN_AFTER) continue
+    result += `${text.slice(lastCut, i + 2)}<breath> `
+    lastCut = i + 2
+  }
+  return result + text.slice(lastCut)
+}
+
 /** Punctuation-aware pause: questions/exclamations breathe a bit longer,
  * colons and semicolons connect more tightly to what follows. */
 function pauseForEnding(text: string): number {
@@ -120,8 +169,11 @@ export async function buildBookStructure(
     const endsPage = next !== undefined && next.page !== endPage
     const clean = sanitizeForSpeech(sentence.text)
     const speakable = isSpeakable(clean)
+    // Reihenfolge zaehlt: Erst bereinigen (die Bereinigung wuerde die
+    // spitzen Klammern der Ausdrucks-Zeichen entfernen), dann markieren.
+    const spoken = speakable ? markSpeechPauses(clean) : clean
     speakItems.push({
-      text: startsPage && speakable ? `<breath> ${clean}` : clean,
+      text: startsPage && speakable ? `<breath> ${spoken}` : spoken,
       pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),
       skip: !speakable,
     })

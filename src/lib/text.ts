@@ -23,6 +23,62 @@ function mergeFalseSplits(parts: string[]): string[] {
 }
 
 /**
+ * Typografische Ligaturen, die PDFs als EIN Zeichen speichern. Bleiben
+ * sie stehen, steht im Lesetext "eﬀektiv" statt "effektiv", und die
+ * Stimme stolpert darüber.
+ */
+const LIGATURES: Record<string, string> = {
+  '\uFB00': 'ff',
+  '\uFB01': 'fi',
+  '\uFB02': 'fl',
+  '\uFB03': 'ffi',
+  '\uFB04': 'ffl',
+  '\uFB05': 'ft',
+  '\uFB06': 'st',
+}
+
+/**
+ * Unsichtbarer Müll aus der PDF-Extraktion: Steuerzeichen (ohne Zeilen-
+ * umbruch und Tabulator), das Ersatzzeichen für nicht dekodierbare
+ * Bytes, weiche Trennstriche, Breiten-Null-Zeichen und der Bereich für
+ * private Zeichen – dorthin bilden PDFs mit eingebetteten Teil-Schriften
+ * ihre Glyphen gerne ab.
+ */
+const INVISIBLE =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u00AD\u200B-\u200D\uFEFF\uFFFD\uE000-\uF8FF]/g
+
+/**
+ * Reste aus den Verwaltungstabellen einer PDF, die gelegentlich in den
+ * Text durchschlagen – etwa "00000D" oder "0000000000". Erkennbar an der
+ * Kette führender Nullen: In echtem Text kommt so etwas praktisch nicht
+ * vor, Jahreszahlen und normale Zahlen bleiben deshalb unberührt.
+ */
+const XREF_JUNK = /\b0{3,}[0-9A-Fa-f]{0,4}\b/g
+
+/**
+ * Räumt auf, was beim Auslesen einer PDF oder EPUB an Zeichenmüll
+ * entsteht. Läuft vor der Satztrennung, wirkt also auf den angezeigten
+ * Text UND auf das, was die Stimme spricht – und auch auf Bücher, die
+ * schon vor dieser Bereinigung importiert wurden.
+ *
+ * Nicht reparierbar ist eine kaputte Schrift-Zuordnung in der PDF
+ * selbst: Steht dort "unwillkiirlich", weil das Umlaut-Zeichen auf zwei
+ * i abgebildet wurde, kommt genau das bei uns an. Das ließe sich nur
+ * raten, und Raten würde richtige Wörter zerstören.
+ */
+export function cleanExtractedText(text: string): string {
+  // Zuerst zusammensetzen: Manche PDFs speichern "ü" als "u" plus
+  // freistehendes Trema. NFC macht daraus wieder einen Buchstaben.
+  let clean = text.normalize('NFC')
+  for (const [glyph, replacement] of Object.entries(LIGATURES)) {
+    clean = clean.replaceAll(glyph, replacement)
+  }
+  clean = clean.replace(INVISIBLE, '')
+  clean = clean.replace(XREF_JUNK, ' ')
+  return clean
+}
+
+/**
  * Einmal auf Modulebene erzeugt statt pro Seite: Ein Segmenter ist ein
  * schwergewichtiges ICU-Objekt, und ein Buch hat hunderte Seiten.
  */
@@ -124,7 +180,7 @@ export function appendPageSentences(
   pageText: string,
   page: number,
 ): void {
-  splitSentences(pageText).forEach((text, index) => {
+  splitSentences(cleanExtractedText(pageText)).forEach((text, index) => {
     const previous = result[result.length - 1]
     const continuesPrevious =
       index === 0 &&

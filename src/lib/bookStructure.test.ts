@@ -98,6 +98,85 @@ describe('buildBookStructure', () => {
     expect(await pending).toBeNull()
   })
 
+  // Das Modell verschluckt Kommas oft; ein Atem-Zeichen erzwingt die
+  // Pause, ohne den Satz in zwei Berechnungen zu zerreissen.
+  it('setzt ein Atem-Zeichen an ein trennendes Komma', async () => {
+    const built = await buildBookStructure(
+      ['Doch er denkt nicht ans Aufgeben, macht weiter.'],
+      running,
+    )
+    expect(built!.speakItems[0].text).toBe(
+      'Doch er denkt nicht ans Aufgeben, <breath> macht weiter.',
+    )
+  })
+
+  it('laesst kurze Einschuebe in Ruhe', async () => {
+    // Beide Saetze auf EINER Seite: Ein Seitenanfang bekommt ohnehin ein
+    // Atem-Zeichen, das wuerde hier den Befund verfaelschen.
+    const built = await buildBookStructure(['Ja, gut. Er ging, sofort.'], running)
+    expect(built!.speakItems[0].text).not.toContain('<breath>')
+    expect(built!.speakItems[1].text).not.toContain('<breath>')
+  })
+
+  it('haengt kein Atem-Zeichen an ein Komma kurz vor dem Satzende', async () => {
+    const built = await buildBookStructure(
+      ['Er lief durch den dunklen Wald, allein.'],
+      running,
+    )
+    expect(built!.speakItems[0].text).not.toContain('<breath>')
+  })
+
+  it('setzt mehrere Atem-Zeichen in einer Aufzaehlung', async () => {
+    const built = await buildBookStructure(
+      [
+        'Er packte die warmen Sachen ein, er nahm den alten Rucksack mit, ' +
+          'und dann verliess er das Haus.',
+      ],
+      running,
+    )
+    expect(built!.speakItems[0].text.match(/<breath>/g)).toHaveLength(2)
+  })
+
+  // Gedankenstriche trifft es doppelt: Die Vorverarbeitung der Synthese
+  // macht daraus einen gewoehnlichen Bindestrich, der als Sprechpause
+  // nicht mehr erkennbar ist.
+  it('setzt ein Atem-Zeichen an einen Gedankenstrich', async () => {
+    const built = await buildBookStructure(
+      ['Er wollte einfach nur nach Hause – alles andere war ihm gleich.'],
+      running,
+    )
+    expect(built!.speakItems[0].text).toBe(
+      'Er wollte einfach nur nach Hause – <breath> alles andere war ihm gleich.',
+    )
+  })
+
+  it('erkennt auch den als Gedankenstrich gesetzten Bindestrich', async () => {
+    const built = await buildBookStructure(
+      ['Er wollte einfach nur nach Hause - alles andere war ihm gleich.'],
+      running,
+    )
+    expect(built!.speakItems[0].text).toContain('- <breath> alles')
+  })
+
+  // Sonst zerfiele "Schwarz-Weiss" in zwei Haelften mit Atempause.
+  it('laesst Bindestriche in Woertern unangetastet', async () => {
+    const built = await buildBookStructure(
+      ['Das Schwarz-Weiss-Foto zeigte seine Grossmutter am Meer.'],
+      running,
+    )
+    expect(built!.speakItems[0].text).not.toContain('<breath>')
+  })
+
+  it('haelt Aufzaehlungen mit kurzen Gliedern in Ruhe', async () => {
+    const built = await buildBookStructure(
+      ['Er kaufte Brot, Milch, Butter, Eier und Salz fuer das Abendessen.'],
+      running,
+    )
+    // Hoechstens ein Atemzug, nicht nach jedem Glied.
+    const treffer = built!.speakItems[0].text.match(/<breath>/g) ?? []
+    expect(treffer.length).toBeLessThanOrEqual(1)
+  })
+
   it('kommt mit einem leeren Buch zurecht', async () => {
     const built = await buildBookStructure([], running)
     expect(built!.sentences).toEqual([])

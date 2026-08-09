@@ -14,6 +14,7 @@
  */
 import type { StudioVoiceId } from '../voices'
 import { ensureStudioStyle, loadStudioAsset } from './assets'
+import { chunkText } from './chunk'
 import { assetSize } from './opfs'
 import { resolveOrtWasmPrefix } from './ortwasm'
 
@@ -21,7 +22,14 @@ type Ort = typeof import('onnxruntime-web')
 type OrtSession = import('onnxruntime-web').InferenceSession
 type OrtTensor = import('onnxruntime-web').Tensor
 
-const SILENCE_SECONDS = 0.3
+/**
+ * Stille zwischen den Teilstuecken EINES Satzes, der fuer das Modell zu
+ * lang war. Bewusst sehr kurz: Die Teilung passiert mitten im Satz, eine
+ * dritte Sekunde Pause klaenge dort wie ein Punkt. Sie dient nur dazu,
+ * einen Knacks an der Nahtstelle zu vermeiden. (Vorher 0,3 s - das war
+ * einer der Gruende, warum lange Saetze zerhackt klangen.)
+ */
+const CHUNK_SILENCE_SECONDS = 0.08
 
 interface Cfgs {
   ae: { sample_rate: number; base_chunk_size: number }
@@ -269,26 +277,6 @@ function preprocessText(text: string, lang: string): string {
   return `<${lang}>${t}</${lang}>`
 }
 
-/** Splits an over-long sentence into chunks the model handles well. */
-function chunkText(text: string, lang: string): string[] {
-  const maxLen = lang === 'ko' || lang === 'ja' ? 120 : 300
-  const clean = text.trim()
-  if (clean.length <= maxLen) return [clean]
-  const words = clean.split(/\s+/)
-  const chunks: string[] = []
-  let current = ''
-  for (const word of words) {
-    if (current && current.length + word.length + 1 > maxLen) {
-      chunks.push(current)
-      current = word
-    } else {
-      current = current ? `${current} ${word}` : word
-    }
-  }
-  if (current) chunks.push(current)
-  return chunks
-}
-
 function gaussianArray(length: number): Float32Array {
   const result = new Float32Array(length)
   for (let i = 0; i < length; i++) {
@@ -477,7 +465,7 @@ async function synthesize(
     )
   }
   const sampleRate = engine.cfgs.ae.sample_rate
-  const silence = Math.floor(SILENCE_SECONDS * sampleRate)
+  const silence = Math.floor(CHUNK_SILENCE_SECONDS * sampleRate)
   const total =
     parts.reduce((sum, part) => sum + part.length, 0) +
     silence * Math.max(0, parts.length - 1)
