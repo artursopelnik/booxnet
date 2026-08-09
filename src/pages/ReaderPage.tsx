@@ -345,6 +345,11 @@ export default function ReaderPage() {
     speaker.setVoice(voice)
   }, [speaker, voice])
 
+  // Fuer den Sperrbildschirm: Titel und Cover des laufenden Buchs.
+  useEffect(() => {
+    if (book) speaker.setBookInfo(book.title, book.cover)
+  }, [speaker, book])
+
   /** Aktuelle Position für Effekte, die nicht pro Satz neu laufen sollen. */
   const currentRef = useRef(current)
   currentRef.current = current
