@@ -34,7 +34,7 @@ import {
   readCachedSentence,
   writeCachedSentence,
 } from './supertonic/sentenceCache'
-import type { StudioVoiceId, StudioVoiceMeta } from './voices'
+import { STUDIO_LANGS, type StudioVoiceId, type StudioVoiceMeta } from './voices'
 
 export interface SpeakerEvents {
   onSentence?: (index: number) => void
@@ -168,10 +168,23 @@ const PREVIEW_CACHE_VERSION = 'v3'
  */
 const PREVIEW_SYNTH_STEPS = 6
 
+/**
+ * Sprache, in der sich die Stimmen vorstellen: die Oberflächensprache,
+ * sofern das Modell sie sprechen kann. Der Rückfall auf Englisch ist
+ * kein toter Zweig, sondern die Absicherung für den Tag, an dem eine
+ * Oberflächensprache dazukommt, die Supertonic nicht beherrscht – dann
+ * stellte sich die Stimme sonst in einer Sprache vor, deren Aussprache
+ * das Modell raten müsste.
+ */
+function previewLang(): string {
+  const ui = getUiLang()
+  return (STUDIO_LANGS as readonly string[]).includes(ui) ? ui : 'en'
+}
+
 function previewAssetPath(voice: StudioVoiceMeta): string {
   // Sprache im Namen: Sonst spielte nach einem Sprachwechsel die alte
   // Aufnahme in der alten Sprache weiter.
-  return `previews/${PREVIEW_CACHE_VERSION}-${getUiLang()}-${voice.id}.wav`
+  return `previews/${PREVIEW_CACHE_VERSION}-${previewLang()}-${voice.id}.wav`
 }
 
 async function renderPreview(
@@ -180,7 +193,7 @@ async function renderPreview(
 ): Promise<Blob> {
   const blob = await studioSynthesize(
     voice.id,
-    getUiLang(),
+    previewLang(),
     previewTextFor(voice),
     BASE_SPEED,
     priority,
