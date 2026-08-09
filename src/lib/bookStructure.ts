@@ -60,6 +60,41 @@ function yieldToBrowser(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
+/**
+ * Setzt an Kommas ein Atem-Zeichen.
+ *
+ * Das Modell verschluckt Kommas oft hörbar: "Doch er denkt nicht ans
+ * Aufgeben, macht weiter." kommt ohne jede Pause heraus. Das Komma
+ * selbst geht dabei nicht verloren – es erreicht die Synthese unversehrt
+ * –, das Modell setzt es nur nicht um.
+ *
+ * <breath> ist eines der zehn Ausdrucks-Zeichen von Supertonic 3 und
+ * wird in der App bereits an Seitenanfängen verwendet. Entscheidend ist,
+ * dass es INNERHALB derselben Berechnung steht: Den Satz am Komma zu
+ * teilen und beide Hälften getrennt zu vertonen würde zwar auch eine
+ * Pause erzeugen, aber die Betonung an der Nahtstelle zerreißen – genau
+ * das Problem, das die Teilung langer Sätze schon hat.
+ *
+ * Bewusst zurückhaltend: Ein Atemzug nach jedem Komma klänge kurzatmig.
+ * Er kommt nur, wenn davor ein echter Teilsatz steht und danach mehr
+ * folgt als ein angehängtes Wort.
+ */
+const BREATH_MIN_BEFORE = 20
+const BREATH_MIN_AFTER = 8
+
+function markCommaPauses(text: string): string {
+  let result = ''
+  let lastCut = 0
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== ',' || text[i + 1] !== ' ') continue
+    if (i - lastCut < BREATH_MIN_BEFORE) continue
+    if (text.length - (i + 2) < BREATH_MIN_AFTER) continue
+    result += `${text.slice(lastCut, i + 2)}<breath> `
+    lastCut = i + 2
+  }
+  return result + text.slice(lastCut)
+}
+
 /** Punctuation-aware pause: questions/exclamations breathe a bit longer,
  * colons and semicolons connect more tightly to what follows. */
 function pauseForEnding(text: string): number {
@@ -120,8 +155,11 @@ export async function buildBookStructure(
     const endsPage = next !== undefined && next.page !== endPage
     const clean = sanitizeForSpeech(sentence.text)
     const speakable = isSpeakable(clean)
+    // Reihenfolge zaehlt: Erst bereinigen (die Bereinigung wuerde die
+    // spitzen Klammern der Ausdrucks-Zeichen entfernen), dann markieren.
+    const spoken = speakable ? markCommaPauses(clean) : clean
     speakItems.push({
-      text: startsPage && speakable ? `<breath> ${clean}` : clean,
+      text: startsPage && speakable ? `<breath> ${spoken}` : spoken,
       pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),
       skip: !speakable,
     })

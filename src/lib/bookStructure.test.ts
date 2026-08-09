@@ -98,6 +98,45 @@ describe('buildBookStructure', () => {
     expect(await pending).toBeNull()
   })
 
+  // Das Modell verschluckt Kommas oft; ein Atem-Zeichen erzwingt die
+  // Pause, ohne den Satz in zwei Berechnungen zu zerreissen.
+  it('setzt ein Atem-Zeichen an ein trennendes Komma', async () => {
+    const built = await buildBookStructure(
+      ['Doch er denkt nicht ans Aufgeben, macht weiter.'],
+      running,
+    )
+    expect(built!.speakItems[0].text).toBe(
+      'Doch er denkt nicht ans Aufgeben, <breath> macht weiter.',
+    )
+  })
+
+  it('laesst kurze Einschuebe in Ruhe', async () => {
+    // Beide Saetze auf EINER Seite: Ein Seitenanfang bekommt ohnehin ein
+    // Atem-Zeichen, das wuerde hier den Befund verfaelschen.
+    const built = await buildBookStructure(['Ja, gut. Er ging, sofort.'], running)
+    expect(built!.speakItems[0].text).not.toContain('<breath>')
+    expect(built!.speakItems[1].text).not.toContain('<breath>')
+  })
+
+  it('haengt kein Atem-Zeichen an ein Komma kurz vor dem Satzende', async () => {
+    const built = await buildBookStructure(
+      ['Er lief durch den dunklen Wald, allein.'],
+      running,
+    )
+    expect(built!.speakItems[0].text).not.toContain('<breath>')
+  })
+
+  it('setzt mehrere Atem-Zeichen in einer Aufzaehlung', async () => {
+    const built = await buildBookStructure(
+      [
+        'Er packte die warmen Sachen ein, er nahm den alten Rucksack mit, ' +
+          'und dann verliess er das Haus.',
+      ],
+      running,
+    )
+    expect(built!.speakItems[0].text.match(/<breath>/g)).toHaveLength(2)
+  })
+
   it('kommt mit einem leeren Buch zurecht', async () => {
     const built = await buildBookStructure([], running)
     expect(built!.sentences).toEqual([])
