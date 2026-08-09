@@ -194,7 +194,7 @@ export default function WelcomePage() {
             {progress === null ? t('welcome.start') : t('welcome.starting')}
           </IonButton>
           <IonButton fill="clear" expand="block" onClick={finish}>
-            Später – erst mal umschauen
+            {t('welcome.later')}
           </IonButton>
         </div>
         <IonAlert
