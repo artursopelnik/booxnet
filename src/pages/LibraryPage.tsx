@@ -62,6 +62,14 @@ import type { ActionSheetOptions } from '@ionic/core'
 import { claimBackGesture } from '../lib/useBackDismiss'
 import { useT } from '../lib/useT'
 import { hasSeenWelcome, markWelcomeSeen } from './WelcomePage'
+import { readResumePoint } from '../lib/resumeQueue'
+import {
+  engineSpeed,
+  getSavedRate,
+  getSavedVoiceId,
+  prefetchSentences,
+} from '../lib/tts'
+import { studioVoiceById, STUDIO_VOICES } from '../lib/voices'
 
 export default function LibraryPage() {
   const t = useT()
@@ -79,6 +87,33 @@ export default function LibraryPage() {
   }
 
   useIonViewWillEnter(refresh)
+
+  // Den Einstieg ins zuletzt gelesene Buch schon hier vorrechnen.
+  //
+  // Die Synthese laeuft auf Handys etwa in Echtzeit: Ein zehnsekuendiger
+  // Satz kostet zehn Sekunden. Wer das Buch oeffnet und sofort auf Play
+  // drueckt, wartet die voll ab - der Vorabruf im Reader startet erst,
+  // wenn das Buch offen ist, und hat dann keinen Vorsprung mehr. Die
+  // Zeit in der Bibliothek ist der einzige Moment, in dem sich das
+  // vorbereiten laesst; die Engine waermt hier ohnehin schon auf.
+  //
+  // Der Reader hat beim Verlassen hinterlegt, wie es weitergeht (reiner
+  // Text, siehe resumeQueue.ts) - die Bibliothek muss dafuer kein Buch
+  // laden und keine Satzstruktur aufbauen.
+  useIonViewWillEnter(() => {
+    const resume = readResumePoint()
+    if (!resume) return
+    void isStudioEngineInstalled().then((installed) => {
+      if (!installed) return
+      const voice = studioVoiceById(getSavedVoiceId()) ?? STUDIO_VOICES[0]
+      prefetchSentences(
+        voice.id,
+        resume.lang,
+        resume.texts,
+        engineSpeed(getSavedRate()),
+      )
+    })
+  })
 
   // Erststart ohne Sprachpaket: erst das Willkommen mit Erklärung und
   // Download. Bestandsinstallationen (Paket vorhanden) sehen es nie.
