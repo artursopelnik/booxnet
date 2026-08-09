@@ -251,6 +251,17 @@ html.ion-palette-dark .reader-text.hl-underline .sentence--active {
   box-shadow: 0 0 0 3px var(--ion-text-color, #000000);
 }
 
+/* Aufbereitung der Satzstruktur beim Oeffnen eines grossen Buchs. */
+.structure-loading {
+  padding: 32px 0;
+}
+
+.structure-loading p {
+  margin-top: 12px;
+  text-align: center;
+  color: var(--ion-color-medium);
+}
+
 /* ---- Voice sheet ---- */
 
 .voice-section-note {

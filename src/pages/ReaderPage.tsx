@@ -28,17 +28,17 @@ import {
   playForward,
   textOutline,
 } from 'ionicons/icons'
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
+import {
+  buildBookStructure,
+  type BookStructure,
+  type BuildToken,
+  type PageGroup,
+  type PageSentence,
+} from '../lib/bookStructure'
 import { unitName } from '../lib/importers'
 import { detectStudioLang } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
@@ -58,7 +58,6 @@ import {
   saveHighlightStyle,
   type HighlightStyle,
 } from '../lib/readerPrefs'
-import { isSpeakable, sanitizeForSpeech, toSentences } from '../lib/text'
 import {
   engineSpeed,
   getSavedRate,
@@ -67,6 +66,7 @@ import {
   saveRate,
   saveVoiceId,
   Speaker,
+  type SentenceInput,
   type SpeakerState,
 } from '../lib/tts'
 import {
@@ -77,29 +77,18 @@ import {
 
 const RATES = [1, 1.25, 1.5, 1.75, 2, 0.5, 0.75]
 
+// Stabile Leerwerte: Neue Arrays/Maps pro Render wuerden die
+// memoisierten Seiten bei jedem Satzwechsel neu zeichnen lassen.
+const EMPTY_PAGES: PageGroup[] = []
+const EMPTY_SENTENCE_PAGES = new Map<number, number[]>()
+const EMPTY_SPEAK_ITEMS: SentenceInput[] = []
+
 /**
  * Sätze, die bei ruhender Wiedergabe ab der Leseposition vorgerechnet
  * und dauerhaft gespeichert werden. Grob eine Minute Ton – genug, um
  * beim nächsten App-Start das Laden der Engine zu überbrücken.
  */
 const IDLE_PREFETCH_AHEAD = 5
-
-/** Punctuation-aware pause: questions/exclamations breathe a bit longer,
- * colons and semicolons connect more tightly to what follows. */
-function pauseForEnding(text: string): number {
-  const end = text.trim().slice(-1)
-  if (end === '?' || end === '!' || end === '…' || end === '！' || end === '？')
-    return 480
-  if (end === ':' || end === ';') return 280
-  return 350
-}
-
-interface PageSentence {
-  index: number
-  text: string
-  /** False bei der Fortsetzung eines seitenübergreifenden Satzes. */
-  start: boolean
-}
 
 /**
  * One page/chapter/section. Memoized so that a sentence change only
@@ -267,49 +256,37 @@ export default function ReaderPage() {
   /** Läuft nach einem automatischen Bildlauf; gibt die Erkennung frei. */
   const scrollReleaseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const sentences = useMemo(
-    () => (book ? toSentences(book.pages) : []),
-    [book],
-  )
+  /**
+   * Satz- und Sprechstruktur des Buchs. Bewusst NICHT im Render
+   * berechnet: Bei einem 400-Seiten-Buch dauert der Aufbau auf einem
+   * Handy grob eine Sekunde, in der der Bildschirm sonst still stuende.
+   * Er laeuft jetzt portionsweise im Hintergrund, die Oberflaeche bleibt
+   * bedienbar und zeigt den Fortschritt.
+   */
+  const [structure, setStructure] = useState<BookStructure | null>(null)
+  const [structureProgress, setStructureProgress] = useState(0)
 
-  // Sentences grouped per page, computed once per book. Ein seiten-
-  // übergreifender Satz erscheint mit je einem Segment auf beiden Seiten
-  // (gleicher Index), damit die Markierung nicht an der Seitengrenze endet.
-  const pages = useMemo(() => {
-    if (!book) return []
-    const result = book.pages.map((_, pageIndex) => ({
-      pageIndex,
-      sentences: [] as PageSentence[],
-    }))
-    sentences.forEach((sentence, index) => {
-      sentence.segments.forEach((segment, segmentIndex) => {
-        result[segment.page]?.sentences.push({
-          index,
-          text: segment.text,
-          start: segmentIndex === 0,
-        })
-      })
-    })
-    return result.filter((page) => page.sentences.length > 0)
-  }, [book, sentences])
-
-  // Ordnet jedem Satz die Seiten zu, auf denen er steht – die erste fuer
-  // Bildlauf und Render-Fenster, alle fuer die Markierung. Ein Satz hat
-  // hoechstens zwei Segmente, die Zuordnung ist also winzig. Ohne sie
-  // muesste beim Rendern JEDE Seite ihre Saetze durchsuchen, um zu
-  // wissen, ob der aktive Satz dabei ist – das lief bei jedem Satzwechsel
-  // ueber saemtliche Segmente des Buchs.
-  const pagesOfSentence = useMemo(() => {
-    const map = new Map<number, number[]>()
-    for (const page of pages) {
-      for (const sentence of page.sentences) {
-        const known = map.get(sentence.index)
-        if (known === undefined) map.set(sentence.index, [page.pageIndex])
-        else if (!known.includes(page.pageIndex)) known.push(page.pageIndex)
-      }
+  useEffect(() => {
+    if (!book) {
+      setStructure(null)
+      return
     }
-    return map
-  }, [pages])
+    const token: BuildToken = { cancelled: false }
+    setStructure(null)
+    setStructureProgress(0)
+    void buildBookStructure(book.pages, token, setStructureProgress).then(
+      (built) => {
+        if (built) setStructure(built)
+      },
+    )
+    return () => {
+      token.cancelled = true
+    }
+  }, [book])
+
+  const pages = structure?.pages ?? EMPTY_PAGES
+  const pagesOfSentence = structure?.pagesOfSentence ?? EMPTY_SENTENCE_PAGES
+  const speakItems = structure?.speakItems ?? EMPTY_SPEAK_ITEMS
 
   if (!speakerRef.current) {
     speakerRef.current = new Speaker({
@@ -334,34 +311,6 @@ export default function ReaderPage() {
 
   useEffect(() => subscribeEngineProgress(setEngineProgress), [])
   useEffect(() => subscribeSynthProgress(setSynthProgress), [])
-
-  // What the voice actually speaks: sanitized text (no PDF artifacts), a
-  // subtle <breath> expression tag at page starts (natively supported by
-  // Supertonic 3), longer pauses at page breaks, punctuation-aware pauses.
-  // Fragments without real words (page numbers, ornaments) are skipped.
-  const speakItems = useMemo(
-    () =>
-      sentences.map((sentence, index) => {
-        const previous = sentences[index - 1]
-        const next = sentences[index + 1]
-        // Ein seitenübergreifender Satz endet auf der Seite seines letzten
-        // Segments – Atem und Seitenwechsel-Pause richten sich danach.
-        const endPage = sentence.segments[sentence.segments.length - 1].page
-        const previousEndPage =
-          previous?.segments[previous.segments.length - 1].page
-        const startsPage =
-          previousEndPage !== undefined && previousEndPage !== sentence.page
-        const endsPage = next !== undefined && next.page !== endPage
-        const clean = sanitizeForSpeech(sentence.text)
-        const speakable = isSpeakable(clean)
-        return {
-          text: startsPage && speakable ? `<breath> ${clean}` : clean,
-          pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),
-          skip: !speakable,
-        }
-      }),
-    [sentences],
-  )
 
   useEffect(() => {
     speaker.setSentences(speakItems)
@@ -663,6 +612,18 @@ export default function ReaderPage() {
               src={book.cover}
               alt={`Cover: ${book.title}`}
             />
+          )}
+          {/* Der Aufbau der Satzstruktur laeuft portionsweise; bis er
+              fertig ist, steht hier ein Fortschritt statt einer leeren
+              Seite. Bei kleinen Buechern ist er sofort vorbei. */}
+          {structure === null && (
+            <div className="structure-loading" role="status">
+              <IonProgressBar
+                value={structureProgress}
+                aria-label="Buch wird aufbereitet"
+              />
+              <p>Das Buch wird aufbereitet …</p>
+            </div>
           )}
           {pages.map((page) => (
             <LazyPage

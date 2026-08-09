@@ -41,7 +41,8 @@ import {
   getAllBooks,
   putBook,
   saveBookOrder,
-  type Book,
+  renameBook,
+  type BookMeta,
 } from '../lib/db'
 import { ACCEPTED_FILES, importBook, unitCount } from '../lib/importers'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
@@ -49,7 +50,7 @@ import { getTheme, setTheme, THEME_LABELS, type ThemeChoice } from '../lib/theme
 import { hasSeenWelcome, markWelcomeSeen } from './WelcomePage'
 
 export default function LibraryPage() {
-  const [books, setBooks] = useState<Book[]>([])
+  const [books, setBooks] = useState<BookMeta[]>([])
   const [importing, setImporting] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const router = useIonRouter()
@@ -106,7 +107,7 @@ export default function LibraryPage() {
     }
   }
 
-  const remove = async (book: Book) => {
+  const remove = async (book: BookMeta) => {
     await deleteBook(book.id)
     refresh()
   }
@@ -118,7 +119,7 @@ export default function LibraryPage() {
    * keinen Weg, ein Buch zu löschen (WCAG 2.1.1, 2.5.1). Die Wischgeste
    * bleibt als Abkürzung erhalten.
    */
-  const openBookMenu = (book: Book) => {
+  const openBookMenu = (book: BookMeta) => {
     void presentActionSheet({
       header: book.title,
       buttons: [
@@ -138,7 +139,7 @@ export default function LibraryPage() {
     })
   }
 
-  const rename = (book: Book) => {
+  const rename = (book: BookMeta) => {
     void presentAlert({
       header: 'Titel ändern',
       inputs: [
@@ -156,7 +157,7 @@ export default function LibraryPage() {
           handler: (data: { title?: string }) => {
             const title = (data.title ?? '').trim()
             if (title && title !== book.title) {
-              void putBook({ ...book, title }).then(refresh)
+              void renameBook(book.id, title).then(refresh)
             }
           },
         },
@@ -166,7 +167,7 @@ export default function LibraryPage() {
 
   // Drag-and-drop-Reihenfolge sofort anzeigen und dauerhaft speichern.
   const onReorder = (event: CustomEvent<ItemReorderEventDetail>) => {
-    const reordered = event.detail.complete(books) as Book[]
+    const reordered = event.detail.complete(books) as BookMeta[]
     setBooks(reordered)
     void saveBookOrder(reordered.map((book) => book.id))
   }

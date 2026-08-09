@@ -108,23 +108,36 @@ const TERMINAL_END = /[.!?…。！？]["')\]»«„“”‚‘’]*$/
  */
 export function toSentences(pages: string[]): SentenceRef[] {
   const result: SentenceRef[] = []
-  pages.forEach((pageText, page) => {
-    splitSentences(pageText).forEach((text, index) => {
-      const previous = result[result.length - 1]
-      const continuesPrevious =
-        index === 0 &&
-        previous !== undefined &&
-        previous.segments[previous.segments.length - 1].page === page - 1 &&
-        !TERMINAL_END.test(previous.text) &&
-        isSpeakable(previous.text) &&
-        /^\p{Ll}/u.test(text)
-      if (continuesPrevious) {
-        previous.text = `${previous.text} ${text}`
-        previous.segments.push({ page, text })
-      } else {
-        result.push({ page, text, segments: [{ page, text }] })
-      }
-    })
-  })
+  pages.forEach((pageText, page) => appendPageSentences(result, pageText, page))
   return result
+}
+
+/**
+ * Haengt die Saetze EINER Seite an eine bestehende Liste an. Getrennt
+ * herausgezogen, damit die Struktur eines grossen Buchs seitenweise
+ * aufgebaut werden kann, ohne die Oberflaeche fuer eine Sekunde
+ * einzufrieren (siehe bookStructure.ts) – die Zusammenfuehrung ueber
+ * Seitengrenzen braucht dafuer nur den jeweils letzten Satz.
+ */
+export function appendPageSentences(
+  result: SentenceRef[],
+  pageText: string,
+  page: number,
+): void {
+  splitSentences(pageText).forEach((text, index) => {
+    const previous = result[result.length - 1]
+    const continuesPrevious =
+      index === 0 &&
+      previous !== undefined &&
+      previous.segments[previous.segments.length - 1].page === page - 1 &&
+      !TERMINAL_END.test(previous.text) &&
+      isSpeakable(previous.text) &&
+      /^\p{Ll}/u.test(text)
+    if (continuesPrevious) {
+      previous.text = `${previous.text} ${text}`
+      previous.segments.push({ page, text })
+    } else {
+      result.push({ page, text, segments: [{ page, text }] })
+    }
+  })
 }
