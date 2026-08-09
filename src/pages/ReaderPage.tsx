@@ -40,7 +40,7 @@ import {
   type PageSentence,
 } from '../lib/bookStructure'
 import { unitName } from '../lib/importers'
-import { detectStudioLang } from '../lib/lang'
+import { detectStudioLang, langLabel } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import {
   studioFlushPrefetches,
@@ -52,8 +52,11 @@ import {
   FONT_SCALE_MAX,
   FONT_SCALE_MIN,
   FONT_SCALE_STEP,
+  getBookLangOverride,
   getFontScale,
   getHighlightStyle,
+  LANG_AUTO,
+  saveBookLangOverride,
   saveFontScale,
   saveHighlightStyle,
   type HighlightStyle,
@@ -70,6 +73,7 @@ import {
   type SpeakerState,
 } from '../lib/tts'
 import {
+  STUDIO_LANGS,
   STUDIO_VOICES,
   studioVoiceById,
   type StudioVoiceMeta,
@@ -234,7 +238,9 @@ export default function ReaderPage() {
   const [rate, setRate] = useState(getSavedRate())
   const [state, setState] = useState<SpeakerState>('idle')
   const [current, setCurrent] = useState(0)
-  const [bookLang, setBookLang] = useState('de')
+  /** Am Text erkannte Sprache – gilt, solange nichts übersteuert ist. */
+  const [detectedLang, setDetectedLang] = useState('de')
+  const [langOverride, setLangOverride] = useState(LANG_AUTO)
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   const [displayOpen, setDisplayOpen] = useState(false)
   /** 0..1 – Stand des einmaligen Engine-Ladens, 1 = Engine bereit. */
@@ -306,6 +312,10 @@ export default function ReaderPage() {
   }, [id])
 
   useEffect(() => {
+    setLangOverride(getBookLangOverride(id))
+  }, [id])
+
+  useEffect(() => {
     isStudioEngineInstalled().then(setEngineInstalled)
   }, [])
 
@@ -322,8 +332,7 @@ export default function ReaderPage() {
     // ersten 4000 Zeichen aus - der ganze Buchtext waere ein Megabyte,
     // das sofort wieder weggeworfen wird.
     const detected = detectStudioLang(book.pages.slice(0, 5).join(' '))
-    setBookLang(detected)
-    speaker.setLangHint(detected)
+    setDetectedLang(detected)
   }, [speaker, book])
 
   const voice: StudioVoiceMeta =
@@ -349,6 +358,13 @@ export default function ReaderPage() {
   useEffect(() => {
     if (book) speaker.setBookInfo(book.title, book.cover)
   }, [speaker, book])
+
+  /** Was tatsächlich gesprochen wird: Übersteuerung schlägt Erkennung. */
+  const bookLang = langOverride === LANG_AUTO ? detectedLang : langOverride
+
+  useEffect(() => {
+    speaker.setLangHint(bookLang)
+  }, [speaker, bookLang])
 
   /** Aktuelle Position für Effekte, die nicht pro Satz neu laufen sollen. */
   const currentRef = useRef(current)
@@ -817,6 +833,30 @@ export default function ReaderPage() {
                   Unterstrichen
                 </IonSelectOption>
                 <IonSelectOption value="invert">Invertiert</IonSelectOption>
+              </IonSelect>
+            </IonItem>
+            {/* Die Sprache bestimmt die Aussprache. Normalerweise erkennt
+                die App sie am Text; hier laesst sich das uebergehen, wenn
+                die Erkennung danebenliegt. Gilt fuer dieses Buch. */}
+            <IonItem>
+              <IonSelect
+                label="Sprache"
+                interface="action-sheet"
+                value={langOverride}
+                onIonChange={(event) => {
+                  const value = event.detail.value as string
+                  setLangOverride(value)
+                  saveBookLangOverride(id, value)
+                }}
+              >
+                <IonSelectOption value={LANG_AUTO}>
+                  Automatisch ({langLabel(detectedLang)})
+                </IonSelectOption>
+                {STUDIO_LANGS.map((lang) => (
+                  <IonSelectOption key={lang} value={lang}>
+                    {langLabel(lang)}
+                  </IonSelectOption>
+                ))}
               </IonSelect>
             </IonItem>
           </IonList>

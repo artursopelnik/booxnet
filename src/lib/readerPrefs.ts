@@ -1,5 +1,10 @@
 /** Anzeige-Einstellungen des Readers: Schriftgröße und Markierungsstil. */
-import { readNumberSetting, readSetting, writeSetting } from './storage'
+import {
+  readNumberSetting,
+  readSetting,
+  removeSetting,
+  writeSetting,
+} from './storage'
 
 export type HighlightStyle = 'mark' | 'underline' | 'invert'
 
@@ -28,4 +33,32 @@ export function getHighlightStyle(): HighlightStyle {
 
 export function saveHighlightStyle(style: HighlightStyle): void {
   writeSetting(HIGHLIGHT_KEY, style)
+}
+
+/**
+ * Sprache eines Buchs für die Aussprache.
+ *
+ * Normalerweise erkennt die App sie am Text (lib/lang.ts). Das geht
+ * gelegentlich daneben – bei wenig Text, bei Zitaten in einer anderen
+ * Sprache, oder wenn das Signal zu schwach ist und der Rückfall auf
+ * Deutsch greift. Dann klingt ein englisches Buch mit deutscher
+ * Aussprache. Diese Einstellung erlaubt es, die Erkennung zu übergehen.
+ *
+ * Pro Buch, weil ein Buch genau eine Sprache hat: Eine globale
+ * Einstellung müsste man bei jedem Buchwechsel nachziehen.
+ * 'auto' bedeutet: der Erkennung folgen.
+ */
+export const LANG_AUTO = 'auto'
+
+function bookLangKey(bookId: string): string {
+  return `booxnet.lang.${bookId}`
+}
+
+export function getBookLangOverride(bookId: string): string {
+  return readSetting(bookLangKey(bookId)) ?? LANG_AUTO
+}
+
+export function saveBookLangOverride(bookId: string, lang: string): void {
+  if (lang === LANG_AUTO) removeSetting(bookLangKey(bookId))
+  else writeSetting(bookLangKey(bookId), lang)
 }

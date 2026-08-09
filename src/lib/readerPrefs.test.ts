@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   FONT_SCALE_MAX,
   FONT_SCALE_MIN,
+  getBookLangOverride,
   getFontScale,
   getHighlightStyle,
+  LANG_AUTO,
+  saveBookLangOverride,
   saveFontScale,
   saveHighlightStyle,
 } from './readerPrefs'
@@ -56,5 +59,33 @@ describe('Markierungsstil', () => {
   it('verwirft unbekannte Werte', () => {
     localStorage.setItem('booxnet.highlight', 'blinkend')
     expect(getHighlightStyle()).toBe('mark')
+  })
+})
+
+describe('Sprache je Buch', () => {
+  it('folgt anfangs der Erkennung', () => {
+    expect(getBookLangOverride('buch-1')).toBe(LANG_AUTO)
+  })
+
+  it('merkt sich eine gewählte Sprache', () => {
+    saveBookLangOverride('buch-1', 'en')
+    expect(getBookLangOverride('buch-1')).toBe('en')
+  })
+
+  // Ein Buch je Sprache: Die Wahl beim einen darf das andere nicht treffen.
+  it('hält Bücher auseinander', () => {
+    saveBookLangOverride('buch-1', 'en')
+    saveBookLangOverride('buch-2', 'fr')
+    expect(getBookLangOverride('buch-1')).toBe('en')
+    expect(getBookLangOverride('buch-2')).toBe('fr')
+    expect(getBookLangOverride('buch-3')).toBe(LANG_AUTO)
+  })
+
+  it('kehrt zur Erkennung zurück', () => {
+    saveBookLangOverride('buch-1', 'en')
+    saveBookLangOverride('buch-1', LANG_AUTO)
+    expect(getBookLangOverride('buch-1')).toBe(LANG_AUTO)
+    // Und raeumt den Eintrag auf, statt "auto" abzulegen.
+    expect(localStorage.getItem('booxnet.lang.buch-1')).toBeNull()
   })
 })

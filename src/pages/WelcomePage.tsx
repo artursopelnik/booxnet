@@ -9,8 +9,6 @@ import {
   IonNote,
   IonPage,
   IonProgressBar,
-  IonSelect,
-  IonSelectOption,
   useIonRouter,
 } from '@ionic/react'
 import {
@@ -118,15 +116,20 @@ export default function WelcomePage() {
           </p>
 
           <IonList inset>
-            <IonItem>
-              <IonSelect
-                label="Bevorzugte Sprache"
-                value="de"
-                disabled
-                interface="popover"
-              >
-                <IonSelectOption value="de">Deutsch</IonSelectOption>
-              </IonSelect>
+            {/* Frueher ein abgeschaltetes Auswahlfeld mit genau einer
+                Option: Es sah aus wie eine Einstellung, war aber keine -
+                und liess Nutzer spaeter danach suchen. Jetzt eine schlichte
+                Zeile. Die tatsaechliche Sprache erkennt die App am Buch und
+                laesst sich im Reader unter den Anzeige-Einstellungen
+                uebergehen. */}
+            <IonItem lines="full">
+              <IonLabel className="ion-text-wrap">
+                <h2>Sprache</h2>
+                <IonNote>
+                  Wird je Buch am Text erkannt – 31 Sprachen. Im Reader
+                  änderbar, falls die Erkennung danebenliegt.
+                </IonNote>
+              </IonLabel>
             </IonItem>
             <IonItem
               button={installMethod !== null}
