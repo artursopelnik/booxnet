@@ -753,6 +753,7 @@ export default function ReaderPage() {
         onSelect={selectVoice}
         onEngineChange={setEngineInstalled}
         onDismiss={() => setVoiceSheetOpen(false)}
+        onPreviewStart={() => speaker.pause()}
         canWarmPreviews={state === 'idle'}
       />
 

@@ -48,8 +48,18 @@ export function sentenceKey(
   speed: number,
   text: string,
 ): string {
-  return `${voiceId} ${lang} ${speed} ${text}`
+  return `${CACHE_VERSION} ${voiceId} ${lang} ${speed} ${text}`
 }
+
+/**
+ * Version der gespeicherten Aufnahmen. Bei jeder Änderung, die den
+ * KLANG betrifft – Qualitätsstufe (QUALITY_SYNTH_STEPS in client.ts),
+ * Textvorverarbeitung, Pausen –, hochzählen. Sonst spielt die App
+ * weiter die alten Aufnahmen ab und die Änderung bliebe unhörbar; die
+ * überzähligen alten Dateien laufen über die Mengenbegrenzung aus.
+ * v2: Qualität von 4 auf 6 Entrausch-Schritte.
+ */
+const CACHE_VERSION = 'v2'
 
 /**
  * Kurzer Streuwert des Schlüssels als Dateiname. Web-Crypto liefert das

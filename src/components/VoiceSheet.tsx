@@ -87,6 +87,12 @@ interface Props {
    * lange Renderings würden sonst jeden Play-Druck blockieren.
    */
   canWarmPreviews?: boolean
+  /**
+   * Wird vor dem Probehören gerufen. Das Vorlesen läuft über ein eigenes
+   * Ausgabegerät und würde sonst einfach weiterlaufen – man hörte beide
+   * Stimmen gleichzeitig.
+   */
+  onPreviewStart?: () => void
 }
 
 export default function VoiceSheet({
@@ -96,6 +102,7 @@ export default function VoiceSheet({
   onEngineChange,
   onDismiss,
   canWarmPreviews = true,
+  onPreviewStart,
 }: Props) {
   const [installed, setInstalled] = useState(false)
   const { progress, storageBlocked, start } = useEngineDownload()
@@ -158,6 +165,8 @@ export default function VoiceSheet({
   }
 
   const preview = async (voice: StudioVoiceMeta) => {
+    // Erst das Vorlesen anhalten, dann vorstellen.
+    onPreviewStart?.()
     setPreviewing(voice.id)
     try {
       await previewVoice(voice)

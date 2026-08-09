@@ -203,13 +203,23 @@ export const TTS_CANCELLED_ERROR = 'TtsCancelledError'
 /**
  * Einheitliche Klangqualität für alles: Niedrigere "Schnell-Stufen"
  * (2–3 Schritte) klingen blechern und sind bewusst abgeschafft – lieber
- * ein Moment länger laden als schlecht klingen. 5 und 6 klangen im
- * Hörtest sauber, 4 ist der aktuelle Testwert (~20 % schneller als 5);
- * wirkt es zu dünn, sind 5/6 die bewährten Rückfallwerte. Die
- * Schrittzahl bleibt pro Anfrage übertragbar, damit eine spätere
- * Qualitäts-Einstellung ohne Umbau möglich ist.
+ * ein Moment länger laden als schlecht klingen.
+ *
+ * 6 Schritte klangen im Hörtest am saubersten. Der Preis ist Rechenzeit:
+ * Die Entrausch-Schleife ist der teuerste Teil der Synthese und läuft
+ * jetzt anderthalbmal so oft wie bei 4. Auf einem gemessenen Gerät lag
+ * das Verhältnis von Rechenzeit zu Tonlänge bei 4 Schritten um 0,7 –
+ * bei 6 rückt es Richtung 1, also nahe an die Echtzeitgrenze. Wer den
+ * Wert ändert, sollte in der Stimmen-Auswahl unter "Technische Details"
+ * nachsehen: Bleibt der Faktor über 1, schrumpft der Vorrat beim Hören
+ * und es entstehen Pausen zwischen den Sätzen. 4 und 5 sind die
+ * bewährten Rückfallwerte.
+ *
+ * WICHTIG: Bei einer Änderung die Cache-Version in sentenceCache.ts
+ * hochzählen, sonst spielt die App gespeicherte Sätze in der alten
+ * Qualität weiter ab.
  */
-export const QUALITY_SYNTH_STEPS = 4
+export const QUALITY_SYNTH_STEPS = 6
 
 /**
  * Experimentier-Schalter für die Graph-Optimierung des Engine-Aufbaus:
