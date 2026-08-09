@@ -22,14 +22,24 @@ function mergeFalseSplits(parts: string[]): string[] {
   return result
 }
 
+/**
+ * Einmal auf Modulebene erzeugt statt pro Seite: Ein Segmenter ist ein
+ * schwergewichtiges ICU-Objekt, und ein Buch hat hunderte Seiten.
+ */
+const SENTENCE_SEGMENTER =
+  typeof Intl !== 'undefined' && 'Segmenter' in Intl
+    ? new Intl.Segmenter(undefined, { granularity: 'sentence' })
+    : null
+
 /** Splits plain text into sentences, preferring Intl.Segmenter when available. */
 export function splitSentences(text: string): string[] {
   const clean = text.replace(/\s+/g, ' ').trim()
   if (!clean) return []
   let parts: string[]
-  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
-    const segmenter = new Intl.Segmenter(undefined, { granularity: 'sentence' })
-    parts = Array.from(segmenter.segment(clean), (s) => s.segment.trim())
+  if (SENTENCE_SEGMENTER) {
+    parts = Array.from(SENTENCE_SEGMENTER.segment(clean), (s) =>
+      s.segment.trim(),
+    )
   } else {
     parts = (
       clean.match(/[^.!?。！？]+[.!?。！？]+["')\]」』]*\s*|[^.!?。！？]+$/g) ?? [
@@ -56,8 +66,16 @@ export function sanitizeForSpeech(text: string): string {
  * ornaments ("* * *") and symbol runs are skipped automatically.
  */
 export function isSpeakable(text: string): boolean {
-  const letters = text.match(/\p{L}/gu)?.length ?? 0
-  return letters >= 2
+  // Bewusst eine Schleife mit Frueh-Abbruch statt match(): Letzteres legt
+  // fuer JEDEN Buchstaben ein eigenes String-Objekt an, nur um zu zaehlen
+  // - bei einem Buch mit 15.000 Saetzen rund eine Million Wegwerf-Objekte
+  // (gemessen ~9x langsamer).
+  const LETTER = /\p{L}/u
+  let letters = 0
+  for (const character of text) {
+    if (LETTER.test(character) && ++letters >= 2) return true
+  }
+  return false
 }
 
 export interface SentenceSegment {

@@ -3,16 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <!-- Browser-Zoom bewusst aus (Abwägung gegen WCAG 1.4.4): Beim Lesen
-         und Satz-Antippen passierte ständig versehentliches Pinch-/
-         Doppeltipp-Zoomen, und die Textgröße ist in der App selbst
-         einstellbar (Anzeige-Einstellungen im Reader). Wirkt nur auf
-         Android/Chromium; iOS ignoriert user-scalable=no seit iOS 10 –
-         dort übernehmen touch-action (theme.css) und der
-         gesturestart-Handler (main.tsx). -->
+    <!-- Zoom bleibt möglich (WCAG 1.4.4). Das versehentliche Zoomen beim
+         Antippen von Sätzen war Doppeltipp-Zoom – den unterbindet
+         'touch-action: manipulation' gezielt auf dem Lesetext
+         (theme.css), ohne der halben Oberfläche (Bibliothek,
+         Stimmen-Auswahl, Hinweise) die Vergrößerbarkeit zu nehmen. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <meta name="theme-color" content="#0B63D6" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -75,7 +73,7 @@
       <div class="boot">
         <img src="/icon.svg" width="64" height="64" alt="" />
         <h1>Booxnet</h1>
-        <div class="boot__spin" aria-label="Lädt"></div>
+        <div class="boot__spin" role="img" aria-label="Lädt"></div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

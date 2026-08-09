@@ -7,7 +7,9 @@ const FONT_KEY = 'booxnet.fontScale'
 const HIGHLIGHT_KEY = 'booxnet.highlight'
 
 export const FONT_SCALE_MIN = 90
-export const FONT_SCALE_MAX = 170
+// 200 statt 170: WCAG 1.4.4 verlangt, dass sich Text auf 200 % der
+// Standardgröße bringen lässt.
+export const FONT_SCALE_MAX = 200
 export const FONT_SCALE_STEP = 10
 
 /** Schriftgröße in Prozent der Standardgröße (90–170, Standard 100). */

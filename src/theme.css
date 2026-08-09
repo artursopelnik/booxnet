@@ -1,11 +1,11 @@
-/* Browser-Zoom aus (siehe Abwägung in index.html): pan-x/pan-y erlaubt
-   Scrollen und Ionic-Gesten (Swipe-Back, Slider), unterbindet aber
-   Pinch- und Doppeltipp-Zoom. Gilt als Vorfahren-Beschränkung für die
-   ganze Seite; Ionic-Gestenelemente mit eigenem touch-action: none
-   funktionieren weiter (Schnittmenge). */
-html,
-body {
-  touch-action: pan-x pan-y;
+/* Zielgenau statt global: 'manipulation' unterbindet den Doppeltipp-Zoom
+   GENAU dort, wo er beim Antippen von Sätzen versehentlich auslöste, und
+   lässt das Vergrößern der Seite unangetastet. Eine seitenweite Sperre
+   nähme sehbeeinträchtigten Nutzern die einzige Möglichkeit, Bibliothek,
+   Stimmen-Auswahl und Hinweise zu vergrößern (WCAG 1.4.4). */
+.sentence,
+.reader-text {
+  touch-action: manipulation;
 }
 
 :root {
@@ -21,17 +21,48 @@ body {
   --booxnet-muted: #545456;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* In dark mode the brighter blue has the better contrast. */
-    --ion-color-primary: #409cff;
-    --ion-color-primary-rgb: 64, 156, 255;
-    --ion-color-primary-contrast: #000000;
-    --ion-color-primary-contrast-rgb: 0, 0, 0;
-    --ion-color-primary-shade: #388ae0;
-    --ion-color-primary-tint: #53a6ff;
-    --booxnet-muted: #a1a1a6;
-  }
+/* Klassen-basiert, NICHT per Media Query: Die Darstellung wird in der
+   Bibliothek gewählt (lib/theme.ts setzt die Klasse, im Automatik-Modus
+   nach dem System). Hingen die Farben an der System-Einstellung, während
+   der Hintergrund an der Klasse hängt, liefen beide auseinander – wer
+   z. B. bei hellem System "Dunkel" wählte, bekam dunkelgraue Schrift auf
+   Schwarz (2,8:1) und im E-Ink-Modus ausgerechnet die schlechtesten
+   Kontraste der ganzen App. */
+html.ion-palette-dark {
+  /* In dark mode the brighter blue has the better contrast. */
+  --ion-color-primary: #409cff;
+  --ion-color-primary-rgb: 64, 156, 255;
+  --ion-color-primary-contrast: #000000;
+  --ion-color-primary-contrast-rgb: 0, 0, 0;
+  --ion-color-primary-shade: #388ae0;
+  --ion-color-primary-tint: #53a6ff;
+  --booxnet-muted: #a1a1a6;
+}
+
+/* Der Hochkontrast-Modus bringt eigene, kräftigere Markenfarben mit –
+   die dürfen die obigen nicht überschreiben. */
+html.theme-eink {
+  --ion-color-primary: #003fae;
+  --ion-color-primary-rgb: 0, 63, 174;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #003799;
+  --ion-color-primary-tint: #1a52b6;
+  --booxnet-muted: #3d3d3f;
+}
+
+/* Nur fuer Screenreader: sichtbar entfernt, aber vorlesbar – anders als
+   display:none, das auch aus dem Screenreader verschwaende. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Secondary text everywhere (notes, status lines) with AA contrast. */
@@ -42,8 +73,17 @@ ion-note,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sentence {
-    transition: none;
+  /* Umfassend statt nur für den Lesetext: Auch der eingeblendete
+     Ladehinweis und die Seitenübergänge sollen ruhig bleiben. Die
+     Endzustände bleiben erhalten (siehe .engine-loading-hint), es
+     verschwindet also nichts. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -153,6 +193,8 @@ ion-note,
 }
 
 .page-marker {
+  /* Ist ein <h2> (Screenreader-Navigation) – Browser-Standardabstaende
+     und -groessen zuruecksetzen, damit es unveraendert aussieht. */
   margin: 28px 0 12px;
   text-align: center;
   font-family:
@@ -171,9 +213,13 @@ ion-note,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Deckkraft so gewählt, dass die Markierung selbst mindestens 3:1 gegen
+   den Seitenhintergrund erreicht (WCAG 1.4.11 – sie ist das einzige
+   Signal dafür, welcher Satz gerade gesprochen wird). Bei 0,22 waren es
+   nur 1,4:1. Der Text darauf bleibt mit ~7:1 gut lesbar. */
 .sentence--active {
-  background: rgba(11, 99, 214, 0.22);
-  box-shadow: 0 0 0 3px rgba(11, 99, 214, 0.22);
+  background: rgba(11, 99, 214, 0.67);
+  box-shadow: 0 0 0 3px rgba(11, 99, 214, 0.67);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -181,8 +227,8 @@ ion-note,
 /* Klassen-basiert statt Media-Query: Dunkel kann auch manuell gewählt
    sein (lib/theme.ts setzt die Klasse, im Automatik-Modus per System). */
 html.ion-palette-dark .sentence--active {
-  background: rgba(90, 170, 255, 0.32);
-  box-shadow: 0 0 0 3px rgba(90, 170, 255, 0.32);
+  background: rgba(90, 170, 255, 0.54);
+  box-shadow: 0 0 0 3px rgba(90, 170, 255, 0.54);
 }
 
 /* Markierungsstil "Unterstrichen" (Anzeige-Einstellungen im Reader). */
@@ -222,6 +268,17 @@ html.ion-palette-dark .reader-text.hl-underline .sentence--active {
   font-variant-numeric: tabular-nums;
 }
 
+/* Mindest-Beruehrungsflaeche auch ausserhalb der Player-Leiste: Ionic
+   liefert fuer Icon-Buttons in Kopfzeilen und Listen nur ~36 px, die
+   Player-Tasten setzen im selben Projekt schon 48 px an (Apple HIG /
+   WCAG 2.5.5 nennen 44 px). */
+ion-toolbar ion-button,
+.book-menu-button,
+.voice-preview-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 /* ---- Player ---- */
 
 .player-toolbar {
@@ -238,12 +295,20 @@ html.ion-palette-dark .reader-text.hl-underline .sentence--active {
   text-align: center;
   color: var(--ion-color-medium);
   font-variant-numeric: tabular-nums;
-  opacity: 0;
-  animation: engine-hint-appear 0.25s ease-in 0.6s forwards;
+  /* Endzustand ist sichtbar; die Animation blendet nur verzögert ein.
+     Waere opacity:0 der Ruhezustand, bliebe der Text bei abgeschalteten
+     Animationen fuer immer unsichtbar – ausgerechnet der Hinweis, der
+     die lange Wartezeit erklaert. */
+  opacity: 1;
+  animation: engine-hint-appear 0.85s ease-in;
 }
 
 @keyframes engine-hint-appear {
-  to {
+  0%,
+  70% {
+    opacity: 0;
+  }
+  100% {
     opacity: 1;
   }
 }

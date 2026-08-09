@@ -213,6 +213,7 @@ export default function WelcomePage() {
                 {progress !== null && (
                   <IonProgressBar
                     value={progress.percent / 100}
+                    aria-label="Sprachmodell wird heruntergeladen"
                     style={{ marginTop: 6 }}
                   />
                 )}

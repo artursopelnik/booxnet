@@ -60,7 +60,7 @@ function diagnosticLines(info: EngineInfo): string[] {
   const lines = [
     engine.isolated
       ? `Rechenkerne: ${engine.threads} Threads von ${engine.cores ?? '?'} Kernen`
-      : `⚠️ Nur ${engine.threads} Thread: Mehrkern-Modus nicht aktiv (das bremst stark)`,
+      : `Achtung: nur ${engine.threads} Thread – Mehrkern-Modus nicht aktiv (das bremst stark)`,
     `Vorbereitung: ${num(engine.loadSeconds)} s`,
   ]
   if (synth && synth.audioSeconds > 0) {
@@ -224,7 +224,7 @@ export default function VoiceSheet({
     >
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Stimmen</IonTitle>
+          <IonTitle role="heading" aria-level={1}>Stimmen</IonTitle>
           <IonButtons slot="end">
             <IonButton strong onClick={onDismiss}>
               Fertig
@@ -256,6 +256,7 @@ export default function VoiceSheet({
                 {progress !== null && (
                   <IonProgressBar
                     value={progress.percent / 100}
+                    aria-label="Sprachmodell wird heruntergeladen"
                     style={{ marginTop: 6 }}
                   />
                 )}
@@ -271,9 +272,18 @@ export default function VoiceSheet({
               button={installed}
               disabled={!installed}
               onClick={installed ? () => select(voice) : undefined}
+              // Das Haekchen rechts ist rein visuell; ohne diese Angabe
+              // hoeren Screenreader vier gleichwertige Eintraege und
+              // erfahren nie, welche Stimme gerade aktiv ist.
+              aria-current={voice.id === selectedId ? 'true' : undefined}
             >
               <IonLabel>
-                <h2>{voice.name}</h2>
+                <h2>
+                  {voice.name}
+                  {voice.id === selectedId && (
+                    <span className="visually-hidden"> (ausgewählt)</span>
+                  )}
+                </h2>
                 <IonNote>
                   {voice.gender === 'm' ? 'Männlich' : 'Weiblich'}
                   {!installed && ' · benötigt das Sprachmodell'}
@@ -286,6 +296,7 @@ export default function VoiceSheet({
                 <IonButton
                   slot="end"
                   fill="clear"
+                  className="voice-preview-button"
                   disabled={previewing !== null}
                   onClick={(event) => {
                     event.stopPropagation()

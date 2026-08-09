@@ -120,9 +120,12 @@ const PageSection = memo(function PageSection({
 }) {
   return (
     <section className="reader-page">
-      <div className="page-marker">
+      {/* Als Überschrift, damit Screenreader per Überschriften-Navigation
+          durch das Buch springen können – bei einem Buch die
+          naheliegendste Navigation. Sieht unverändert aus. */}
+      <h2 className="page-marker">
         {unitLabel} {pageIndex + 1}
-      </div>
+      </h2>
       <p>
         {sentences.map((sentence) => (
           <span
@@ -133,7 +136,20 @@ const PageSection = memo(function PageSection({
                 ? 'sentence sentence--active'
                 : 'sentence'
             }
+            role="button"
+            // Nur der aktive Satz ist ein Tabulator-Halt: Bei einem Buch
+            // mit tausenden Saetzen waere sonst jeder einzelne einer, und
+            // die Tastaturbedienung waere praktisch unbrauchbar. Von dort
+            // aus geht es mit den Pfeiltasten weiter (siehe keyHandler).
+            tabIndex={sentence.index === activeIndex ? 0 : -1}
+            aria-current={sentence.index === activeIndex ? 'true' : undefined}
             onClick={() => onJump(sentence.index)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onJump(sentence.index)
+              }
+            }}
           >
             {sentence.text}{' '}
           </span>
@@ -211,9 +227,9 @@ const LazyPage = memo(function LazyPage({
           onJump={onJump}
         />
       ) : (
-        <div className="page-marker">
+        <h2 className="page-marker">
           {unitLabel} {pageIndex + 1}
-        </div>
+        </h2>
       )}
     </div>
   )
@@ -277,15 +293,19 @@ export default function ReaderPage() {
     return result.filter((page) => page.sentences.length > 0)
   }, [book, sentences])
 
-  // Maps a sentence index to the page it STARTS on, for scroll targeting
-  // and the render window.
-  const pageOfSentence = useMemo(() => {
-    const map = new Map<number, number>()
+  // Ordnet jedem Satz die Seiten zu, auf denen er steht – die erste fuer
+  // Bildlauf und Render-Fenster, alle fuer die Markierung. Ein Satz hat
+  // hoechstens zwei Segmente, die Zuordnung ist also winzig. Ohne sie
+  // muesste beim Rendern JEDE Seite ihre Saetze durchsuchen, um zu
+  // wissen, ob der aktive Satz dabei ist – das lief bei jedem Satzwechsel
+  // ueber saemtliche Segmente des Buchs.
+  const pagesOfSentence = useMemo(() => {
+    const map = new Map<number, number[]>()
     for (const page of pages) {
       for (const sentence of page.sentences) {
-        if (!map.has(sentence.index)) {
-          map.set(sentence.index, page.pageIndex)
-        }
+        const known = map.get(sentence.index)
+        if (known === undefined) map.set(sentence.index, [page.pageIndex])
+        else if (!known.includes(page.pageIndex)) known.push(page.pageIndex)
       }
     }
     return map
@@ -349,7 +369,10 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (!book) return
-    const detected = detectStudioLang(book.pages.join(' '))
+    // Nur die ersten Seiten: detectStudioLang wertet ohnehin bloss die
+    // ersten 4000 Zeichen aus - der ganze Buchtext waere ein Megabyte,
+    // das sofort wieder weggeworfen wird.
+    const detected = detectStudioLang(book.pages.slice(0, 5).join(' '))
     setBookLang(detected)
     speaker.setLangHint(detected)
   }, [speaker, book])
@@ -391,11 +414,15 @@ export default function ReaderPage() {
     // Fünf Sätze statt zwei: Sie landen dauerhaft im Speicher und müssen
     // beim nächsten App-Start das Laden der Engine mit Ton überbrücken –
     // dafür reichen zwei Sätze nicht.
-    const next = speakItems
-      .slice(currentRef.current)
-      .filter((item) => !item.skip)
-      .slice(0, IDLE_PREFETCH_AHEAD)
-      .map((item) => item.text)
+    // Schleife mit Frueh-Abbruch statt slice().filter(): Letzteres kopiert
+    // den gesamten Buchrest (bis zu 15.000 Elemente) zweimal, um fuenf
+    // Saetze zu behalten.
+    const next: string[] = []
+    for (let i = currentRef.current; i < speakItems.length; i++) {
+      if (speakItems[i].skip) continue
+      next.push(speakItems[i].text)
+      if (next.length >= IDLE_PREFETCH_AHEAD) break
+    }
     if (next.length > 0) {
       prefetchSentences(voice.id, bookLang, next, engineSpeed(rate))
     }
@@ -468,6 +495,17 @@ export default function ReaderPage() {
     if (voiceSheetOpen || displayOpen) return
     const target = event.target as HTMLElement | null
     if (target?.closest('input, textarea, [contenteditable]')) return
+    // Liegt der Fokus auf einem Bedienelement, gehoert die Taste diesem:
+    // Sonst loeste die Leertaste auf dem Button "Ein Satz vor" Play/Pause
+    // aus – und unterdrueckte per preventDefault zusaetzlich die normale
+    // Aktivierung des Buttons.
+    if (
+      target?.closest(
+        'button, a, [role="button"], ion-button, ion-back-button, ion-range, ion-select, ion-toggle, ion-item[button]',
+      )
+    ) {
+      return
+    }
     if (event.code === 'Space') {
       event.preventDefault()
       togglePlayback()
@@ -539,8 +577,9 @@ export default function ReaderPage() {
     return (
       <IonPage>
         <IonContent fullscreen>
-          <div className="empty-state">
-            <IonSpinner />
+          <div className="empty-state" role="status">
+            <IonSpinner aria-hidden="true" />
+            <span className="visually-hidden">Buch wird geladen</span>
           </div>
         </IonContent>
       </IonPage>
@@ -570,7 +609,8 @@ export default function ReaderPage() {
     )
   }
 
-  const activePage = pageOfSentence.get(current) ?? -1
+  const activePages = pagesOfSentence.get(current)
+  const activePage = activePages?.[0] ?? -1
   const unitLabel = unitName(book.unit)
 
   return (
@@ -589,9 +629,11 @@ export default function ReaderPage() {
             slot="start"
             className="brand-mark"
             src={`${import.meta.env.BASE_URL}icon.svg`}
-            alt="Booxnet"
+            alt=""
           />
-          <IonTitle className="reader-title">{book.title}</IonTitle>
+          <IonTitle role="heading" aria-level={1} className="reader-title">
+            {book.title}
+          </IonTitle>
           <IonButtons slot="end">
             <IonButton
               onClick={() => setDisplayOpen(true)}
@@ -631,7 +673,7 @@ export default function ReaderPage() {
               // Auch die Folgeseite markiert ihr Segment, wenn der aktive
               // Satz über die Seitengrenze läuft.
               activeIndex={
-                page.sentences.some((s) => s.index === current) ? current : -1
+                activePages?.includes(page.pageIndex) ? current : -1
               }
               forceRender={Math.abs(page.pageIndex - activePage) <= RENDER_WINDOW}
               onJump={jumpTo}
@@ -661,13 +703,27 @@ export default function ReaderPage() {
                 aria-label="Sprachvorbereitung läuft"
               />
             )}
-            <div className="engine-loading-hint" role="status">
+            <div className="engine-loading-hint" aria-hidden="true">
               {engineProgress < 1
                 ? `Die Vorlesestimme wird einmalig vorbereitet – ${Math.round(engineProgress * 100)} %`
                 : `Der Satz wird berechnet – ${Math.round(synthProgress * 100)} %`}
             </div>
           </>
         )}
+        {/* Zustandsansage fuer Screenreader: Ohne sie passiert nach dem
+            Druck auf Play hoerbar nichts, solange die Engine laedt - und
+            das kann Minuten dauern. Bewusst NUR der Zustand, nicht der
+            Prozentwert: Eine Live-Region, die sich mit jedem Prozent
+            aendert, unterbricht den Nutzer hunderte Male. */}
+        <div className="visually-hidden" role="status">
+          {state === 'loading'
+            ? 'Die Vorlesestimme wird vorbereitet'
+            : state === 'playing'
+              ? 'Wird vorgelesen'
+              : state === 'paused'
+                ? 'Angehalten'
+                : ''}
+        </div>
         <IonToolbar className="player-toolbar">
           <div className="player">
             <div className="player__controls">
@@ -716,7 +772,7 @@ export default function ReaderPage() {
                 fill="clear"
                 className="player__rate"
                 onClick={cycleRate}
-                aria-label="Lesegeschwindigkeit ändern"
+                aria-label={`Lesegeschwindigkeit ${rate}-fach, ändern`}
               >
                 {rate}×
               </IonButton>
@@ -768,10 +824,12 @@ export default function ReaderPage() {
                   saveFontScale(value)
                 }}
               >
-                <span slot="start" style={{ fontSize: '0.85rem' }}>
+                {/* Rein visuelle Skala – Screenreader lesen sonst
+                    "A ... A" um den Schieberegler herum. */}
+                <span aria-hidden="true" slot="start" style={{ fontSize: '0.85rem' }}>
                   A
                 </span>
-                <span slot="end" style={{ fontSize: '1.5rem' }}>
+                <span aria-hidden="true" slot="end" style={{ fontSize: '1.5rem' }}>
                   A
                 </span>
               </IonRange>

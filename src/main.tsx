@@ -23,17 +23,6 @@ import { applyStoredTheme } from './lib/theme'
 setupIonicReact({ mode: 'ios' })
 applyStoredTheme()
 
-// Browser-Zoom aus (siehe Abwägung in index.html): iOS ignoriert
-// user-scalable=no seit iOS 10 – Pinch-Zoom lässt sich dort nur über die
-// Safari-eigenen gesture*-Events unterbinden. Die Events feuern
-// ausschließlich bei Mehrfinger-Gesten und werden sonst nirgends genutzt;
-// Doppeltipp-Zoom fängt touch-action in theme.css ab.
-for (const type of ['gesturestart', 'gesturechange']) {
-  document.addEventListener(type, (event) => event.preventDefault(), {
-    passive: false,
-  })
-}
-
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
