@@ -1,0 +1,11 @@
+# models/supertonic/ gehoert BEWUSST NICHT hierher: Das Sprachpaket ist
+# der Grund, warum der Build ohne Netz auskommt.
+node_modules
+dist
+dev-dist
+public/ort
+public/supertonic
+.git
+.github
+*.log
+tsconfig.tsbuildinfo

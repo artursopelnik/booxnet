@@ -126,7 +126,37 @@ git add models/supertonic && git commit -m "Sprachpaket aktualisieren"
 `scripts/vendor-supertonic.mjs` ist die einzige Stelle im Projekt, die
 eine fremde Quelle kennt – und sie läuft weder im Build noch in der App.
 
-**Preis dieser Entscheidung:** Die Modelle gehen bei jedem Deploy mit und
-kosten Bandbreite (Netlify Free: 100 GB/Monat ≈ 250 Erstdownloads). Jedes
-Gerät lädt sie genau einmal und legt sie in OPFS ab. Wird es eng, ist die
-Antwort mehr Bandbreite – nicht wieder eine fremde Quelle.
+**Preis dieser Entscheidung:** Die Modelle gehen bei jedem Deploy mit.
+Das kostet Bandbreite beim Ausliefern und Speicher beim Hoster – auf
+Free-Tiers mit Kontingent ist das schnell aufgebraucht, und zwar nicht
+erst durch Besucher, sondern schon durch die Deploys selbst. Jedes Gerät
+lädt die Modelle genau einmal und legt sie in OPFS ab. Wird es eng, ist
+die Antwort mehr Bandbreite oder ein eigener Server – nicht wieder eine
+fremde Quelle.
+
+## Auf eigenem Server ausliefern (Docker / Coolify)
+
+Der Endpunkt der ganzen Übung: eigene Auslieferung, eigene Bandbreite,
+niemand, der etwas abschalten kann.
+
+```bash
+docker build -t booxnet .
+docker run -p 8080:80 booxnet
+```
+
+Für Coolify: Anwendung vom Typ **Dockerfile** aus diesem Repository,
+Port **80**. Es braucht keine Umgebungsvariablen — das Sprachpaket liegt
+im Repository und wird beim Build aus `models/supertonic/` zusammengesetzt.
+
+**Warum eigener Server statt GitHub Pages:** Pages kann keine
+HTTP-Header setzen. Ohne `Cross-Origin-Opener-Policy` und
+`Cross-Origin-Embedder-Policy` gibt es keinen `SharedArrayBuffer`, und
+die Sprach-Engine rechnet **einkernig** statt auf allen Kernen — je nach
+Gerät ein Vielfaches langsamer. `docker/nginx.conf` setzt beide Header;
+ob es gewirkt hat, steht in der App unter Stimmen → Technische Details
+(„Rechenkerne: n Threads von m Kernen" statt „nur 1 Thread").
+
+Zu bedenken: Jedes Gerät lädt einmalig ~400 MB. Bei Hostern mit
+Traffic-Abrechnung ist das der Posten, auf den zu schauen ist — ein
+eigener Server mit großzügigem Inklusiv-Traffic ist deshalb die
+passendere Heimat als ein Free-Tier mit Kontingent.
