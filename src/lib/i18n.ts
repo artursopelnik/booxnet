@@ -145,6 +145,11 @@ const de = {
   'voices.singleThread':
     'Achtung: nur {threads} Thread – Mehrkern-Modus nicht aktiv (das bremst stark)',
   'voices.prepareTime': 'Vorbereitung: {seconds} s',
+  'voices.bookPrepared':
+    'Buch aufbereitet: {sentences} Sätze, {total} s gesamt, davon {busy} s Rechenzeit',
+  'voices.bookWaited':
+    'Die Zeit ging fast ganz fürs Warten drauf – das Gerät war nebenher beschäftigt.',
+  'voices.bookComputed': 'Die Zeit ging in die Aufbereitung selbst.',
   'voices.lastSentence':
     'Letzter Satz: {compute} s Rechenzeit für {audio} s Ton ({factor}×)',
   'voices.fasterThanRealtime':
@@ -303,6 +308,11 @@ const en: Record<MessageKey, string> = {
   'voices.singleThread':
     'Warning: only {threads} thread – multi-core mode is off (this slows things down a lot)',
   'voices.prepareTime': 'Preparation: {seconds} s',
+  'voices.bookPrepared':
+    'Book prepared: {sentences} sentences, {total} s total, {busy} s of it computing',
+  'voices.bookWaited':
+    'Almost all of that was waiting – the device was busy with something else.',
+  'voices.bookComputed': 'That time went into the preparation itself.',
   'voices.lastSentence':
     'Last sentence: {compute} s of computing for {audio} s of audio ({factor}×)',
   'voices.fasterThanRealtime':
@@ -440,6 +450,11 @@ const es: Record<MessageKey, string> = {
   'voices.cores': 'Núcleos: {threads} hilos de {cores}',
   'voices.singleThread': 'Atención: solo {threads} hilo. El modo multinúcleo está desactivado (eso frena mucho)',
   'voices.prepareTime': 'Preparación: {seconds} s',
+  'voices.bookPrepared':
+    'Libro preparado: {sentences} frases, {total} s en total, {busy} s de cálculo',
+  'voices.bookWaited':
+    'Casi todo ese tiempo fue espera: el dispositivo estaba ocupado con otra cosa.',
+  'voices.bookComputed': 'Ese tiempo se fue en la preparación misma.',
   'voices.lastSentence': 'Última frase: {compute} s de cálculo para {audio} s de audio ({factor}×)',
   'voices.fasterThanRealtime': 'Por debajo de 1× significa más rápido que el tiempo real: la reserva crece.',
   'voices.slowerThanRealtime': 'Por encima de 1× significa más lento que el tiempo real: la reserva se agota.',
@@ -567,6 +582,11 @@ const fr: Record<MessageKey, string> = {
   'voices.cores': 'Cœurs : {threads} fils sur {cores}',
   'voices.singleThread': 'Attention : un seul fil ({threads}). Le mode multicœur est désactivé, ce qui ralentit beaucoup',
   'voices.prepareTime': 'Préparation : {seconds} s',
+  'voices.bookPrepared':
+    'Livre préparé : {sentences} phrases, {total} s au total, dont {busy} s de calcul',
+  'voices.bookWaited':
+    'Ce temps est presque entièrement de l\'attente : l\'appareil était occupé ailleurs.',
+  'voices.bookComputed': 'Ce temps est passé dans la préparation elle-même.',
   'voices.lastSentence': 'Dernière phrase : {compute} s de calcul pour {audio} s de son ({factor}×)',
   'voices.fasterThanRealtime': 'En dessous de 1×, c\'est plus rapide que le temps réel : la réserve augmente.',
   'voices.slowerThanRealtime': 'Au-dessus de 1×, c\'est plus lent que le temps réel : la réserve diminue.',
@@ -694,6 +714,11 @@ const ru: Record<MessageKey, string> = {
   'voices.cores': 'Ядра: {threads} потоков из {cores}',
   'voices.singleThread': 'Внимание: только {threads} поток. Многоядерный режим выключен, это сильно замедляет работу',
   'voices.prepareTime': 'Подготовка: {seconds} с',
+  'voices.bookPrepared':
+    'Книга подготовлена: {sentences} предложений, {total} с всего, из них {busy} с вычислений',
+  'voices.bookWaited':
+    'Почти всё это время ушло на ожидание — устройство было занято другим.',
+  'voices.bookComputed': 'Это время ушло на саму подготовку.',
   'voices.lastSentence': 'Последнее предложение: {compute} с вычислений на {audio} с звука ({factor}×)',
   'voices.fasterThanRealtime': 'Меньше 1× — быстрее реального времени, запас растёт.',
   'voices.slowerThanRealtime': 'Больше 1× — медленнее реального времени, запас тает.',
@@ -821,6 +846,11 @@ const tr: Record<MessageKey, string> = {
   'voices.cores': 'İşlemci çekirdekleri: {cores} çekirdekten {threads} iş parçacığı',
   'voices.singleThread': 'Dikkat: yalnızca {threads} iş parçacığı. Çok çekirdekli mod kapalı, bu çok yavaşlatır',
   'voices.prepareTime': 'Hazırlık: {seconds} s',
+  'voices.bookPrepared':
+    'Kitap hazırlandı: {sentences} cümle, toplam {total} sn, bunun {busy} sn\'si hesaplama',
+  'voices.bookWaited':
+    'Bu sürenin neredeyse tamamı bekleme oldu – cihaz baska seyle mesguldu.',
+  'voices.bookComputed': 'Bu süre hazırlığın kendisine gitti.',
   'voices.lastSentence': 'Son cümle: {audio} s ses için {compute} s hesaplama ({factor}×)',
   'voices.fasterThanRealtime': '1× altı gerçek zamandan hızlı demektir, yedek büyür.',
   'voices.slowerThanRealtime': '1× üstü gerçek zamandan yavaş demektir, yedek erir.',

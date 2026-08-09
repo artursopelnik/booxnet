@@ -34,6 +34,10 @@ import {
   subscribeEngineInfo,
   type EngineInfo,
 } from '../lib/supertonic/client'
+import {
+  subscribeBuildStats,
+  type BuildStats,
+} from '../lib/buildStats'
 import { previewVoice, warmVoicePreviews } from '../lib/tts'
 import { useEngineDownload } from '../lib/useEngineDownload'
 import { t as translate } from '../lib/i18n'
@@ -51,12 +55,36 @@ function num(value: number): string {
  * nicht), ist das die Erklärung für zähe Synthese – hier sofort sichtbar,
  * statt nur in der Browser-Konsole.
  */
-function diagnosticLines(info: EngineInfo): string[] {
+function diagnosticLines(
+  info: EngineInfo,
+  build: BuildStats | null,
+): string[] {
   const { engine, synth } = info
-  if (!engine) {
-    return [translate('voices.notPrepared')]
+  const lines: string[] = []
+  // Zuerst die Buch-Aufbereitung: Sie steht auch dann schon da, wenn die
+  // Engine noch gar nicht geladen ist – und genau dann fragt man sich,
+  // warum das Öffnen so lange gedauert hat.
+  if (build) {
+    lines.push(
+      translate('voices.bookPrepared', {
+        sentences: build.sentences,
+        total: num(build.totalSeconds),
+        busy: num(build.busySeconds),
+      }),
+    )
+    // Der eigentliche Befund in einem Satz: Wer die Zeit verbraucht hat.
+    lines.push(
+      translate(
+        build.totalSeconds > build.busySeconds * 2 + 0.5
+          ? 'voices.bookWaited'
+          : 'voices.bookComputed',
+      ),
+    )
   }
-  const lines = [
+  if (!engine) {
+    return [...lines, translate('voices.notPrepared')]
+  }
+  lines.push(
     engine.isolated
       ? translate('voices.cores', {
           threads: engine.threads,
@@ -64,7 +92,7 @@ function diagnosticLines(info: EngineInfo): string[] {
         })
       : translate('voices.singleThread', { threads: engine.threads }),
     translate('voices.prepareTime', { seconds: num(engine.loadSeconds) }),
-  ]
+  )
   if (synth && synth.audioSeconds > 0) {
     const factor = synth.computeSeconds / synth.audioSeconds
     lines.push(
@@ -122,8 +150,10 @@ export default function VoiceSheet({
   const [presentAlert] = useIonAlert()
   /** Diagnose: Am Handy gibt es keine Browser-Konsole. */
   const [info, setInfo] = useState<EngineInfo>({ engine: null, synth: null })
+  const [build, setBuild] = useState<BuildStats | null>(null)
 
   useEffect(() => subscribeEngineInfo(setInfo), [])
+  useEffect(() => subscribeBuildStats(setBuild), [])
 
   useEffect(() => {
     if (isOpen) {
@@ -328,7 +358,7 @@ export default function VoiceSheet({
                 <details className="engine-details">
                   <summary>{t('voices.details')}</summary>
                   <div className="engine-diagnostics">
-                    {diagnosticLines(info).map((line) => (
+                    {diagnosticLines(info, build).map((line) => (
                       <div key={line}>{line}</div>
                     ))}
                   </div>
