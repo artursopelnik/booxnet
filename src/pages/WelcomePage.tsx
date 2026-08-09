@@ -35,6 +35,7 @@ import {
   type InstallMethod,
 } from '../lib/pwa'
 import { isStorageAvailable } from '../lib/supertonic/opfs'
+import { readSetting, writeSetting } from '../lib/storage'
 import { warmVoicePreviews } from '../lib/tts'
 import { STUDIO_VOICES } from '../lib/voices'
 
@@ -42,11 +43,15 @@ import { STUDIO_VOICES } from '../lib/voices'
 export const WELCOME_SEEN_KEY = 'booxnet.welcomeSeen'
 
 export function markWelcomeSeen(): void {
-  try {
-    localStorage.setItem(WELCOME_SEEN_KEY, '1')
-  } catch {
-    // Ohne Speicher erscheint die Seite ggf. erneut – verschmerzbar.
-  }
+  // Ohne Speicher erscheint die Seite ggf. erneut – verschmerzbar.
+  writeSetting(WELCOME_SEEN_KEY, '1')
+}
+
+/** True, sobald die Willkommensseite einmal gezeigt wurde. Ohne Speicher
+ * gilt sie als gesehen, damit niemand in einer Willkommens-Schleife
+ * landet. */
+export function hasSeenWelcome(): boolean {
+  return readSetting(WELCOME_SEEN_KEY) !== null
 }
 
 /**

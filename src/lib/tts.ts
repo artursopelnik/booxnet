@@ -14,6 +14,7 @@ import {
   TTS_TIMEOUT_ERROR,
 } from './supertonic/client'
 import { hasAsset, readAsset, writeAsset } from './supertonic/opfs'
+import { readNumberSetting, readSetting, writeSetting } from './storage'
 import {
   hasCachedSentence,
   readCachedSentence,
@@ -46,6 +47,12 @@ const RATE_KEY = 'vorleser.rate'
 // Sätze schnell hintereinander abgespielt werden, reißt der Vorrat nicht
 // ab. Kostet nur wenige MB Arbeitsspeicher (~0,5 MB pro Satz).
 const PREFETCH_AHEAD = 8
+/**
+ * Wie oft ein verdraengter Satz erneut angefordert wird, bevor die App
+ * aufgibt und den Nutzer fragt. Drei Anlaeufe decken schnelles Tippen ab,
+ * ohne dass eine Dauerverdraengung zur Endlosschleife wird.
+ */
+const MAX_DISPLACEMENT_RETRIES = 3
 /** Pause between sentences at 1× speed. */
 const SENTENCE_PAUSE_MS = 350
 /** Supertonic's recommended neutral speed. */
@@ -102,22 +109,21 @@ export function engineSpeed(rate: number): number {
 }
 
 export function getSavedVoiceId(): string | null {
-  const key = localStorage.getItem(VOICE_KEY)
+  const key = readSetting(VOICE_KEY)
   // Stored as "studio:<id>"; older system/neural keys fall through to null.
   return key?.startsWith('studio:') ? key.slice('studio:'.length) : null
 }
 
 export function saveVoiceId(id: string): void {
-  localStorage.setItem(VOICE_KEY, `studio:${id}`)
+  writeSetting(VOICE_KEY, `studio:${id}`)
 }
 
 export function getSavedRate(): number {
-  const value = Number(localStorage.getItem(RATE_KEY))
-  return value >= 0.5 && value <= 2 ? value : 1
+  return readNumberSetting(RATE_KEY, 0.5, 2, 1)
 }
 
 export function saveRate(rate: number): void {
-  localStorage.setItem(RATE_KEY, String(rate))
+  writeSetting(RATE_KEY, String(rate))
 }
 
 /** Builds the "Hallo, ich bin Alex." preview sentence. */
@@ -489,7 +495,13 @@ export class Speaker {
     return result
   }
 
-  private async speakCurrent(): Promise<void> {
+  /**
+   * `attempt` zaehlt Wiederholungen nach einer Verdraengung: Ein
+   * Play-Druck verdraengt laufende Berechnungen, und derselbe Satz wird
+   * danach neu angefordert. Ohne Obergrenze koennte sich das bei
+   * schnellen Stimm-/Tempowechseln endlos im Kreis drehen.
+   */
+  private async speakCurrent(attempt = 0): Promise<void> {
     const voice = this.voice
     const text = this.sentences[this.index]
     if (!voice || text === undefined) {
@@ -533,7 +545,14 @@ export class Speaker {
       // Verdrängt, obwohl weiterhin gewollt (gleiche Generation): erneut
       // anfordern statt für immer im Ladezustand hängen zu bleiben.
       if (error instanceof Error && error.name === TTS_CANCELLED_ERROR) {
-        void this.speakCurrent()
+        if (attempt < MAX_DISPLACEMENT_RETRIES) {
+          void this.speakCurrent(attempt + 1)
+          return
+        }
+        this.events.onError?.(
+          'Die Wiedergabe wurde mehrfach unterbrochen. Tippe erneut auf Play.',
+        )
+        this.setState('paused')
         return
       }
       // Die Synthese läuft komplett lokal – ein Timeout heißt "Gerät zu

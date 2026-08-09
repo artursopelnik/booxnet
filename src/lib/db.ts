@@ -74,11 +74,15 @@ export async function saveBookOrder(ids: string[]): Promise<void> {
   await transaction.done
 }
 
+/**
+ * Speichert die Leseposition in einer Transaktion: Lesen und Schreiben
+ * ohne Transaktion könnte eine gleichzeitige Änderung am selben Buch
+ * (z. B. Umbenennen aus der Bibliothek) überschreiben.
+ */
 export async function savePosition(id: string, position: number): Promise<void> {
   const database = await db()
-  const book = await database.get('books', id)
-  if (book) {
-    book.position = position
-    await database.put('books', book)
-  }
+  const transaction = database.transaction('books', 'readwrite')
+  const book = await transaction.store.get(id)
+  if (book) await transaction.store.put({ ...book, position })
+  await transaction.done
 }

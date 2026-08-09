@@ -45,7 +45,7 @@ import {
 import { ACCEPTED_FILES, importBook, unitCount } from '../lib/importers'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { getTheme, setTheme, THEME_LABELS, type ThemeChoice } from '../lib/theme'
-import { markWelcomeSeen, WELCOME_SEEN_KEY } from './WelcomePage'
+import { hasSeenWelcome, markWelcomeSeen } from './WelcomePage'
 
 export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([])
@@ -65,13 +65,7 @@ export default function LibraryPage() {
   // Erststart ohne Sprachpaket: erst das Willkommen mit Erklärung und
   // Download. Bestandsinstallationen (Paket vorhanden) sehen es nie.
   useIonViewWillEnter(() => {
-    let seen = true
-    try {
-      seen = localStorage.getItem(WELCOME_SEEN_KEY) !== null
-    } catch {
-      // Ohne Speicher lieber nicht in eine Willkommens-Schleife laufen.
-    }
-    if (seen) return
+    if (hasSeenWelcome()) return
     void isStudioEngineInstalled().then((installed) => {
       if (installed) markWelcomeSeen()
       else router.push('/welcome', 'root', 'replace')

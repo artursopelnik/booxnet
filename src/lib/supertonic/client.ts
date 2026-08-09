@@ -5,6 +5,7 @@
  */
 import type { StudioVoiceId } from '../voices'
 import { warmOrtWasmCache } from './ortwasm'
+import { sentenceKey } from './sentenceCache'
 
 interface WorkerResponse {
   id: number
@@ -170,6 +171,9 @@ function getWorker(): Worker {
       pending.clear()
       worker?.terminate()
       worker = null
+      firstRequestDone = false
+      warmedVoices.clear()
+      cache.clear()
       setEngineProgress(0)
       setSynthProgress(0)
       updateEngineInfo({ engine: null, synth: null })
@@ -241,7 +245,11 @@ function request(
         error.name = TTS_TIMEOUT_ERROR
         reject(error)
       },
-      firstRequestDone ? timeoutMs : FIRST_TIMEOUT_MS,
+      // Die erste Anfrage laedt die komplette Engine mit und braucht
+      // deshalb mindestens FIRST_TIMEOUT_MS – ein laenger angefragtes
+      // Zeitfenster (Hintergrund-Vorausberechnung) darf dabei aber nicht
+      // verkuerzt werden.
+      firstRequestDone ? timeoutMs : Math.max(timeoutMs, FIRST_TIMEOUT_MS),
     )
     pending.set(id, {
       resolve: (blob) => {
@@ -294,6 +302,10 @@ export function studioWarmup(voiceId: StudioVoiceId): void {
 export function resetStudioEngine(): void {
   cache.clear()
   warmedVoices.clear()
+  // Die naechste Anfrage laedt die Engine wieder komplett kalt und
+  // braucht das grosszuegige erste Zeitfenster – sonst meldet die App
+  // faelschlich eine Zeitueberschreitung.
+  firstRequestDone = false
   setEngineProgress(0)
   setSynthProgress(0)
   updateEngineInfo({ engine: null, synth: null })
@@ -353,7 +365,7 @@ export function studioSynthesize(
   steps: number = QUALITY_SYNTH_STEPS,
   channel: 'speech' | 'preview' = 'speech',
 ): Promise<Blob> {
-  const key = `${voiceId} ${lang} ${speed} ${text}`
+  const key = sentenceKey(voiceId, lang, speed, text)
   const hit = cache.get(key)
   // Der Nutzer wartet ab jetzt aktiv auf eine NEUE Berechnung: Den
   // Rest-Fortschritt der vorigen nicht als vollen Balken aufblitzen

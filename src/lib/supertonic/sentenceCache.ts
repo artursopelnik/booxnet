@@ -27,6 +27,22 @@ const PREFIX = 'sentences/'
 const MAX_ENTRIES = 24
 
 /**
+ * Identität eines gerechneten Satzes. Bewusst hier und nirgends sonst
+ * gebildet: Der flüchtige Zwischenspeicher im Client und dieser
+ * dauerhafte Speicher MÜSSEN dieselbe Identität benutzen. Würde einer
+ * von beiden ein Merkmal ergänzen (etwa die Schrittzahl), schriebe der
+ * Vorrat stillschweigend Dateien, die die Wiedergabe nie wiederfindet.
+ */
+export function sentenceKey(
+  voiceId: string,
+  lang: string,
+  speed: number,
+  text: string,
+): string {
+  return `${voiceId} ${lang} ${speed} ${text}`
+}
+
+/**
  * Kurzer Streuwert des Schlüssels als Dateiname. Web-Crypto liefert das
  * kollisionsfreie Ergebnis; fehlt es (unsicherer Kontext), tut es ein
  * einfacher FNV-1a-Wert samt Textlänge – bei zwei Dutzend Einträgen ist
@@ -55,7 +71,7 @@ async function pathFor(
   speed: number,
   text: string,
 ): Promise<string> {
-  return `${PREFIX}${await digest(`${voiceId} ${lang} ${speed} ${text}`)}.wav`
+  return `${PREFIX}${await digest(sentenceKey(voiceId, lang, speed, text))}.wav`
 }
 
 /** Fertig gerechneter Satz aus dem Speicher, oder null. */

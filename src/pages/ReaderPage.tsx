@@ -248,6 +248,8 @@ export default function ReaderPage() {
   /** Suppresses auto-follow briefly after the user scrolled manually. */
   const userScrollUntil = useRef(0)
   const programmaticScroll = useRef(false)
+  /** Läuft nach einem automatischen Bildlauf; gibt die Erkennung frei. */
+  const scrollReleaseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const sentences = useMemo(
     () => (book ? toSentences(book.pages) : []),
@@ -410,6 +412,17 @@ export default function ReaderPage() {
     return () => clearTimeout(timer)
   }, [book, current])
 
+  // Beim Verlassen die zuletzt erreichte Position auf jeden Fall sichern:
+  // Der gedrosselte Effekt oben verwirft seinen Timer beim Aufräumen, wer
+  // also innerhalb der 800 ms zurück in die Bibliothek geht, verlöre den
+  // Fortschritt der letzten Sätze.
+  useEffect(() => {
+    if (!book) return
+    return () => {
+      void savePosition(book.id, currentRef.current)
+    }
+  }, [book])
+
   // Follow the reading position – but never fight the user's own scrolling.
   useEffect(() => {
     if (state !== 'playing' && state !== 'loading') return
@@ -427,10 +440,27 @@ export default function ReaderPage() {
       block: 'center',
       behavior: reduceMotion ? 'auto' : 'smooth',
     })
-    setTimeout(() => {
+    // Nur EIN laufender Timer: Bei schnellen Satzwechseln würde sonst ein
+    // älterer Timer die Markierung mitten im noch laufenden Bildlauf
+    // freigeben – das zählte als Nutzer-Scrollen und schaltete das
+    // automatische Mitlaufen für 2,5 Sekunden ab.
+    if (scrollReleaseTimer.current !== null) {
+      clearTimeout(scrollReleaseTimer.current)
+    }
+    scrollReleaseTimer.current = setTimeout(() => {
+      scrollReleaseTimer.current = null
       programmaticScroll.current = false
     }, 700)
   }, [current, state])
+
+  useEffect(
+    () => () => {
+      if (scrollReleaseTimer.current !== null) {
+        clearTimeout(scrollReleaseTimer.current)
+      }
+    },
+    [],
+  )
 
   // Keyboard control: Space toggles playback, arrow keys skip sentences.
   const keyHandler = useRef<(event: KeyboardEvent) => void>(() => {})
