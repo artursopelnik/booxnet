@@ -162,9 +162,34 @@ ion-note,
 
 /* ---- Reader ---- */
 
-/* Long book titles must not collide with the back chevron / brand mark. */
+/**
+ * Lange Buchtitel dürfen nicht unter Zurück-Pfeil und Logo laufen.
+ *
+ * Der Titel ist im iOS-Stil absolut über der ganzen Leiste zentriert;
+ * freigehalten wird der Platz allein über diesen Abstand, und weil er
+ * für die Zentrierung auf beiden Seiten gleich sein muss, zählt die
+ * breitere Seite. Links stehen Zurück-Pfeil (~44 px) und Logo (22 px
+ * plus 2 × 12 px Abstand) – zusammen rund 90 px.
+ *
+ * Hier standen vorher 56 px, was Ionics Standard von 90 px sogar noch
+ * UNTERSCHRITTEN hat: Genau deshalb ragte der Titel über das Logo. Das
+ * Kürzen mit Auslassungspunkten bringt ion-title selbst mit, es griff
+ * nur zu spät – nämlich erst am Rand der Leiste statt am Logo.
+ */
 .reader-title {
-  padding-inline: 56px;
+  padding-inline: 96px;
+}
+
+/* Auf sehr schmalen Geräten bliebe für den Titel sonst kaum Platz –
+   dort weicht das rein dekorative Logo. */
+@media (max-width: 360px) {
+  .brand-mark {
+    display: none;
+  }
+
+  .reader-title {
+    padding-inline: 52px;
+  }
 }
 
 .reader-cover {
