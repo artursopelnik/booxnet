@@ -61,32 +61,46 @@ function yieldToBrowser(): Promise<void> {
 }
 
 /**
- * Setzt an Kommas ein Atem-Zeichen.
+ * Setzt an Kommas und Gedankenstrichen ein Atem-Zeichen.
  *
- * Das Modell verschluckt Kommas oft hörbar: "Doch er denkt nicht ans
- * Aufgeben, macht weiter." kommt ohne jede Pause heraus. Das Komma
- * selbst geht dabei nicht verloren – es erreicht die Synthese unversehrt
- * –, das Modell setzt es nur nicht um.
+ * Das Modell verschluckt beide hörbar. "Doch er denkt nicht ans
+ * Aufgeben, macht weiter." kommt ohne jede Pause heraus, und bei einem
+ * Einschub in Gedankenstrichen ebenso. Die Zeichen gehen dabei nicht
+ * verloren – sie erreichen die Synthese unversehrt.
+ *
+ * Beim Gedankenstrich kommt ein zweiter Grund dazu: Die Vorverarbeitung
+ * der Synthese ersetzt „–" und „—" durch einen gewöhnlichen Bindestrich
+ * (so macht es auch die Referenz-Umsetzung des Herstellers). Was beim
+ * Modell ankommt, sieht damit aus wie der Bindestrich in „E-Mail" – als
+ * Sprechpause ist er dort nicht mehr erkennbar.
  *
  * <breath> ist eines der zehn Ausdrucks-Zeichen von Supertonic 3 und
  * wird in der App bereits an Seitenanfängen verwendet. Entscheidend ist,
  * dass es INNERHALB derselben Berechnung steht: Den Satz am Komma zu
  * teilen und beide Hälften getrennt zu vertonen würde zwar auch eine
  * Pause erzeugen, aber die Betonung an der Nahtstelle zerreißen – genau
- * das Problem, das die Teilung langer Sätze schon hat.
+ * das Problem, das die Teilung langer Sätze bis vor Kurzem hatte.
  *
- * Bewusst zurückhaltend: Ein Atemzug nach jedem Komma klänge kurzatmig.
- * Er kommt nur, wenn davor ein echter Teilsatz steht und danach mehr
- * folgt als ein angehängtes Wort.
+ * Die beiden Schwellen sind die Stellschraube, falls es zu kurzatmig
+ * klingt: Ein Atemzug kommt nur, wenn seit dem letzten mindestens ein
+ * halber Satz vergangen ist und danach mehr folgt als ein angehängtes
+ * Wort. Das hält auch Aufzählungen mit vielen kurzen Gliedern in Ruhe.
  */
-const BREATH_MIN_BEFORE = 20
+const BREATH_MIN_BEFORE = 30
 const BREATH_MIN_AFTER = 8
 
-function markCommaPauses(text: string): string {
+function markSpeechPauses(text: string): string {
   let result = ''
   let lastCut = 0
   for (let i = 0; i < text.length; i++) {
-    if (text[i] !== ',' || text[i + 1] !== ' ') continue
+    const isComma = text[i] === ',' && text[i + 1] === ' '
+    // Gedankenstrich nur MIT Leerzeichen auf beiden Seiten – sonst träfe
+    // es den Bindestrich in Wörtern wie „Schwarz-Weiß".
+    const isDash =
+      (text[i] === '-' || text[i] === '–' || text[i] === '—') &&
+      text[i - 1] === ' ' &&
+      text[i + 1] === ' '
+    if (!isComma && !isDash) continue
     if (i - lastCut < BREATH_MIN_BEFORE) continue
     if (text.length - (i + 2) < BREATH_MIN_AFTER) continue
     result += `${text.slice(lastCut, i + 2)}<breath> `
@@ -157,7 +171,7 @@ export async function buildBookStructure(
     const speakable = isSpeakable(clean)
     // Reihenfolge zaehlt: Erst bereinigen (die Bereinigung wuerde die
     // spitzen Klammern der Ausdrucks-Zeichen entfernen), dann markieren.
-    const spoken = speakable ? markCommaPauses(clean) : clean
+    const spoken = speakable ? markSpeechPauses(clean) : clean
     speakItems.push({
       text: startsPage && speakable ? `<breath> ${spoken}` : spoken,
       pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),

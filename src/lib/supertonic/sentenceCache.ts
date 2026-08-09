@@ -60,7 +60,7 @@ export function sentenceKey(
  * v2: Qualität von 4 auf 6 Entrausch-Schritte.
  * v3: Lange Sätze werden an Satzzeichen statt an Wortgrenzen geteilt,
  *     mit deutlich kürzerer Pause an der Nahtstelle.
- * v4: Atem-Zeichen an Kommas.
+ * v4: Atem-Zeichen an Kommas und Gedankenstrichen.
  */
 const CACHE_VERSION = 'v4'
 
