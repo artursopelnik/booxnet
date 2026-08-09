@@ -579,7 +579,10 @@ async function handle(
       `[booxnet-tts] Synthese ${request.voiceId}` +
         ` (prio=${request.priority === true}, wartend=${taskQueue.length})`,
     )
-    const steps = Math.min(12, Math.max(1, Math.round(request.steps ?? 4)))
+    // Der Client schickt die Schrittzahl immer mit; der Rückfallwert
+    // greift nur bei einer unvollständigen Anfrage. Bewusst konservativ,
+    // damit daraus nie unbemerkt eine andere Klangqualität wird.
+    const steps = Math.min(12, Math.max(1, Math.round(request.steps ?? 6)))
     runningTask = {
       id: request.id,
       priority: request.priority === true,

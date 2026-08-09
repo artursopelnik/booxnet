@@ -155,8 +155,11 @@ export function previewTextFor(voice: StudioVoiceMeta): string {
 const PREVIEW_CACHE_VERSION = 'v3'
 
 /**
- * Die Begrüßung wird nur einmal gerechnet und dauerhaft gespeichert –
- * hier darf die Qualität deshalb höher sein als beim laufenden Vorlesen.
+ * Die Begrüßung wird nur einmal gerechnet und dauerhaft gespeichert, die
+ * Rechenzeit fällt also kein zweites Mal an. Deshalb steht hier ein
+ * eigener Wert, auch wenn er derzeit dem des Vorlesens entspricht: Wird
+ * die Qualität des Vorlesens aus Tempogründen gesenkt, soll die
+ * Vorstellung davon unberührt bleiben.
  */
 const PREVIEW_SYNTH_STEPS = 6
 
