@@ -49,6 +49,8 @@ import { ACCEPTED_FILES, importBook, unitCount } from '../lib/importers'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import { getTheme, setTheme, themeLabel, type ThemeChoice } from '../lib/theme'
 import { getUiLang, setUiLang, UI_LANGUAGES, type UiLang } from '../lib/i18n'
+import type { ActionSheetOptions } from '@ionic/core'
+import { claimBackGesture } from '../lib/useBackDismiss'
 import { useT } from '../lib/useT'
 import { hasSeenWelcome, markWelcomeSeen } from './WelcomePage'
 
@@ -60,7 +62,7 @@ export default function LibraryPage() {
   const router = useIonRouter()
   const [presentToast] = useIonToast()
   const [presentAlert] = useIonAlert()
-  const [presentActionSheet] = useIonActionSheet()
+  const [presentActionSheet, dismissActionSheet] = useIonActionSheet()
 
   const refresh = () => {
     getAllBooks().then(setBooks)
@@ -124,7 +126,7 @@ export default function LibraryPage() {
    * bleibt als Abkürzung erhalten.
    */
   const openBookMenu = (book: BookMeta) => {
-    void presentActionSheet({
+    presentSheet({
       header: book.title,
       buttons: [
         {
@@ -176,13 +178,24 @@ export default function LibraryPage() {
     void saveBookOrder(reordered.map((book) => book.id))
   }
 
+  /**
+   * Auswahlblatt so oeffnen, dass die Android-Zurueck-Geste es schliesst.
+   * Ohne das verliess ein Zurueck-Druck bei offenem Blatt die App, weil
+   * die Bibliothek der unterste Eintrag im Verlauf ist.
+   */
+  const presentSheet = (options: ActionSheetOptions) => {
+    let freigeben = () => {}
+    void presentActionSheet({ ...options, onDidDismiss: () => freigeben() })
+    freigeben = claimBackGesture(() => void dismissActionSheet())
+  }
+
   const chooseTheme = () => {
     const current = getTheme()
     const option = (choice: ThemeChoice) => ({
       text: themeLabel(choice) + (current === choice ? ' ✓' : ''),
       handler: () => setTheme(choice),
     })
-    void presentActionSheet({
+    presentSheet({
       header: t('theme.header'),
       buttons: [
         option('auto'),
@@ -196,7 +209,7 @@ export default function LibraryPage() {
 
   const chooseUiLanguage = () => {
     const current = getUiLang()
-    void presentActionSheet({
+    presentSheet({
       header: t('library.uiLanguage'),
       buttons: [
         ...UI_LANGUAGES.map(({ code, name }) => ({
