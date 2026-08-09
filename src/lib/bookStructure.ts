@@ -95,6 +95,32 @@ function yieldToBrowser(): Promise<void> {
  * darum in pauseAfter zwischen die Sätze, nicht in den Text hinein.
  */
 
+/**
+ * Die naechsten wirklich sprechbaren Texte ab einer Position.
+ *
+ * Uebersprungene Eintraege (Seitenzahlen, Zierzeichen) faellt es hier
+ * heraus - sie wuerden sonst einen Vorabruf-Platz belegen, ohne je zu
+ * klingen.
+ *
+ * Schleife mit Frueh-Abbruch statt slice().filter(): Letzteres kopiert
+ * den gesamten Buchrest (bis zu 20.000 Elemente) zweimal, um eine
+ * Handvoll Saetze zu behalten.
+ */
+export function upcomingSpeakTexts(
+  items: SentenceInput[],
+  from: number,
+  limit: number,
+): string[] {
+  const texts: string[] = []
+  if (limit <= 0) return texts
+  for (let i = Math.max(0, from); i < items.length; i++) {
+    if (items[i].skip) continue
+    texts.push(items[i].text)
+    if (texts.length >= limit) break
+  }
+  return texts
+}
+
 /** Punctuation-aware pause: questions/exclamations breathe a bit longer,
  * colons and semicolons connect more tightly to what follows. */
 function pauseForEnding(text: string): number {

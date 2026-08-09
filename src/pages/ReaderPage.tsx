@@ -32,8 +32,10 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import VoiceSheet from '../components/VoiceSheet'
 import { getBook, savePosition, type Book } from '../lib/db'
+import { saveResumePoint } from '../lib/resumeQueue'
 import {
   buildBookStructure,
+  upcomingSpeakTexts,
   type BookStructure,
   type BuildToken,
   type PageGroup,
@@ -95,6 +97,13 @@ const EMPTY_SPEAK_ITEMS: SentenceInput[] = []
  * beim nächsten App-Start das Laden der Engine zu überbrücken.
  */
 const IDLE_PREFETCH_AHEAD = 5
+
+/**
+ * So viele Saetze merkt sich der Reader fuer die Bibliothek. Weniger als
+ * im Leerlauf: Die Bibliothek soll den Einstieg vorbereiten, nicht das
+ * halbe Buch auf Verdacht rechnen.
+ */
+const RESUME_PREFETCH_AHEAD = 2
 
 /**
  * One page/chapter/section. Memoized so that a sentence change only
@@ -376,6 +385,12 @@ export default function ReaderPage() {
   /** Aktuelle Position für Effekte, die nicht pro Satz neu laufen sollen. */
   const currentRef = useRef(current)
   currentRef.current = current
+  // Fuer die Aufraeum-Funktion beim Verlassen: Sie laeuft nur an [book]
+  // und saehe sonst den Stand vom ersten Rendern.
+  const speakItemsRef = useRef<SentenceInput[]>(speakItems)
+  speakItemsRef.current = speakItems
+  const bookLangRef = useRef(bookLang)
+  bookLangRef.current = bookLang
 
   // Warm up the engine and the next sentences as soon as the reader is
   // open – tapping Play then starts quickly instead of on a cold engine.
@@ -391,15 +406,11 @@ export default function ReaderPage() {
     // Fünf Sätze statt zwei: Sie landen dauerhaft im Speicher und müssen
     // beim nächsten App-Start das Laden der Engine mit Ton überbrücken –
     // dafür reichen zwei Sätze nicht.
-    // Schleife mit Frueh-Abbruch statt slice().filter(): Letzteres kopiert
-    // den gesamten Buchrest (bis zu 15.000 Elemente) zweimal, um fuenf
-    // Saetze zu behalten.
-    const next: string[] = []
-    for (let i = currentRef.current; i < speakItems.length; i++) {
-      if (speakItems[i].skip) continue
-      next.push(speakItems[i].text)
-      if (next.length >= IDLE_PREFETCH_AHEAD) break
-    }
+    const next = upcomingSpeakTexts(
+      speakItems,
+      currentRef.current,
+      IDLE_PREFETCH_AHEAD,
+    )
     if (next.length > 0) {
       prefetchSentences(voice.id, bookLang, next, engineSpeed(rate))
     }
@@ -424,6 +435,19 @@ export default function ReaderPage() {
     if (!book) return
     return () => {
       void savePosition(book.id, currentRef.current)
+      // Wo es weitergeht, als reiner Text: Damit rechnet die Bibliothek
+      // beim naechsten App-Start schon vor, bevor das Buch offen ist
+      // (siehe resumeQueue.ts). Genau hier ist der richtige Zeitpunkt -
+      // erst jetzt steht die Einstiegsstelle fest.
+      saveResumePoint({
+        bookId: book.id,
+        lang: bookLangRef.current,
+        texts: upcomingSpeakTexts(
+          speakItemsRef.current,
+          currentRef.current,
+          RESUME_PREFETCH_AHEAD,
+        ),
+      })
     }
   }, [book])
 
