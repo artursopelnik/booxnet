@@ -25,9 +25,10 @@ offline und im Look einer nativen iOS-App.
   ausgenommen, Seiten rendern memoisiert.
 - **Natürlicher Lesefluss:** satzzeichen-präzise Pausen (Fragen/Ausrufe
   atmen länger nach, Doppelpunkte binden enger) mit leichtem Zufalls-
-  Jitter, längere Pausen an Seitenwechseln, hörbare Atmer an
-  Absatzanfängen über Supertonics `<breath>`-Expression-Tag, höhere
-  Denoising-Qualität bei WebGPU. Abkürzungen wie „z. B." oder „Prof. Dr."
+  Jitter, längere Pausen an Seitenwechseln, höhere
+  Denoising-Qualität bei WebGPU. Pausen entstehen ausschließlich zwischen
+  den Sätzen: Ausdrucks-Zeichen wie `<breath>` lösen die öffentlichen
+  ONNX-Dateien nicht ein, sie würden buchstäblich vorgelesen. Abkürzungen wie „z. B." oder „Prof. Dr."
   erzeugen keine falschen Satzbrüche. Das
   Lesetempo (0,5×–2×) wird nativ in der Synthese umgesetzt statt das
   Audio zu beschleunigen, und über Zeilenumbrüche getrennte Wörter
