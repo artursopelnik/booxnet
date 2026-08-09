@@ -10,6 +10,7 @@
  * mirrored deployment keeps working even if the upstream repository
  * disappears. Everything is stored in OPFS for offline use.
  */
+import { t } from '../i18n'
 import { STUDIO_VOICES, type StudioVoiceId } from '../voices'
 import { warmOrtWasmCache } from './ortwasm'
 import {
@@ -26,14 +27,9 @@ export const STUDIO_ENGINE_SIZE_MB = 400
 
 export type StudioDownloadFailure = 'storage' | 'quota' | 'network'
 
-/** Nutzerfreundliche Erklärungen je Download-Fehlerursache. */
-export const DOWNLOAD_ERRORS: Record<StudioDownloadFailure, string> = {
-  storage:
-    'Dein Browser erlaubt hier keinen Speicher für das Sprachmodell, das passiert vor allem in privaten Fenstern. Öffne Booxnet in einem normalen Fenster und lade es dort herunter.',
-  quota:
-    `Auf deinem Gerät ist zu wenig Speicherplatz für das Sprachmodell frei (ca. ${STUDIO_ENGINE_SIZE_MB} MB). Schaffe etwas Platz und versuche es dann erneut. Bereits geladene Teile bleiben erhalten.`,
-  network:
-    'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal. Bereits geladene Teile bleiben erhalten.',
+/** Nutzerfreundliche Erklärung je Download-Fehlerursache. */
+export function downloadErrorMessage(reason: StudioDownloadFailure): string {
+  return t(`download.${reason}`, { mb: STUDIO_ENGINE_SIZE_MB })
 }
 
 /** Download error with a coarse cause so the UI can give accurate advice. */

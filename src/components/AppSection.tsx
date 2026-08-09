@@ -15,6 +15,7 @@ import {
 } from 'ionicons/icons'
 import { useEffect, useRef, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { useT } from '../lib/useT'
 import {
   getInstallMethod,
   onInstallChange,
@@ -28,6 +29,7 @@ import {
  * keine Installation möglich ist) der Update-Eintrag.
  */
 export default function AppSection() {
+  const t = useT()
   const [installMethod, setInstallMethod] = useState<InstallMethod>(() =>
     getInstallMethod(),
   )
@@ -64,7 +66,7 @@ export default function AppSection() {
     if (!registration) {
       presentToast({
         message:
-          'Update-Prüfung hier nicht möglich, denn die App läuft ohne Service Worker (z. B. im privaten Fenster).',
+          t('update.noServiceWorker'),
         duration: 4000,
         color: 'warning',
       })
@@ -91,14 +93,14 @@ export default function AppSection() {
         setUpdateReady(true)
       } else {
         presentToast({
-          message: 'Du hast bereits die neuste Version.',
+          message: t('update.upToDate'),
           duration: 3000,
         })
       }
     } catch {
       presentToast({
         message:
-          'Update-Prüfung fehlgeschlagen. Prüfe deine Internetverbindung und versuche es später noch einmal.',
+          t('update.failed'),
         duration: 4000,
         color: 'danger',
       })
@@ -121,7 +123,7 @@ export default function AppSection() {
               color="primary"
             />
             <IonLabel>
-              <h2>Zum Home-Bildschirm hinzufügen</h2>
+              <h2>{t('install.addToHome')}</h2>
             </IonLabel>
           </IonItem>
         ) : (
@@ -143,9 +145,9 @@ export default function AppSection() {
             />
             <IonLabel>
               <h2>
-                {hasUpdate ? 'Update installieren' : 'Nach Update suchen'}
+                {hasUpdate ? t('update.install') : t('update.check')}
               </h2>
-              {hasUpdate && <IonNote>Tippen zum Neuladen</IonNote>}
+              {hasUpdate && <IonNote>{t('update.tapToReload')}</IonNote>}
             </IonLabel>
             {checking && <IonSpinner slot="end" name="crescent" />}
           </IonItem>
@@ -154,11 +156,11 @@ export default function AppSection() {
       <IonAlert
         isOpen={showIosHelp}
         onDidDismiss={() => setShowIosHelp(false)}
-        header="Zum Home-Bildschirm"
+        header={t('install.header')}
         message={
-          'Auf dem iPhone/iPad geht das nur über Safari selbst: Tippe unten auf das Teilen-Symbol (Quadrat mit Pfeil nach oben) und wähle dann „Zum Home-Bildschirm". Danach startet Booxnet wie eine App.'
+          t('install.iosHelp')
         }
-        buttons={['Verstanden']}
+        buttons={[t('common.understood')]}
       />
     </>
   )

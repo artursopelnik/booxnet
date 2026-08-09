@@ -27,6 +27,7 @@ import {
   withTrailingSilence,
 } from './audioOutput'
 import { hasAsset, readAsset, writeAsset } from './supertonic/opfs'
+import { getUiLang, t } from './i18n'
 import { readNumberSetting, readSetting, writeSetting } from './storage'
 import {
   hasCachedSentence,
@@ -139,9 +140,13 @@ export function saveRate(rate: number): void {
   writeSetting(RATE_KEY, String(rate))
 }
 
-/** Builds the "Hallo, ich bin Alex." preview sentence. */
+/**
+ * Der Vorstell-Satz ist GESPROCHENER Text, nicht Oberfläche: Er wird in
+ * der Oberflächensprache formuliert und auch in ihr vertont, damit sich
+ * die Stimme nicht auf Deutsch vorstellt, während die App Englisch ist.
+ */
 export function previewTextFor(voice: StudioVoiceMeta): string {
-  return `Hallo, ich bin ${voice.name}. So klinge ich, wenn ich dir dein Buch vorlese.`
+  return t('speech.preview', { name: voice.name })
 }
 
 /**
@@ -164,7 +169,9 @@ const PREVIEW_CACHE_VERSION = 'v3'
 const PREVIEW_SYNTH_STEPS = 6
 
 function previewAssetPath(voice: StudioVoiceMeta): string {
-  return `previews/${PREVIEW_CACHE_VERSION}-${voice.id}.wav`
+  // Sprache im Namen: Sonst spielte nach einem Sprachwechsel die alte
+  // Aufnahme in der alten Sprache weiter.
+  return `previews/${PREVIEW_CACHE_VERSION}-${getUiLang()}-${voice.id}.wav`
 }
 
 async function renderPreview(
@@ -173,7 +180,7 @@ async function renderPreview(
 ): Promise<Blob> {
   const blob = await studioSynthesize(
     voice.id,
-    'de',
+    getUiLang(),
     previewTextFor(voice),
     BASE_SPEED,
     priority,
@@ -591,9 +598,7 @@ export class Speaker {
           void this.speakCurrent(attempt + 1)
           return
         }
-        this.events.onError?.(
-          'Die Wiedergabe wurde mehrfach unterbrochen. Tippe erneut auf Play.',
-        )
+        this.events.onError?.(t('speech.displaced'))
         this.setState('paused')
         return
       }
@@ -602,11 +607,7 @@ export class Speaker {
       // etwas fehlt oder kaputt ist, hilft ein erneuter Modell-Download.
       const timedOut =
         error instanceof Error && error.name === TTS_TIMEOUT_ERROR
-      this.events.onError?.(
-        timedOut
-          ? 'Dein Gerät hat für diesen Satz ungewöhnlich lange gebraucht. Tippe erneut auf Play, es geht an derselben Stelle weiter.'
-          : 'Die Stimme konnte nicht erzeugt werden. Falls das wiederholt passiert, lade das Sprachmodell in der Stimmen-Auswahl erneut herunter.',
-      )
+      this.events.onError?.(t(timedOut ? 'speech.timedOut' : 'speech.failed'))
       this.setState('paused')
       return
     }
@@ -619,9 +620,7 @@ export class Speaker {
       // iOS verweigert das Abspielen, wenn die Entsperrung in der Geste
       // nicht geklappt hat. Ehrlich melden statt stumm haengen zu bleiben.
       if (generation !== this.generation) return
-      this.events.onError?.(
-        'Die Wiedergabe konnte nicht starten. Tippe noch einmal auf Play.',
-      )
+      this.events.onError?.(t('speech.startFailed'))
       this.setState('paused')
       return
     }

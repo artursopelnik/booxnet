@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { setUiLang } from './i18n'
 import { detectStudioLang, langLabel } from './lang'
+
+// Der Rückfall folgt der Oberflächensprache; für diese Tests fest auf
+// Deutsch, damit sie unabhängig von der Browser-Sprache laufen.
+beforeEach(() => {
+  setUiLang('de')
+})
 
 describe('detectStudioLang', () => {
   it('erkennt Deutsch an den häufigsten Wörtern', () => {
@@ -60,13 +67,14 @@ describe('detectStudioLang', () => {
 })
 
 describe('langLabel', () => {
-  it('gibt deutsche Sprachnamen zurück', () => {
+  // Die Sprachnamen folgen der Oberflächensprache, nicht dem Buch.
+  it('gibt die Namen in der Oberflächensprache zurück', () => {
+    setUiLang('de')
     expect(langLabel('de')).toBe('Deutsch')
     expect(langLabel('en')).toBe('Englisch')
-  })
-
-  it('beschreibt die sprachunabhängige Einstellung in Worten', () => {
-    expect(langLabel('na')).toBe('Automatisch')
+    setUiLang('en')
+    expect(langLabel('de')).toBe('German')
+    expect(langLabel('en')).toBe('English')
   })
 
   it('gibt unbekannte Kürzel unverändert zurück, statt zu scheitern', () => {

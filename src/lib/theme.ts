@@ -6,6 +6,7 @@
  * (dark.class.css / high-contrast.class.css).
  */
 
+import { t } from './i18n'
 import { readSetting, removeSetting, writeSetting } from './storage'
 
 export type ThemeChoice = 'auto' | 'light' | 'dark' | 'eink'
@@ -47,9 +48,7 @@ export function applyStoredTheme(): void {
   })
 }
 
-export const THEME_LABELS: Record<ThemeChoice, string> = {
-  auto: 'Automatisch',
-  light: 'Hell',
-  dark: 'Dunkel',
-  eink: 'E-Ink (hoher Kontrast)',
+/** Beschriftung in der Oberflächensprache. */
+export function themeLabel(choice: ThemeChoice): string {
+  return t(`theme.${choice}`)
 }
