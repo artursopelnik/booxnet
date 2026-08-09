@@ -12,6 +12,7 @@
  * Portionen und gibt zwischendurch die Kontrolle an den Browser zurück.
  * Die Oberfläche bleibt bedienbar und kann den Fortschritt zeigen.
  */
+import { setBuildStats } from './buildStats'
 import type { SentenceInput } from './tts'
 import {
   appendPageSentences,
@@ -96,13 +97,29 @@ export async function buildBookStructure(
   token: BuildToken,
   onProgress?: (value: number) => void,
 ): Promise<BookStructure | null> {
+  // Rechenzeit und vergangene Zeit getrennt mitschreiben – nur der
+  // Vergleich der beiden verrät, ob eine zähe Aufbereitung an der Arbeit
+  // hier liegt oder daran, dass das Gerät nebenher beschäftigt ist
+  // (siehe buildStats.ts). Die Messung selbst kostet zwei Zeitabfragen
+  // je Unterbrechung, also einige Dutzend im ganzen Buch.
+  const started = performance.now()
+  let busy = 0
+  let yields = 0
+  let sliceStart = started
+  async function pause(): Promise<void> {
+    busy += performance.now() - sliceStart
+    yields++
+    await yieldToBrowser()
+    sliceStart = performance.now()
+  }
+
   const sentences: SentenceRef[] = []
   for (let page = 0; page < pageTexts.length; page++) {
     appendPageSentences(sentences, pageTexts[page], page)
     if ((page + 1) % CHUNK === 0) {
       // Erste Hälfte des Fortschritts: die Satztrennung.
       onProgress?.((0.5 * (page + 1)) / pageTexts.length)
-      await yieldToBrowser()
+      await pause()
       if (token.cancelled) return null
     }
   }
@@ -140,12 +157,19 @@ export async function buildBookStructure(
 
     if ((index + 1) % CHUNK === 0) {
       onProgress?.(0.5 + (0.5 * (index + 1)) / sentences.length)
-      await yieldToBrowser()
+      await pause()
       if (token.cancelled) return null
     }
   }
 
   onProgress?.(1)
+  const ended = performance.now()
+  setBuildStats({
+    sentences: sentences.length,
+    totalSeconds: (ended - started) / 1000,
+    busySeconds: (busy + (ended - sliceStart)) / 1000,
+    yields,
+  })
   return {
     sentences,
     pages: [...groups.entries()]
