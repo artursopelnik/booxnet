@@ -4,7 +4,9 @@ dev-dist/
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
-# Gespiegelte Supertonic-Modelle (~400 MB) – siehe vendor/supertonic/NOTICE.md
+# Beim Build aus models/supertonic/ zusammengesetzt (build-supertonic.mjs).
+# Die Modelle selbst liegen gestueckelt in Git unter models/supertonic/ –
+# NICHT hier: das waere dieselbe Datenmenge ein zweites Mal in der Historie.
 public/supertonic/
 # onnxruntime-WASM-Binärdateien, kopiert von scripts/copy-ort-wasm.mjs
 public/ort/
