@@ -1,0 +1,7 @@
+# Das eingecheckte Sprachpaket ist binaer und muss Byte fuer Byte so
+# wieder herauskommen, wie es hineingegangen ist. Ohne diese Regel
+# koennte Git auf Windows-Klons Zeilenenden umschreiben und die Modelle
+# damit unbrauchbar machen - der Build wuerde es an der SHA-256-Summe
+# merken, aber erst nach einem 400-MB-Umweg.
+models/supertonic/** -text -diff
+*.onnx -text -diff

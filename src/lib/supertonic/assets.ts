@@ -5,10 +5,13 @@
  * ~400 MB) – it is downloaded once. The individual voices are tiny style
  * files (a few hundred KB) and are fetched on demand per voice.
  *
- * Every fetch tries the self-hosted mirror under /supertonic/ first (see
- * scripts/mirror-supertonic.mjs) and only falls back to Hugging Face, so a
- * mirrored deployment keeps working even if the upstream repository
- * disappears. Everything is stored in OPFS for offline use.
+ * Alle Dateien kommen ausschließlich von der eigenen Auslieferung unter
+ * /supertonic/. Sie liegen gestückelt in Git (models/supertonic/) und
+ * werden beim Build dorthin zusammengesetzt (scripts/build-supertonic.mjs)
+ * – es gibt bewusst KEINEN Rückfall auf eine fremde Quelle. Ein solcher
+ * Rückfall wäre ein stiller Totalausfall in dem Moment, in dem der Fremde
+ * abschaltet; so hängt die App nur noch an ihrer eigenen Auslieferung.
+ * Gespeichert wird alles in OPFS und damit offline nutzbar.
  */
 import { t } from '../i18n'
 import { STUDIO_VOICES, type StudioVoiceId } from '../voices'
@@ -43,8 +46,6 @@ export class StudioDownloadError extends Error {
   }
 }
 
-const HF_BASE = 'https://huggingface.co/Supertone/supertonic-3/resolve/main'
-
 const ENGINE_ASSETS = [
   'onnx/tts.json',
   'onnx/unicode_indexer.json',
@@ -58,29 +59,27 @@ function styleAsset(voiceId: StudioVoiceId): string {
   return `voice_styles/${voiceId}.json`
 }
 
-function mirrorUrl(path: string): string {
+function assetUrl(path: string): string {
   return `${import.meta.env.BASE_URL}supertonic/${path}`
 }
 
-/** Fetches an asset, preferring the self-hosted mirror over Hugging Face. */
+/** Holt eine Modelldatei – same-origin, ohne Ausweichquelle. */
 async function fetchAsset(
   path: string,
   signal?: AbortSignal,
 ): Promise<Response> {
-  try {
-    const local = await fetch(mirrorUrl(path), { signal })
-    const type = local.headers.get('Content-Type') ?? ''
-    // A missing mirror file on SPA hosts returns index.html – reject that.
-    if (local.ok && !type.includes('text/html')) return local
-  } catch (error) {
-    if (signal?.aborted) throw error
-    // Mirror unreachable – fall through.
+  const response = await fetch(assetUrl(path), { signal })
+  if (!response.ok) {
+    throw new Error(`Download failed for ${path}: HTTP ${response.status}`)
   }
-  const remote = await fetch(`${HF_BASE}/${path}`, { signal })
-  if (!remote.ok) {
-    throw new Error(`Download failed for ${path}: HTTP ${remote.status}`)
+  // Auf SPA-Hosts beantwortet der Fallback jede fehlende Datei mit
+  // index.html – die käme sonst als "erfolgreiches" ONNX-Modell an und
+  // fiele erst tief in der Synthese als unverständlicher Fehler auf.
+  const type = response.headers.get('Content-Type') ?? ''
+  if (type.includes('text/html')) {
+    throw new Error(`Download failed for ${path}: Datei nicht ausgeliefert`)
   }
-  return remote
+  return response
 }
 
 export async function isStudioEngineInstalled(): Promise<boolean> {

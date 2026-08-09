@@ -60,54 +60,22 @@ function yieldToBrowser(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-/**
- * Setzt an Kommas und Gedankenstrichen ein Atem-Zeichen.
+/*
+ * KEINE Ausdrucks-Zeichen im Text!
  *
- * Das Modell verschluckt beide hörbar. "Doch er denkt nicht ans
- * Aufgeben, macht weiter." kommt ohne jede Pause heraus, und bei einem
- * Einschub in Gedankenstrichen ebenso. Die Zeichen gehen dabei nicht
- * verloren – sie erreichen die Synthese unversehrt.
+ * Es lag nahe, Pausen über Supertonics <breath> zu erzwingen – die
+ * Projektseite führt zehn solcher Zeichen als Funktion. Die öffentlichen
+ * ONNX-Dateien lösen sie aber nicht ein: Der Tokenizer bildet in
+ * worker.ts JEDES Zeichen einzeln über unicode_indexer ab, es gibt keine
+ * Erkennung mehrstelliger Zeichenfolgen. „<breath>" kommt deshalb als
+ * die acht Zeichen an, die es ist – und wird vorgelesen. Im Buch war an
+ * jedem Komma ein „brit" zu hören.
  *
- * Beim Gedankenstrich kommt ein zweiter Grund dazu: Die Vorverarbeitung
- * der Synthese ersetzt „–" und „—" durch einen gewöhnlichen Bindestrich
- * (so macht es auch die Referenz-Umsetzung des Herstellers). Was beim
- * Modell ankommt, sieht damit aus wie der Bindestrich in „E-Mail" – als
- * Sprechpause ist er dort nicht mehr erkennbar.
- *
- * <breath> ist eines der zehn Ausdrucks-Zeichen von Supertonic 3 und
- * wird in der App bereits an Seitenanfängen verwendet. Entscheidend ist,
- * dass es INNERHALB derselben Berechnung steht: Den Satz am Komma zu
- * teilen und beide Hälften getrennt zu vertonen würde zwar auch eine
- * Pause erzeugen, aber die Betonung an der Nahtstelle zerreißen – genau
- * das Problem, das die Teilung langer Sätze bis vor Kurzem hatte.
- *
- * Die beiden Schwellen sind die Stellschraube, falls es zu kurzatmig
- * klingt: Ein Atemzug kommt nur, wenn seit dem letzten mindestens ein
- * halber Satz vergangen ist und danach mehr folgt als ein angehängtes
- * Wort. Das hält auch Aufzählungen mit vielen kurzen Gliedern in Ruhe.
+ * Dass die Sprachauszeichnung <de>…</de> funktioniert, ist kein
+ * Gegenbeweis: Auf die ist das Modell trainiert. Für alles andere gilt:
+ * Was in den Text geschrieben wird, wird gesprochen. Pausen gehören
+ * darum in pauseAfter zwischen die Sätze, nicht in den Text hinein.
  */
-const BREATH_MIN_BEFORE = 30
-const BREATH_MIN_AFTER = 8
-
-function markSpeechPauses(text: string): string {
-  let result = ''
-  let lastCut = 0
-  for (let i = 0; i < text.length; i++) {
-    const isComma = text[i] === ',' && text[i + 1] === ' '
-    // Gedankenstrich nur MIT Leerzeichen auf beiden Seiten – sonst träfe
-    // es den Bindestrich in Wörtern wie „Schwarz-Weiß".
-    const isDash =
-      (text[i] === '-' || text[i] === '–' || text[i] === '—') &&
-      text[i - 1] === ' ' &&
-      text[i + 1] === ' '
-    if (!isComma && !isDash) continue
-    if (i - lastCut < BREATH_MIN_BEFORE) continue
-    if (text.length - (i + 2) < BREATH_MIN_AFTER) continue
-    result += `${text.slice(lastCut, i + 2)}<breath> `
-    lastCut = i + 2
-  }
-  return result + text.slice(lastCut)
-}
 
 /** Punctuation-aware pause: questions/exclamations breathe a bit longer,
  * colons and semicolons connect more tightly to what follows. */
@@ -145,7 +113,6 @@ export async function buildBookStructure(
 
   for (let index = 0; index < sentences.length; index++) {
     const sentence = sentences[index]
-    const previous = sentences[index - 1]
     const next = sentences[index + 1]
 
     for (const [segmentIndex, segment] of sentence.segments.entries()) {
@@ -162,18 +129,11 @@ export async function buildBookStructure(
     // Ein seitenübergreifender Satz endet auf der Seite seines letzten
     // Segments – Atem und Seitenwechsel-Pause richten sich danach.
     const endPage = sentence.segments[sentence.segments.length - 1].page
-    const previousEndPage =
-      previous?.segments[previous.segments.length - 1].page
-    const startsPage =
-      previousEndPage !== undefined && previousEndPage !== sentence.page
     const endsPage = next !== undefined && next.page !== endPage
     const clean = sanitizeForSpeech(sentence.text)
     const speakable = isSpeakable(clean)
-    // Reihenfolge zaehlt: Erst bereinigen (die Bereinigung wuerde die
-    // spitzen Klammern der Ausdrucks-Zeichen entfernen), dann markieren.
-    const spoken = speakable ? markSpeechPauses(clean) : clean
     speakItems.push({
-      text: startsPage && speakable ? `<breath> ${spoken}` : spoken,
+      text: clean,
       pauseAfter: endsPage ? 750 : pauseForEnding(sentence.text),
       skip: !speakable,
     })

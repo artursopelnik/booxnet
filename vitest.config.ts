@@ -18,7 +18,10 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // Auch die Build-Skripte: Wie das Sprachpaket gestückelt und wieder
+    // zusammengesetzt wird, entscheidet darüber, ob die App überhaupt
+    // sprechen kann – das gehört geprüft.
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
     setupFiles: ['./vitest.setup.ts'],
   },
 })

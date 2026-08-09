@@ -25,17 +25,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Die App lädt Stimmen-Assets bevorzugt same-origin von /supertonic/.
-      # Der Cache stellt sicher, dass Deployments auch dann funktionieren,
-      # wenn das Hugging-Face-Repo (Juli 2026 archiviert) verschwindet.
-      - name: Cache Supertonic assets
-        uses: actions/cache@v4
-        with:
-          path: public/supertonic
-          key: supertonic-3-assets-v1
-      - name: Mirror Supertonic assets
-        run: node scripts/mirror-supertonic.mjs
-        continue-on-error: true
+      # Die Sprachmodelle kommen aus dem Checkout (models/supertonic/) und
+      # werden im prebuild-Schritt nach public/supertonic/ zusammengesetzt –
+      # kein Download, kein Cache, keine fremde Quelle.
       - name: Build
         run: npm run build
         env:

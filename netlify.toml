@@ -1,8 +1,13 @@
-# Netlify-Build: Die Sprachmodelle werden bewusst NICHT mitdeployt
-# (scripts/mirror-supertonic.mjs laeuft hier nicht) - sie kaemen sonst bei
-# jedem Nutzer-Download vom Netlify-Bandbreitenkontingent (100 GB/Monat im
-# Free-Plan waeren nach ~250 Downloads aufgebraucht). Die App faellt dann
-# automatisch auf Hugging Face zurueck, das die Modell-Downloads traegt.
+# Die Sprachmodelle (~400 MB) liegen gestueckelt in Git unter
+# models/supertonic/ und werden im prebuild-Schritt nach
+# public/supertonic/ zusammengesetzt - sie gehen also mit ins Deploy.
+#
+# Das kostet Bandbreite: Im Free-Plan sind 100 GB/Monat rund 250 volle
+# Erstdownloads. Bewusst in Kauf genommen, denn die Alternative waere
+# eine fremde Quelle, die von heute auf morgen abschalten kann und die
+# App damit wertlos macht. Wird es eng, ist der Weg ein groesserer Plan
+# oder eine eigene Auslieferung - nicht ein Rueckfall auf Dritte.
+# Ein Geraet laedt die Modelle genau einmal und legt sie in OPFS ab.
 [build]
   command = "npm run build"
   publish = "dist"

@@ -61,8 +61,11 @@ export function sentenceKey(
  * v3: Lange Sätze werden an Satzzeichen statt an Wortgrenzen geteilt,
  *     mit deutlich kürzerer Pause an der Nahtstelle.
  * v4: Atem-Zeichen an Kommas und Gedankenstrichen.
+ * v5: Atem-Zeichen wieder entfernt – das Modell hat sie nicht als
+ *     Steuerzeichen gelesen, sondern vorgelesen („brit"). Der Sprung
+ *     wirft die Aufnahmen weg, in denen das noch zu hören ist.
  */
-const CACHE_VERSION = 'v4'
+const CACHE_VERSION = 'v5'
 
 /**
  * Kurzer Streuwert des Schlüssels als Dateiname. Web-Crypto liefert das

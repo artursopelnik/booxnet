@@ -15,3 +15,10 @@
   Cache-Control: public, max-age=31536000, immutable
 /ort/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Die Sprachmodelle aendern sich nur mit einer neuen Modellfassung, und
+# eine solche kaeme unter neuen Dateinamen. Lange Cache-Zeiten helfen
+# hier doppelt: Ein abgebrochener 400-MB-Download setzt beim naechsten
+# Versuch auf dem HTTP-Cache auf, statt alles erneut zu uebertragen.
+/supertonic/*
+  Cache-Control: public, max-age=31536000, immutable

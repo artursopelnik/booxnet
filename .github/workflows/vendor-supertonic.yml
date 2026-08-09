@@ -1,0 +1,63 @@
+name: Sprachpaket einchecken
+
+# Holt die Supertonic-3-Modelle einmalig vom Upstream und checkt sie
+# gestueckelt unter models/supertonic/ ein. Ab dann braucht weder der
+# Build noch die App jemals wieder eine fremde Quelle - genau darum
+# laeuft dieser Workflow nur von Hand und nicht bei jedem Push.
+#
+# Der Umweg ueber Actions statt ueber den eigenen Rechner spart 400 MB
+# Upload ueber die heimische Leitung: Der Runner sitzt bei GitHub, der
+# Push geht dort intern raus.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: >-
+          Quelle der Modelle (HTTPS-Basis-URL). Leer lassen fuer den
+          Upstream auf Hugging Face.
+        required: false
+        default: ''
+      force:
+        description: Auch bereits eingecheckte Dateien neu holen
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vendor-supertonic
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Modelle holen und stueckeln
+        run: node scripts/vendor-supertonic.mjs ${{ inputs.force && '--force' || '' }}
+        env:
+          SUPERTONIC_SOURCE: ${{ inputs.source }}
+
+      - name: Zusammensetzen probeweise pruefen
+        run: node scripts/build-supertonic.mjs
+
+      - name: Einchecken
+        run: |
+          # --porcelain statt `git diff`: Beim ersten Lauf sind die
+          # Dateien neu und damit unversioniert - `git diff` sieht davon
+          # nichts und wuerde den Commit ueberspringen.
+          if [ -z "$(git status --porcelain -- models/supertonic)" ]; then
+            echo "Keine Aenderung - Sprachpaket war bereits vollstaendig."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add models/supertonic
+          git commit -m "Sprachpaket in Git aufnehmen"
+          git push origin HEAD:${{ github.ref_name }}

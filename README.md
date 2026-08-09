@@ -25,9 +25,10 @@ offline und im Look einer nativen iOS-App.
   ausgenommen, Seiten rendern memoisiert.
 - **Natürlicher Lesefluss:** satzzeichen-präzise Pausen (Fragen/Ausrufe
   atmen länger nach, Doppelpunkte binden enger) mit leichtem Zufalls-
-  Jitter, längere Pausen an Seitenwechseln, hörbare Atmer an
-  Absatzanfängen über Supertonics `<breath>`-Expression-Tag, höhere
-  Denoising-Qualität bei WebGPU. Abkürzungen wie „z. B." oder „Prof. Dr."
+  Jitter, längere Pausen an Seitenwechseln, höhere
+  Denoising-Qualität bei WebGPU. Pausen entstehen ausschließlich zwischen
+  den Sätzen: Ausdrucks-Zeichen wie `<breath>` lösen die öffentlichen
+  ONNX-Dateien nicht ein, sie würden buchstäblich vorgelesen. Abkürzungen wie „z. B." oder „Prof. Dr."
   erzeugen keine falschen Satzbrüche. Das
   Lesetempo (0,5×–2×) wird nativ in der Synthese umgesetzt statt das
   Audio zu beschleunigen, und über Zeilenumbrüche getrennte Wörter
@@ -73,17 +74,59 @@ npm run preview   # Build lokal testen (nötig für Service Worker/PWA)
 
 - Gescannte PDFs ohne Textebene enthalten keinen extrahierbaren Text und
   können nicht vorgelesen werden (kein OCR).
-- Erster Start benötigt einmalig Internet: Das Sprachmodell kommt von
-  Hugging Face bzw. dem eigenen Spiegel (→ OPFS), die WASM-Binaries von
-  cdnjs (→ Service-Worker-Cache). Ab dann läuft die Synthese vollständig
-  offline auf dem Gerät.
+- Erster Start benötigt einmalig Internet: Das Sprachmodell kommt aus der
+  eigenen Auslieferung unter `/supertonic/` (→ OPFS), die WASM-Binaries
+  aus `/ort/` (→ Service-Worker-Cache). Ab dann läuft die Synthese
+  vollständig offline auf dem Gerät.
 - Die Synthese erzeugt pro Satz eine kurze Audiodatei; die nächsten Sätze
   werden während der Wiedergabe im Worker vorab berechnet, damit es keine
   Lücken gibt.
-- **Supertonic 3 – Zukunftssicherung:** Supertone hat angekündigt, das
-  Repository zu archivieren (Juli 2026). Deshalb ist der relevante
-  Upstream-Code (MIT) unter `vendor/supertonic/` im Projekt konserviert
-  (siehe `vendor/supertonic/NOTICE.md`), und die Modelle (OpenRAIL-M)
-  lassen sich mit `node scripts/mirror-supertonic.mjs` nach
-  `public/supertonic/` spiegeln – die App nutzt den Spiegel automatisch
-  bevorzugt und fällt nur auf Hugging Face zurück.
+## Das Sprachpaket gehört dem Projekt
+
+Booxnet kann ohne die Supertonic-Modelle nichts vorlesen. Sie deshalb von
+einem fremden Dienst zu holen, hieße: Schaltet der ab, ist die App
+wertlos. Supertone hat genau das angekündigt – Archivierung des
+Repositories im Juli 2026. Also liegt alles im eigenen Projekt:
+
+| Was | Wo |
+| --- | --- |
+| Upstream-Code (MIT) | `vendor/supertonic/` (siehe `NOTICE.md`) |
+| Modelle, ~400 MB (OpenRAIL-M) | `models/supertonic/`, **in Git eingecheckt** |
+| Ausgeliefert unter | `/supertonic/` – same-origin, ohne Ausweichquelle |
+
+Git nimmt große Dateien an, GitHub weist Pushs ab 100 MB pro Datei
+zurück. Alles darüber liegt darum in 48-MiB-Stücken (`…​.part000`,
+`.part001`, …); `models/supertonic/manifest.json` hält Größe und
+SHA-256-Summe jeder vollständigen Datei fest.
+
+```bash
+npm run build     # setzt models/supertonic/ → public/supertonic/ zusammen
+                  # (offline, mit Prüfsummen-Kontrolle)
+```
+
+Der Produktions-Build bricht ab, wenn das Sprachpaket fehlt – ein
+Deployment ohne Modelle könnte kein einziges Buch vorlesen, und einen
+stillen Rückfall auf Dritte gibt es bewusst nicht mehr. Für einen
+absichtlich modellfreien Lauf: `node scripts/build-supertonic.mjs
+--optional` (so startet auch `npm run dev`).
+
+### Sprachpaket einmalig befüllen
+
+Nur nötig, wenn `models/supertonic/` noch leer ist oder eine neue
+Modellfassung übernommen werden soll. Am einfachsten über GitHub Actions
+→ Workflow **„Sprachpaket einchecken"** (lädt die Dateien auf dem Runner
+und committet sie), lokal alternativ:
+
+```bash
+npm run vendor:supertonic                          # vom Upstream
+SUPERTONIC_SOURCE=/pfad/zur/kopie npm run vendor:supertonic   # aus eigener Kopie
+git add models/supertonic && git commit -m "Sprachpaket aktualisieren"
+```
+
+`scripts/vendor-supertonic.mjs` ist die einzige Stelle im Projekt, die
+eine fremde Quelle kennt – und sie läuft weder im Build noch in der App.
+
+**Preis dieser Entscheidung:** Die Modelle gehen bei jedem Deploy mit und
+kosten Bandbreite (Netlify Free: 100 GB/Monat ≈ 250 Erstdownloads). Jedes
+Gerät lädt sie genau einmal und legt sie in OPFS ab. Wird es eng, ist die
+Antwort mehr Bandbreite – nicht wieder eine fremde Quelle.

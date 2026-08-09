@@ -18,19 +18,27 @@ Repository zu archivieren und die Open-Source-Modelle nicht weiterzuentwickeln.
 | `LICENSE` | MIT-Lizenz von Supertone Inc. |
 | `UPSTREAM-README.md` | Original-README inkl. Archivierungs-Hinweis |
 
-## Modelle spiegeln (wichtig!)
+## Modelle: liegen in Git
 
-Der Code ist hiermit gesichert – die **Modelldateien (~400 MB) liegen aber
-weiterhin nur auf Hugging Face**. Solange `Supertone/supertonic-3` dort
-verfügbar ist, funktioniert alles; für die Zukunft sollten die Dateien
-gespiegelt werden:
+Nicht nur der Code ist gesichert – die **Modelldateien (~400 MB) liegen
+seit dieser Änderung im Repository** unter `models/supertonic/`, gestückelt
+zu 48 MiB (GitHub weist Dateien ab 100 MB ab) und über
+`models/supertonic/manifest.json` per SHA-256 abgesichert. Damit hängt
+weder der Build noch die laufende App an Hugging Face:
+
+- `npm run build` setzt die Stücke offline nach `public/supertonic/`
+  zusammen (`scripts/build-supertonic.mjs`) und prüft dabei jede Summe.
+- Die App lädt ausschließlich same-origin von `/supertonic/` – es gibt
+  keinen Rückfall auf eine fremde Quelle mehr.
+
+Neu befüllen (einmalig, nur bei leerem Speicher oder neuer Modellfassung)
+über den Workflow „Sprachpaket einchecken" oder:
 
 ```bash
-node scripts/mirror-supertonic.mjs
+npm run vendor:supertonic
 ```
 
-Das Skript lädt alle Assets nach `public/supertonic/`. Die App prüft diesen
-Pfad zuerst und fällt nur dann auf Hugging Face zurück – ein einmal
-gespiegeltes Deployment ist damit unabhängig von Hugging Face.
-`public/supertonic/` ist bewusst nicht in Git eingecheckt (400 MB);
-für Versionierung Git LFS oder einen eigenen Objektspeicher verwenden.
+Git LFS wäre der naheliegende Weg gewesen, scheidet aber aus: eigenes
+knappes Datenkontingent, und ein `git clone` ohne LFS-Client liefert nur
+Platzhalter statt Modelle – also wieder eine Abhängigkeit, die genau dann
+bricht, wenn man sie braucht.
