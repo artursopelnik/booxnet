@@ -110,6 +110,43 @@ export async function writeAssetStream(
   return total
 }
 
+/**
+ * Behält unter `pathPrefix` nur die zuletzt geschriebenen `keep` Dateien
+ * und löscht die älteren. Damit wächst ein laufend gefüllter Cache nicht
+ * unbegrenzt, ohne dass der Aufrufer die Ablage-Details kennen muss.
+ * Best-effort: Fehler (Datei inzwischen weg, Verzeichnis nicht lesbar)
+ * werden verschluckt.
+ */
+export async function pruneAssets(
+  pathPrefix: string,
+  keep: number,
+): Promise<void> {
+  try {
+    const handle = (await dir()) as FileSystemDirectoryHandle & {
+      values?: () => AsyncIterableIterator<FileSystemHandle>
+    }
+    if (!handle.values) return
+    const prefix = fileName(pathPrefix)
+    const found: { name: string; modified: number }[] = []
+    for await (const entry of handle.values()) {
+      if (entry.kind !== 'file' || !entry.name.startsWith(prefix)) continue
+      try {
+        const file = await (entry as FileSystemFileHandle).getFile()
+        found.push({ name: entry.name, modified: file.lastModified })
+      } catch {
+        // Datei verschwunden – überspringen.
+      }
+    }
+    if (found.length <= keep) return
+    found.sort((a, b) => b.modified - a.modified)
+    for (const entry of found.slice(keep)) {
+      await handle.removeEntry(entry.name).catch(() => {})
+    }
+  } catch {
+    // Aufräumen ist Kür – niemals den Aufrufer scheitern lassen.
+  }
+}
+
 /** Entfernt eine einzelne Datei; fehlt sie bereits, passiert nichts. */
 export async function removeAsset(path: string): Promise<void> {
   try {

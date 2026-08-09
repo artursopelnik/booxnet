@@ -9,13 +9,17 @@
  * what keeps sentence N+1 playing without another tap.
  */
 import {
-  studioPrefetch,
   studioSynthesize,
   TTS_CANCELLED_ERROR,
   TTS_TIMEOUT_ERROR,
 } from './supertonic/client'
 import { hasAsset, readAsset, writeAsset } from './supertonic/opfs'
-import type { StudioVoiceMeta } from './voices'
+import {
+  hasCachedSentence,
+  readCachedSentence,
+  writeCachedSentence,
+} from './supertonic/sentenceCache'
+import type { StudioVoiceId, StudioVoiceMeta } from './voices'
 
 export interface SpeakerEvents {
   onSentence?: (index: number) => void
@@ -46,6 +50,51 @@ const PREFETCH_AHEAD = 8
 const SENTENCE_PAUSE_MS = 350
 /** Supertonic's recommended neutral speed. */
 const BASE_SPEED = 1.05
+
+/**
+ * Legt die kommenden Sätze dauerhaft im Speicher ab, damit der nächste
+ * App-Start sofort losspielen kann, statt auf die Engine zu warten.
+ * Bereits abgelegte Sätze werden übersprungen – die kosten dann gar
+ * keine Rechenzeit mehr. Fire-and-forget.
+ *
+ * Bewusst nacheinander statt alles auf einmal einzureihen: Der Worker
+ * rechnet ohnehin seriell, und ohne Rückstau muss ein Play-Druck weniger
+ * verdrängen. Ein neuer Aufruf (Tempo- oder Stimmwechsel, neue Position)
+ * beendet den vorigen Durchlauf, damit keine veralteten Sätze nachlaufen.
+ */
+let prefetchGeneration = 0
+
+export function prefetchSentences(
+  voiceId: StudioVoiceId,
+  lang: string,
+  texts: string[],
+  speed: number,
+): void {
+  const generation = ++prefetchGeneration
+  void (async () => {
+    for (const text of texts) {
+      if (generation !== prefetchGeneration) return
+      try {
+        if (await hasCachedSentence(voiceId, lang, speed, text)) continue
+        const blob = await studioSynthesize(voiceId, lang, text, speed, false)
+        // Bewusst OHNE Generations-Prüfung: Ein fertig gerechneter Satz
+        // ist gültig, auch wenn inzwischen ein neuer Durchlauf begonnen
+        // hat (bei jedem Satzwechsel der Fall). Ihn wegzuwerfen hieße,
+        // die Rechenzeit zu verschenken und den Speicher leer zu lassen.
+        await writeCachedSentence(
+          voiceId,
+          lang,
+          speed,
+          text,
+          await blob.arrayBuffer(),
+        )
+      } catch {
+        // Verdrängt oder fehlgeschlagen: Der Satz wird beim Abspielen
+        // notfalls neu gerechnet.
+      }
+    }
+  })()
+}
 
 /** Maps the user rate (0.5–2) to the engine's supported speed range. */
 export function engineSpeed(rate: number): number {
@@ -293,7 +342,7 @@ export class Speaker {
       // Noch nichts hörbar – direkt im neuen Tempo starten.
       this.play(this.index)
     } else if (this.state === 'playing' && this.voice) {
-      studioPrefetch(
+      prefetchSentences(
         this.voice.id,
         this.langHint,
         this.upcoming(PREFETCH_AHEAD),
@@ -462,15 +511,21 @@ export class Speaker {
     this.setState('loading')
     let buffer: AudioBuffer
     try {
-      // Immer volle Qualität – auch wenn der Nutzer aktiv wartet. War der
-      // Satz schon vorausberechnet, greift ohnehin der Cache.
-      const blob = await studioSynthesize(
+      // Erst der dauerhafte Speicher: Liegt der Satz dort schon fertig,
+      // spielt er sofort – ohne auf das Laden der Engine zu warten. Genau
+      // das macht den Kaltstart unsichtbar.
+      const stored = await readCachedSentence(
         voice.id,
         this.langHint,
-        text,
         speed,
-        true,
+        text,
       )
+      if (generation !== this.generation) return
+      // Immer volle Qualität – auch wenn der Nutzer aktiv wartet. War der
+      // Satz schon vorausberechnet, greift ohnehin der Cache.
+      const blob = stored
+        ? new Blob([stored], { type: 'audio/wav' })
+        : await studioSynthesize(voice.id, this.langHint, text, speed, true)
       if (generation !== this.generation) return
       buffer = await decodeBlob(blob)
     } catch (error) {
@@ -514,6 +569,11 @@ export class Speaker {
     this.setState('playing')
     source.start()
 
-    studioPrefetch(voice.id, this.langHint, this.upcoming(PREFETCH_AHEAD), speed)
+    prefetchSentences(
+      voice.id,
+      this.langHint,
+      this.upcoming(PREFETCH_AHEAD),
+      speed,
+    )
   }
 }

@@ -420,23 +420,6 @@ export function studioSynthesize(
   return entry.promise
 }
 
-/** Fire-and-forget warm-up of upcoming sentences, in good quality. */
-export function studioPrefetch(
-  voiceId: StudioVoiceId,
-  lang: string,
-  sentences: string[],
-  speed: number,
-): void {
-  for (const text of sentences) {
-    studioSynthesize(
-      voiceId,
-      lang,
-      text,
-      speed,
-      false,
-      QUALITY_SYNTH_STEPS,
-    ).catch(() => {
-      // Prefetch failures surface when the sentence is actually played.
-    })
-  }
-}
+// Das Vorausberechnen kommender Sätze liegt in lib/tts.ts
+// (prefetchSentences): Es legt die Ergebnisse zusätzlich dauerhaft ab,
+// damit der nächste App-Start ohne Warten auf die Engine losspielt.
