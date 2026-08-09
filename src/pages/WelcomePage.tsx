@@ -12,7 +12,6 @@ import {
   IonSelect,
   IonSelectOption,
   useIonRouter,
-  useIonToast,
 } from '@ionic/react'
 import {
   cloudDownloadOutline,
@@ -22,11 +21,8 @@ import {
 } from 'ionicons/icons'
 import { useEffect, useState } from 'react'
 import {
-  DOWNLOAD_ERRORS,
-  downloadStudioEngine,
   isStudioEngineInstalled,
   STUDIO_ENGINE_SIZE_MB,
-  StudioDownloadError,
 } from '../lib/supertonic/assets'
 import {
   getInstallMethod,
@@ -34,9 +30,9 @@ import {
   promptInstall,
   type InstallMethod,
 } from '../lib/pwa'
-import { isStorageAvailable } from '../lib/supertonic/opfs'
 import { readSetting, writeSetting } from '../lib/storage'
 import { warmVoicePreviews } from '../lib/tts'
+import { useEngineDownload } from '../lib/useEngineDownload'
 import { STUDIO_VOICES } from '../lib/voices'
 
 /** Einmal gesehen? Dann startet die App künftig direkt in der Bibliothek. */
@@ -60,17 +56,12 @@ export function hasSeenWelcome(): boolean {
  * (Bestandsinstallation), wird gar nicht erst hierher geleitet.
  */
 export default function WelcomePage() {
-  const [progress, setProgress] = useState<{
-    percent: number
-    mb: number
-  } | null>(null)
-  const [storageBlocked, setStorageBlocked] = useState(false)
+  const { progress, storageBlocked, start } = useEngineDownload()
   const [installMethod, setInstallMethod] = useState<InstallMethod>(() =>
     getInstallMethod(),
   )
   const [showIosHelp, setShowIosHelp] = useState(false)
   const router = useIonRouter()
-  const [presentToast] = useIonToast()
 
   useEffect(
     () => onInstallChange(() => setInstallMethod(getInstallMethod())),
@@ -92,7 +83,6 @@ export default function WelcomePage() {
   }
 
   useEffect(() => {
-    isStorageAvailable().then((available) => setStorageBlocked(!available))
     // Paket schon da (z. B. zweites Gerät im Sync, erneuter Besuch nach
     // Skip): direkt weiter in die Bibliothek.
     isStudioEngineInstalled().then((ok) => {
@@ -102,33 +92,11 @@ export default function WelcomePage() {
   }, [])
 
   const startDownload = async () => {
-    setProgress({ percent: 0, mb: 0 })
-    // Bildschirm anlassen: Sperrt sich das Gerät, unterbricht iOS den
-    // Download mitten in der Datei. Best-effort.
-    let wakeLock: WakeLockSentinel | null = null
-    try {
-      wakeLock = (await navigator.wakeLock?.request('screen')) ?? null
-    } catch {
-      // Ohne Wake Lock bittet der Hinweistext darum, die App offen zu lassen.
-    }
-    try {
-      await downloadStudioEngine((percent, mb) => setProgress({ percent, mb }))
-      // Begrüßungen im Hintergrund vorrendern – das Probehören spielt
-      // dann sofort. Läuft weiter, während der Nutzer schon importiert.
-      warmVoicePreviews(STUDIO_VOICES)
-      finish()
-    } catch (error) {
-      const reason =
-        error instanceof StudioDownloadError ? error.reason : 'network'
-      presentToast({
-        message: DOWNLOAD_ERRORS[reason],
-        duration: 5000,
-        color: 'danger',
-      })
-    } finally {
-      void wakeLock?.release().catch(() => {})
-      setProgress(null)
-    }
+    if (!(await start())) return
+    // Begrüßungen im Hintergrund vorrendern – das Probehören spielt
+    // dann sofort. Läuft weiter, während der Nutzer schon importiert.
+    warmVoicePreviews(STUDIO_VOICES)
+    finish()
   }
 
   return (
