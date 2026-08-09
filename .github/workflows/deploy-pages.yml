@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+  # Nach dem Einchecken des Sprachpakets automatisch neu ausliefern.
+  # Noetig, weil ein Push mit dem GITHUB_TOKEN bewusst KEINE weiteren
+  # Workflows ausloest (Endlosschleifen-Schutz) - ohne diesen Ausloeser
+  # bliebe die Seite auf dem Stand vor dem Sprachpaket stehen, obwohl
+  # die Modelle laengst im Repository liegen.
+  workflow_run:
+    workflows: ['Sprachpaket einchecken']
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -18,6 +27,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Kam der Anstoss vom Sprachpaket-Workflow, nur bei dessen Erfolg
+    # ausliefern - ein fehlgeschlagener Download soll nicht in einem
+    # zweiten roten Lauf muenden.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
