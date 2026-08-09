@@ -18,10 +18,14 @@ import '@ionic/react/css/display.css'
 import '@ionic/react/css/palettes/dark.class.css'
 import '@ionic/react/css/palettes/high-contrast.class.css'
 import './theme.css'
+import { applyDocumentLang } from './lib/i18n'
 import { applyStoredTheme } from './lib/theme'
 
 setupIonicReact({ mode: 'ios' })
 applyStoredTheme()
+// lang-Attribut auf die gewaehlte Oberflaechensprache setzen: Screenreader
+// entscheiden danach, mit welcher Aussprache sie die Bedienelemente lesen.
+applyDocumentLang()
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

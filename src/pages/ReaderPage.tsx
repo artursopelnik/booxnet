@@ -40,7 +40,8 @@ import {
   type PageSentence,
 } from '../lib/bookStructure'
 import { unitName } from '../lib/importers'
-import { detectStudioLang } from '../lib/lang'
+import { detectStudioLang, langLabel } from '../lib/lang'
+import { useT } from '../lib/useT'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import {
   studioFlushPrefetches,
@@ -52,8 +53,11 @@ import {
   FONT_SCALE_MAX,
   FONT_SCALE_MIN,
   FONT_SCALE_STEP,
+  getBookLangOverride,
   getFontScale,
   getHighlightStyle,
+  LANG_AUTO,
+  saveBookLangOverride,
   saveFontScale,
   saveHighlightStyle,
   type HighlightStyle,
@@ -70,6 +74,7 @@ import {
   type SpeakerState,
 } from '../lib/tts'
 import {
+  STUDIO_LANGS,
   STUDIO_VOICES,
   studioVoiceById,
   type StudioVoiceMeta,
@@ -225,6 +230,7 @@ const LazyPage = memo(function LazyPage({
 })
 
 export default function ReaderPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const [book, setBook] = useState<Book | null | undefined>(undefined)
   const [engineInstalled, setEngineInstalled] = useState(false)
@@ -234,7 +240,9 @@ export default function ReaderPage() {
   const [rate, setRate] = useState(getSavedRate())
   const [state, setState] = useState<SpeakerState>('idle')
   const [current, setCurrent] = useState(0)
-  const [bookLang, setBookLang] = useState('de')
+  /** Am Text erkannte Sprache – gilt, solange nichts übersteuert ist. */
+  const [detectedLang, setDetectedLang] = useState('de')
+  const [langOverride, setLangOverride] = useState(LANG_AUTO)
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   const [displayOpen, setDisplayOpen] = useState(false)
   /** 0..1 – Stand des einmaligen Engine-Ladens, 1 = Engine bereit. */
@@ -306,6 +314,10 @@ export default function ReaderPage() {
   }, [id])
 
   useEffect(() => {
+    setLangOverride(getBookLangOverride(id))
+  }, [id])
+
+  useEffect(() => {
     isStudioEngineInstalled().then(setEngineInstalled)
   }, [])
 
@@ -322,8 +334,7 @@ export default function ReaderPage() {
     // ersten 4000 Zeichen aus - der ganze Buchtext waere ein Megabyte,
     // das sofort wieder weggeworfen wird.
     const detected = detectStudioLang(book.pages.slice(0, 5).join(' '))
-    setBookLang(detected)
-    speaker.setLangHint(detected)
+    setDetectedLang(detected)
   }, [speaker, book])
 
   const voice: StudioVoiceMeta =
@@ -349,6 +360,13 @@ export default function ReaderPage() {
   useEffect(() => {
     if (book) speaker.setBookInfo(book.title, book.cover)
   }, [speaker, book])
+
+  /** Was tatsächlich gesprochen wird: Übersteuerung schlägt Erkennung. */
+  const bookLang = langOverride === LANG_AUTO ? detectedLang : langOverride
+
+  useEffect(() => {
+    speaker.setLangHint(bookLang)
+  }, [speaker, bookLang])
 
   /** Aktuelle Position für Effekte, die nicht pro Satz neu laufen sollen. */
   const currentRef = useRef(current)
@@ -502,7 +520,7 @@ export default function ReaderPage() {
       // re-check corrects stale state (e.g. download finished elsewhere).
       setVoiceSheetOpen(true)
       toastRef.current({
-        message: 'Lade zuerst einmalig das Sprachmodell herunter.',
+        message: t('reader.needsModel'),
         duration: 3000,
         color: 'warning',
       })
@@ -533,7 +551,7 @@ export default function ReaderPage() {
         <IonContent fullscreen>
           <div className="empty-state" role="status">
             <IonSpinner aria-hidden="true" />
-            <span className="visually-hidden">Buch wird geladen</span>
+            <span className="visually-hidden">{t('reader.loadingBook')}</span>
           </div>
         </IonContent>
       </IonPage>
@@ -549,14 +567,14 @@ export default function ReaderPage() {
               <IonBackButton
                 defaultHref="/library"
                 text=""
-                aria-label="Zurück zur Bibliothek"
+                aria-label={t('reader.back')}
               />
             </IonButtons>
           </IonToolbar>
         </IonHeader>
         <IonContent fullscreen>
           <div className="empty-state">
-            <h2>Buch nicht gefunden</h2>
+            <h2>{t('reader.notFound')}</h2>
           </div>
         </IonContent>
       </IonPage>
@@ -575,7 +593,7 @@ export default function ReaderPage() {
             <IonBackButton
               defaultHref="/library"
               text=""
-              aria-label="Zurück zur Bibliothek"
+              aria-label={t('reader.back')}
             />
           </IonButtons>
           {/* Logo links (hinter dem Zurück-Pfeil), rechts die Aktionen. */}
@@ -591,7 +609,7 @@ export default function ReaderPage() {
           <IonButtons slot="end">
             <IonButton
               onClick={() => setDisplayOpen(true)}
-              aria-label="Anzeige-Einstellungen"
+              aria-label={t('reader.displaySettings')}
             >
               <IonIcon aria-hidden="true" slot="icon-only" icon={textOutline} />
             </IonButton>
@@ -615,7 +633,7 @@ export default function ReaderPage() {
             <img
               className="reader-cover"
               src={book.cover}
-              alt={`Cover: ${book.title}`}
+              alt={t('reader.cover', { title: book.title })}
             />
           )}
           {/* Der Aufbau der Satzstruktur laeuft portionsweise; bis er
@@ -625,9 +643,9 @@ export default function ReaderPage() {
             <div className="structure-loading" role="status">
               <IonProgressBar
                 value={structureProgress}
-                aria-label="Buch wird aufbereitet"
+                aria-label={t('reader.preparingBookAria')}
               />
-              <p>Das Buch wird aufbereitet …</p>
+              <p>{t('reader.preparingBook')}</p>
             </div>
           )}
           {pages.map((page) => (
@@ -661,18 +679,18 @@ export default function ReaderPage() {
             {(engineProgress < 1 ? engineProgress : synthProgress) > 0 ? (
               <IonProgressBar
                 value={engineProgress < 1 ? engineProgress : synthProgress}
-                aria-label="Fortschritt der Sprachvorbereitung"
+                aria-label={t('reader.prepareProgress')}
               />
             ) : (
               <IonProgressBar
                 type="indeterminate"
-                aria-label="Sprachvorbereitung läuft"
+                aria-label={t('reader.preparingVoice')}
               />
             )}
             <div className="engine-loading-hint" aria-hidden="true">
               {engineProgress < 1
-                ? `Die Vorlesestimme wird einmalig vorbereitet – ${Math.round(engineProgress * 100)} %`
-                : `Der Satz wird berechnet – ${Math.round(synthProgress * 100)} %`}
+                ? t('reader.preparingVoicePercent', { percent: Math.round(engineProgress * 100) })
+                : t('reader.computingPercent', { percent: Math.round(synthProgress * 100) })}
             </div>
           </>
         )}
@@ -683,11 +701,11 @@ export default function ReaderPage() {
             aendert, unterbricht den Nutzer hunderte Male. */}
         <div className="visually-hidden" role="status">
           {state === 'loading'
-            ? 'Die Vorlesestimme wird vorbereitet'
+            ? t('reader.statePreparing')
             : state === 'playing'
-              ? 'Wird vorgelesen'
+              ? t('reader.statePlaying')
               : state === 'paused'
-                ? 'Angehalten'
+                ? t('reader.statePaused')
                 : ''}
         </div>
         <IonToolbar className="player-toolbar">
@@ -696,14 +714,14 @@ export default function ReaderPage() {
               <IonButton
                 fill="clear"
                 onClick={() => setVoiceSheetOpen(true)}
-                aria-label="Stimme auswählen"
+                aria-label={t('reader.chooseVoice')}
               >
                 <IonIcon aria-hidden="true" slot="icon-only" icon={personCircleOutline} />
               </IonButton>
               <IonButton
                 fill="clear"
                 onClick={() => speaker.skip(-1)}
-                aria-label="Ein Satz zurück"
+                aria-label={t('reader.previousSentence')}
               >
                 <IonIcon aria-hidden="true" slot="icon-only" icon={playBack} />
               </IonButton>
@@ -713,8 +731,8 @@ export default function ReaderPage() {
                 onClick={togglePlayback}
                 aria-label={
                   state === 'playing' || state === 'loading'
-                    ? 'Pause'
-                    : 'Vorlesen'
+                    ? t('reader.pause')
+                    : t('reader.play')
                 }
               >
                 {state === 'loading' ? (
@@ -730,7 +748,7 @@ export default function ReaderPage() {
               <IonButton
                 fill="clear"
                 onClick={() => speaker.skip(1)}
-                aria-label="Ein Satz vor"
+                aria-label={t('reader.nextSentence')}
               >
                 <IonIcon aria-hidden="true" slot="icon-only" icon={playForward} />
               </IonButton>
@@ -738,7 +756,7 @@ export default function ReaderPage() {
                 fill="clear"
                 className="player__rate"
                 onClick={cycleRate}
-                aria-label={`Lesegeschwindigkeit ${rate}-fach, ändern`}
+                aria-label={t('reader.rate', { rate })}
               >
                 {rate}×
               </IonButton>
@@ -767,7 +785,7 @@ export default function ReaderPage() {
       >
         <IonHeader>
           <IonToolbar>
-            <IonTitle>Anzeige</IonTitle>
+            <IonTitle>{t('reader.displayHeader')}</IonTitle>
             <IonButtons slot="end">
               <IonButton strong onClick={() => setDisplayOpen(false)}>
                 Fertig
@@ -779,7 +797,7 @@ export default function ReaderPage() {
           <IonList inset>
             <IonItem>
               <IonRange
-                aria-label="Schriftgröße"
+                aria-label={t('reader.fontSize')}
                 min={FONT_SCALE_MIN}
                 max={FONT_SCALE_MAX}
                 step={FONT_SCALE_STEP}
@@ -803,7 +821,7 @@ export default function ReaderPage() {
             </IonItem>
             <IonItem>
               <IonSelect
-                label="Markierung"
+                label={t('reader.highlight')}
                 interface="popover"
                 value={highlightStyle}
                 onIonChange={(event) => {
@@ -812,11 +830,35 @@ export default function ReaderPage() {
                   saveHighlightStyle(value)
                 }}
               >
-                <IonSelectOption value="mark">Hinterlegt</IonSelectOption>
+                <IonSelectOption value="mark">{t('reader.highlightMark')}</IonSelectOption>
                 <IonSelectOption value="underline">
-                  Unterstrichen
+                  {t('reader.highlightUnderline')}
                 </IonSelectOption>
-                <IonSelectOption value="invert">Invertiert</IonSelectOption>
+                <IonSelectOption value="invert">{t('reader.highlightInvert')}</IonSelectOption>
+              </IonSelect>
+            </IonItem>
+            {/* Die Sprache bestimmt die Aussprache. Normalerweise erkennt
+                die App sie am Text; hier laesst sich das uebergehen, wenn
+                die Erkennung danebenliegt. Gilt fuer dieses Buch. */}
+            <IonItem>
+              <IonSelect
+                label={t('reader.bookLanguage')}
+                interface="action-sheet"
+                value={langOverride}
+                onIonChange={(event) => {
+                  const value = event.detail.value as string
+                  setLangOverride(value)
+                  saveBookLangOverride(id, value)
+                }}
+              >
+                <IonSelectOption value={LANG_AUTO}>
+                  {t('reader.languageAuto', { lang: langLabel(detectedLang) })}
+                </IonSelectOption>
+                {STUDIO_LANGS.map((lang) => (
+                  <IonSelectOption key={lang} value={lang}>
+                    {langLabel(lang)}
+                  </IonSelectOption>
+                ))}
               </IonSelect>
             </IonItem>
           </IonList>

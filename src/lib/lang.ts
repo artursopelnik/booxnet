@@ -1,3 +1,4 @@
+import { getUiLang } from './i18n'
 import { STUDIO_LANGS } from './voices'
 
 /**
@@ -8,7 +9,16 @@ import { STUDIO_LANGS } from './voices'
  * German readers, so unclear text falls back to 'de' – German pronunciation
  * rules beat Supertonic's language-agnostic guess ('na') for our audience.
  */
-const FALLBACK_LANG = 'de'
+/**
+ * Sprache, wenn der Text kein klares Signal gibt. Folgt der
+ * Oberflächensprache: Wer die App auf Englisch bedient, liest eher
+ * englische Bücher – deutsche Aussprache wäre dort die schlechtere
+ * Vermutung. Nur Sprachen, die das Modell auch sprechen kann.
+ */
+function fallbackLang(): string {
+  const ui = getUiLang()
+  return (STUDIO_LANGS as readonly string[]).includes(ui) ? ui : 'de'
+}
 const STOPWORDS: Record<string, string[]> = {
   de: ['der', 'die', 'das', 'und', 'ist', 'nicht', 'ein', 'eine', 'mit', 'auf', 'für', 'sich', 'auch', 'werden', 'aber'],
   en: ['the', 'and', 'is', 'not', 'with', 'that', 'this', 'for', 'are', 'was', 'have', 'from', 'they', 'which', 'been'],
@@ -49,16 +59,16 @@ export function detectStudioLang(text: string): string {
   if (byScript) {
     return (STUDIO_LANGS as readonly string[]).includes(byScript)
       ? byScript
-      : FALLBACK_LANG
+      : fallbackLang()
   }
 
   const words = sample
     .toLowerCase()
     .split(/[^\p{L}]+/u)
     .filter(Boolean)
-  if (words.length < 10) return FALLBACK_LANG
+  if (words.length < 10) return fallbackLang()
 
-  let bestLang = FALLBACK_LANG
+  let bestLang = fallbackLang()
   let bestScore = 0
   for (const [lang, stopwords] of Object.entries(STOPWORDS)) {
     const set = new Set(stopwords)
@@ -72,18 +82,18 @@ export function detectStudioLang(text: string): string {
     }
   }
   // Require a clear signal, otherwise assume German.
-  if (bestScore / words.length < 0.04) return FALLBACK_LANG
+  if (bestScore / words.length < 0.04) return fallbackLang()
   return (STUDIO_LANGS as readonly string[]).includes(bestLang)
     ? bestLang
-    : FALLBACK_LANG
+    : fallbackLang()
 }
 
-/** German label for a detected language, for the reader status line. */
+/** Sprachname in der Oberflächensprache, für die Auswahl im Reader. */
 export function langLabel(lang: string): string {
-  if (lang === 'na') return 'Automatisch'
   try {
     return (
-      new Intl.DisplayNames(['de'], { type: 'language' }).of(lang) ?? lang
+      new Intl.DisplayNames([getUiLang()], { type: 'language' }).of(lang) ??
+      lang
     )
   } catch {
     return lang

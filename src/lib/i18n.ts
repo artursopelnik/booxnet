@@ -1,0 +1,871 @@
+/**
+ * Oberflächensprache.
+ *
+ * Bewusst ohne Bibliothek: Es geht um gut hundert feste Texte ohne
+ * Plural- oder Datumsregeln, dafür lohnt kein Paket im Startpfad. Die
+ * Wörterbücher sind gewöhnliche Objekte; weil das englische als
+ * `Record<MessageKey, string>` deklariert ist, meldet der Übersetzer
+ * eine fehlende Übersetzung schon beim Bauen.
+ *
+ * Eine weitere Sprache ist genau ein Objekt mehr – die Liste der
+ * Schlüssel gibt vor, was zu übersetzen ist.
+ */
+import { readSetting, writeSetting } from './storage'
+
+const LANG_KEY = 'booxnet.uiLang'
+
+const de = {
+  'common.cancel': 'Abbrechen',
+  'common.save': 'Speichern',
+  'common.done': 'Fertig',
+  'common.understood': 'Verstanden',
+  'common.delete': 'Löschen',
+
+  'unit.page': 'Seite',
+  'unit.pages': 'Seiten',
+  'unit.chapter': 'Kapitel',
+  'unit.chapters': 'Kapitel',
+  'unit.section': 'Abschnitt',
+  'unit.sections': 'Abschnitte',
+
+  'theme.auto': 'Automatisch',
+  'theme.light': 'Hell',
+  'theme.dark': 'Dunkel',
+  'theme.eink': 'E-Ink (hoher Kontrast)',
+  'theme.header': 'Darstellung',
+  'theme.change': 'Darstellung ändern',
+
+  'library.title': 'Bibliothek',
+  'library.empty.title': 'Noch keine Bücher',
+  'library.empty.body':
+    'Lade ein PDF, EPUB oder eine Textdatei hoch und lass es dir vorlesen. Kostenlos und komplett offline auf deinem Gerät.',
+  'library.empty.action': 'Buch auswählen',
+  'library.upload': 'Buch hochladen',
+  'library.importing': 'Buch wird eingelesen',
+  'library.actionsFor': 'Aktionen für {title}',
+  'library.rename': 'Titel ändern',
+  'library.deleteBook': 'Buch löschen',
+  'library.listened': '{percent} % gehört',
+  'library.noText':
+    'In dieser Datei wurde kein Text gefunden. Gescannte PDFs ohne Textebene können nicht vorgelesen werden.',
+  'library.readError': 'Die Datei konnte nicht gelesen werden.',
+  'library.uiLanguage': 'Sprache der App',
+
+  'welcome.title': 'Willkommen bei Booxnet',
+  'welcome.intro':
+    'Lade ein Buch hoch und lass es dir vorlesen. Ohne Konto, ohne Cloud – alles bleibt auf deinem Gerät.',
+  'welcome.soundOn': 'Ton an!',
+  'welcome.soundOnNote': 'Stummschalter aus oder Kopfhörer nutzen.',
+  'welcome.language': 'Sprache',
+  'welcome.languageNote': 'Wird je Buch erkannt, im Reader änderbar.',
+  'welcome.installAdd': 'Als App hinzufügen',
+  'welcome.installAsApp': 'Als App aufs Handy',
+  'welcome.installNote': 'Offline nutzbar, aktualisiert sich selbst.',
+  'welcome.downloadHeading': 'Einmaliger Download',
+  'welcome.downloadPrivate': 'Im privaten Fenster nicht möglich.',
+  'welcome.downloadSize': 'Ca. {mb} MB, danach für immer offline.',
+  'welcome.downloadProgress': '{loaded} von {total} MB – App offen lassen.',
+  'welcome.start': 'Dateien laden',
+  'welcome.starting': 'Wird geladen …',
+  'welcome.later': 'Später – erst mal umschauen',
+
+  'install.header': 'Zum Home-Bildschirm',
+  'install.iosHelp':
+    'Auf dem iPhone/iPad geht das nur über Safari selbst: Tippe unten auf das Teilen-Symbol (Quadrat mit Pfeil nach oben) und wähle dann „Zum Home-Bildschirm". Danach startet Booxnet wie eine App.',
+  'install.addToHome': 'Zum Home-Bildschirm hinzufügen',
+  'update.install': 'Update installieren',
+  'update.check': 'Nach Update suchen',
+  'update.tapToReload': 'Tippen zum Neuladen',
+  'update.upToDate': 'Du hast bereits die neuste Version.',
+  'update.failed':
+    'Update-Prüfung fehlgeschlagen. Prüfe deine Internetverbindung und versuche es später noch einmal.',
+  'update.noServiceWorker':
+    'Update-Prüfung hier nicht möglich, denn die App läuft ohne Service Worker (z. B. im privaten Fenster).',
+
+  'reader.back': 'Zurück zur Bibliothek',
+  'reader.notFound': 'Buch nicht gefunden',
+  'reader.loadingBook': 'Buch wird geladen',
+  'reader.preparingBook': 'Das Buch wird aufbereitet …',
+  'reader.preparingBookAria': 'Buch wird aufbereitet',
+  'reader.displaySettings': 'Anzeige-Einstellungen',
+  'reader.displayHeader': 'Anzeige',
+  'reader.fontSize': 'Schriftgröße',
+  'reader.highlight': 'Markierung',
+  'reader.highlightMark': 'Hinterlegt',
+  'reader.highlightUnderline': 'Unterstrichen',
+  'reader.highlightInvert': 'Invertiert',
+  'reader.bookLanguage': 'Sprache',
+  'reader.languageAuto': 'Automatisch ({lang})',
+  'reader.cover': 'Cover: {title}',
+  'reader.chooseVoice': 'Stimme auswählen',
+  'reader.previousSentence': 'Ein Satz zurück',
+  'reader.nextSentence': 'Ein Satz vor',
+  'reader.play': 'Vorlesen',
+  'reader.pause': 'Pause',
+  'reader.rate': 'Lesegeschwindigkeit {rate}-fach, ändern',
+  'reader.needsModel': 'Lade zuerst einmalig das Sprachmodell herunter.',
+  'reader.prepareProgress': 'Fortschritt der Sprachvorbereitung',
+  'reader.preparingVoice': 'Sprachvorbereitung läuft',
+  'reader.preparingVoicePercent':
+    'Die Vorlesestimme wird einmalig vorbereitet – {percent} %',
+  'reader.computingPercent': 'Der Satz wird berechnet – {percent} %',
+  'reader.statePreparing': 'Die Vorlesestimme wird vorbereitet',
+  'reader.statePlaying': 'Wird vorgelesen',
+  'reader.statePaused': 'Angehalten',
+
+  'voices.title': 'Stimmen',
+  'voices.male': 'Männlich',
+  'voices.female': 'Weiblich',
+  'voices.selected': ' (ausgewählt)',
+  'voices.needsModel': ' · benötigt das Sprachmodell',
+  'voices.preview': 'Stimme {name} probehören',
+  'voices.previewFailed': 'Probehören fehlgeschlagen.{detail}',
+  'voices.download': 'Sprachmodell herunterladen',
+  'voices.downloadAria': 'Sprachmodell wird heruntergeladen',
+  'voices.downloadSize': 'Einmalig ca. {mb} MB, schaltet alle 10 Stimmen frei',
+  'voices.downloadProgress':
+    'Wird geladen … {loaded} von ca. {total} MB. Lass die App dabei geöffnet.',
+  'voices.storageBlocked':
+    'Hier nicht möglich: Dein Browser blockiert den Speicher dafür (z. B. im privaten Fenster). Bitte in einem normalen Fenster öffnen.',
+  'voices.deleteModel': 'Sprachmodell löschen ({mb} MB freigeben)',
+  'voices.deleteHeader': 'Sprachmodell löschen?',
+  'voices.deleteBody':
+    'Alle Stimmen und Begrüßungen werden von diesem Gerät entfernt. Zum Vorlesen musst du die ca. {mb} MB danach erneut herunterladen.',
+  'voices.details': 'Technische Details',
+  'voices.notPrepared': 'Stimme noch nicht vorbereitet – tippe im Buch auf Abspielen.',
+  'voices.cores': 'Rechenkerne: {threads} Threads von {cores} Kernen',
+  'voices.singleThread':
+    'Achtung: nur {threads} Thread – Mehrkern-Modus nicht aktiv (das bremst stark)',
+  'voices.prepareTime': 'Vorbereitung: {seconds} s',
+  'voices.lastSentence':
+    'Letzter Satz: {compute} s Rechenzeit für {audio} s Ton ({factor}×)',
+  'voices.fasterThanRealtime':
+    'Unter 1× heißt: schneller als Echtzeit, der Vorrat wächst.',
+  'voices.slowerThanRealtime':
+    'Über 1× heißt: langsamer als Echtzeit, der Vorrat schrumpft.',
+
+  'speech.preview': 'Hallo, ich bin {name}. So klinge ich, wenn ich dir dein Buch vorlese.',
+  'speech.displaced':
+    'Die Wiedergabe wurde mehrfach unterbrochen. Tippe erneut auf Play.',
+  'speech.startFailed':
+    'Die Wiedergabe konnte nicht starten. Tippe noch einmal auf Play.',
+  'speech.timedOut':
+    'Dein Gerät hat für diesen Satz ungewöhnlich lange gebraucht. Tippe erneut auf Play, es geht an derselben Stelle weiter.',
+  'speech.failed':
+    'Die Stimme konnte nicht erzeugt werden. Falls das wiederholt passiert, lade das Sprachmodell in der Stimmen-Auswahl erneut herunter.',
+
+  'download.storage':
+    'Dein Browser erlaubt hier keinen Speicher für das Sprachmodell, das passiert vor allem in privaten Fenstern. Öffne Booxnet in einem normalen Fenster und lade es dort herunter.',
+  'download.quota':
+    'Auf deinem Gerät ist zu wenig Speicherplatz für das Sprachmodell frei (ca. {mb} MB). Schaffe etwas Platz und versuche es dann erneut. Bereits geladene Teile bleiben erhalten.',
+  'download.network':
+    'Die Sprachdaten sind gerade nicht erreichbar. Prüfe deine Internetverbindung und versuche es in ein paar Minuten noch einmal. Bereits geladene Teile bleiben erhalten.',
+}
+
+export type MessageKey = keyof typeof de
+
+const en: Record<MessageKey, string> = {
+  'common.cancel': 'Cancel',
+  'common.save': 'Save',
+  'common.done': 'Done',
+  'common.understood': 'Got it',
+  'common.delete': 'Delete',
+
+  'unit.page': 'Page',
+  'unit.pages': 'Pages',
+  'unit.chapter': 'Chapter',
+  'unit.chapters': 'Chapters',
+  'unit.section': 'Section',
+  'unit.sections': 'Sections',
+
+  'theme.auto': 'Automatic',
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
+  'theme.eink': 'E-ink (high contrast)',
+  'theme.header': 'Appearance',
+  'theme.change': 'Change appearance',
+
+  'library.title': 'Library',
+  'library.empty.title': 'No books yet',
+  'library.empty.body':
+    'Upload a PDF, EPUB or text file and have it read to you. Free and entirely offline on your device.',
+  'library.empty.action': 'Choose a book',
+  'library.upload': 'Upload a book',
+  'library.importing': 'Reading the book',
+  'library.actionsFor': 'Actions for {title}',
+  'library.rename': 'Rename',
+  'library.deleteBook': 'Delete book',
+  'library.listened': '{percent}% listened',
+  'library.noText':
+    'No text was found in this file. Scanned PDFs without a text layer cannot be read aloud.',
+  'library.readError': 'The file could not be read.',
+  'library.uiLanguage': 'App language',
+
+  'welcome.title': 'Welcome to Booxnet',
+  'welcome.intro':
+    'Upload a book and have it read to you. No account, no cloud – everything stays on your device.',
+  'welcome.soundOn': 'Sound on!',
+  'welcome.soundOnNote': 'Turn off silent mode or use headphones.',
+  'welcome.language': 'Language',
+  'welcome.languageNote': 'Detected per book, changeable in the reader.',
+  'welcome.installAdd': 'Add as an app',
+  'welcome.installAsApp': 'Install as an app',
+  'welcome.installNote': 'Works offline, updates itself.',
+  'welcome.downloadHeading': 'One-time download',
+  'welcome.downloadPrivate': 'Not possible in a private window.',
+  'welcome.downloadSize': 'About {mb} MB, then offline for good.',
+  'welcome.downloadProgress': '{loaded} of {total} MB – keep the app open.',
+  'welcome.start': 'Download files',
+  'welcome.starting': 'Downloading …',
+  'welcome.later': 'Later – just have a look around',
+
+  'install.header': 'Add to home screen',
+  'install.iosHelp':
+    'On iPhone and iPad this only works from Safari itself: tap the share icon at the bottom (a square with an arrow pointing up) and choose "Add to Home Screen". Booxnet then starts like an app.',
+  'install.addToHome': 'Add to home screen',
+  'update.install': 'Install update',
+  'update.check': 'Check for updates',
+  'update.tapToReload': 'Tap to reload',
+  'update.upToDate': 'You already have the latest version.',
+  'update.failed':
+    'Update check failed. Check your internet connection and try again later.',
+  'update.noServiceWorker':
+    'Update checks are unavailable here because the app runs without a service worker (for example in a private window).',
+
+  'reader.back': 'Back to the library',
+  'reader.notFound': 'Book not found',
+  'reader.loadingBook': 'Loading the book',
+  'reader.preparingBook': 'Preparing the book …',
+  'reader.preparingBookAria': 'Preparing the book',
+  'reader.displaySettings': 'Display settings',
+  'reader.displayHeader': 'Display',
+  'reader.fontSize': 'Text size',
+  'reader.highlight': 'Highlight',
+  'reader.highlightMark': 'Filled',
+  'reader.highlightUnderline': 'Underlined',
+  'reader.highlightInvert': 'Inverted',
+  'reader.bookLanguage': 'Language',
+  'reader.languageAuto': 'Automatic ({lang})',
+  'reader.cover': 'Cover: {title}',
+  'reader.chooseVoice': 'Choose a voice',
+  'reader.previousSentence': 'Previous sentence',
+  'reader.nextSentence': 'Next sentence',
+  'reader.play': 'Read aloud',
+  'reader.pause': 'Pause',
+  'reader.rate': 'Reading speed {rate}×, change',
+  'reader.needsModel': 'Download the speech model once first.',
+  'reader.prepareProgress': 'Speech preparation progress',
+  'reader.preparingVoice': 'Preparing speech',
+  'reader.preparingVoicePercent':
+    'Preparing the reading voice, one time only – {percent}%',
+  'reader.computingPercent': 'Computing the sentence – {percent}%',
+  'reader.statePreparing': 'Preparing the reading voice',
+  'reader.statePlaying': 'Reading aloud',
+  'reader.statePaused': 'Paused',
+
+  'voices.title': 'Voices',
+  'voices.male': 'Male',
+  'voices.female': 'Female',
+  'voices.selected': ' (selected)',
+  'voices.needsModel': ' · needs the speech model',
+  'voices.preview': 'Preview the voice {name}',
+  'voices.previewFailed': 'Preview failed.{detail}',
+  'voices.download': 'Download the speech model',
+  'voices.downloadAria': 'Downloading the speech model',
+  'voices.downloadSize': 'About {mb} MB once, unlocks all 10 voices',
+  'voices.downloadProgress':
+    'Downloading … {loaded} of about {total} MB. Keep the app open.',
+  'voices.storageBlocked':
+    'Not possible here: your browser blocks storage for this (for example in a private window). Please open it in a normal window.',
+  'voices.deleteModel': 'Delete the speech model (free {mb} MB)',
+  'voices.deleteHeader': 'Delete the speech model?',
+  'voices.deleteBody':
+    'All voices and greetings will be removed from this device. To read aloud you will have to download the {mb} MB again.',
+  'voices.details': 'Technical details',
+  'voices.notPrepared': 'Voice not prepared yet – tap play inside a book.',
+  'voices.cores': 'Processor cores: {threads} threads of {cores}',
+  'voices.singleThread':
+    'Warning: only {threads} thread – multi-core mode is off (this slows things down a lot)',
+  'voices.prepareTime': 'Preparation: {seconds} s',
+  'voices.lastSentence':
+    'Last sentence: {compute} s of computing for {audio} s of audio ({factor}×)',
+  'voices.fasterThanRealtime':
+    'Below 1× means faster than real time – the buffer grows.',
+  'voices.slowerThanRealtime':
+    'Above 1× means slower than real time – the buffer shrinks.',
+
+  'speech.preview': "Hello, I'm {name}. This is how I sound when I read your book to you.",
+  'speech.displaced': 'Playback was interrupted repeatedly. Tap play again.',
+  'speech.startFailed': 'Playback could not start. Tap play once more.',
+  'speech.timedOut':
+    'Your device took unusually long for this sentence. Tap play again and it continues from the same spot.',
+  'speech.failed':
+    'The voice could not be generated. If this keeps happening, download the speech model again from the voice list.',
+
+  'download.storage':
+    'Your browser does not allow storage for the speech model here, which mostly happens in private windows. Open Booxnet in a normal window and download it there.',
+  'download.quota':
+    'There is not enough free space on your device for the speech model (about {mb} MB). Free up some space and try again. Parts already downloaded are kept.',
+  'download.network':
+    'The speech data cannot be reached right now. Check your internet connection and try again in a few minutes. Parts already downloaded are kept.',
+}
+
+/** Spanisch – maschinell erstellt, noch nicht gegengelesen. */
+const es: Record<MessageKey, string> = {
+  'common.cancel': 'Cancelar',
+  'common.save': 'Guardar',
+  'common.done': 'Listo',
+  'common.understood': 'Entendido',
+  'common.delete': 'Eliminar',
+  'unit.page': 'Página',
+  'unit.pages': 'Páginas',
+  'unit.chapter': 'Capítulo',
+  'unit.chapters': 'Capítulos',
+  'unit.section': 'Sección',
+  'unit.sections': 'Secciones',
+  'theme.auto': 'Automático',
+  'theme.light': 'Claro',
+  'theme.dark': 'Oscuro',
+  'theme.eink': 'Tinta electrónica (alto contraste)',
+  'theme.header': 'Apariencia',
+  'theme.change': 'Cambiar apariencia',
+  'library.title': 'Biblioteca',
+  'library.empty.title': 'Todavía no hay libros',
+  'library.empty.body': 'Sube un PDF, EPUB o archivo de texto y deja que te lo lea. Gratis y totalmente sin conexión en tu dispositivo.',
+  'library.empty.action': 'Elegir un libro',
+  'library.upload': 'Subir un libro',
+  'library.importing': 'Leyendo el libro',
+  'library.actionsFor': 'Acciones para {title}',
+  'library.rename': 'Cambiar el título',
+  'library.deleteBook': 'Eliminar el libro',
+  'library.listened': '{percent} % escuchado',
+  'library.noText': 'No se encontró texto en este archivo. Los PDF escaneados sin capa de texto no se pueden leer en voz alta.',
+  'library.readError': 'No se pudo leer el archivo.',
+  'library.uiLanguage': 'Idioma de la aplicación',
+  'welcome.title': 'Bienvenido a Booxnet',
+  'welcome.intro': 'Sube un libro y deja que te lo lea. Sin cuenta, sin nube: todo se queda en tu dispositivo.',
+  'welcome.soundOn': '¡Sube el volumen!',
+  'welcome.soundOnNote': 'Desactiva el silencio o usa auriculares.',
+  'welcome.language': 'Idioma',
+  'welcome.languageNote': 'Se detecta en cada libro y se puede cambiar en el lector.',
+  'welcome.installAdd': 'Añadir como aplicación',
+  'welcome.installAsApp': 'Instalar como aplicación',
+  'welcome.installNote': 'Funciona sin conexión y se actualiza sola.',
+  'welcome.downloadHeading': 'Descarga única',
+  'welcome.downloadPrivate': 'No es posible en una ventana privada.',
+  'welcome.downloadSize': 'Unos {mb} MB y después sin conexión para siempre.',
+  'welcome.downloadProgress': '{loaded} de {total} MB: deja la aplicación abierta.',
+  'welcome.start': 'Descargar archivos',
+  'welcome.starting': 'Descargando…',
+  'welcome.later': 'Más tarde: primero echar un vistazo',
+  'install.header': 'Añadir a la pantalla de inicio',
+  'install.iosHelp': 'En iPhone y iPad esto solo funciona desde Safari: toca el icono de compartir abajo (un cuadrado con una flecha hacia arriba) y elige «Añadir a pantalla de inicio». Booxnet se abrirá como una aplicación.',
+  'install.addToHome': 'Añadir a la pantalla de inicio',
+  'update.install': 'Instalar la actualización',
+  'update.check': 'Buscar actualizaciones',
+  'update.tapToReload': 'Toca para recargar',
+  'update.upToDate': 'Ya tienes la última versión.',
+  'update.failed': 'No se pudo comprobar si hay actualizaciones. Revisa tu conexión e inténtalo más tarde.',
+  'update.noServiceWorker': 'Aquí no se puede comprobar si hay actualizaciones porque la aplicación funciona sin service worker (por ejemplo en una ventana privada).',
+  'reader.back': 'Volver a la biblioteca',
+  'reader.notFound': 'Libro no encontrado',
+  'reader.loadingBook': 'Cargando el libro',
+  'reader.preparingBook': 'Preparando el libro…',
+  'reader.preparingBookAria': 'Preparando el libro',
+  'reader.displaySettings': 'Ajustes de visualización',
+  'reader.displayHeader': 'Visualización',
+  'reader.fontSize': 'Tamaño del texto',
+  'reader.highlight': 'Resaltado',
+  'reader.highlightMark': 'Con fondo',
+  'reader.highlightUnderline': 'Subrayado',
+  'reader.highlightInvert': 'Invertido',
+  'reader.bookLanguage': 'Idioma',
+  'reader.languageAuto': 'Automático ({lang})',
+  'reader.cover': 'Portada: {title}',
+  'reader.chooseVoice': 'Elegir una voz',
+  'reader.previousSentence': 'Frase anterior',
+  'reader.nextSentence': 'Frase siguiente',
+  'reader.play': 'Leer en voz alta',
+  'reader.pause': 'Pausa',
+  'reader.rate': 'Velocidad de lectura {rate}×, cambiar',
+  'reader.needsModel': 'Primero descarga el modelo de voz una vez.',
+  'reader.prepareProgress': 'Progreso de la preparación de la voz',
+  'reader.preparingVoice': 'Preparando la voz',
+  'reader.preparingVoicePercent': 'Preparando la voz de lectura, solo una vez: {percent} %',
+  'reader.computingPercent': 'Calculando la frase: {percent} %',
+  'reader.statePreparing': 'Preparando la voz de lectura',
+  'reader.statePlaying': 'Leyendo en voz alta',
+  'reader.statePaused': 'En pausa',
+  'voices.title': 'Voces',
+  'voices.male': 'Masculina',
+  'voices.female': 'Femenina',
+  'voices.selected': ' (seleccionada)',
+  'voices.needsModel': ' · necesita el modelo de voz',
+  'voices.preview': 'Escuchar la voz {name}',
+  'voices.previewFailed': 'No se pudo reproducir la muestra.{detail}',
+  'voices.download': 'Descargar el modelo de voz',
+  'voices.downloadAria': 'Descargando el modelo de voz',
+  'voices.downloadSize': 'Unos {mb} MB una sola vez, desbloquea las 10 voces',
+  'voices.downloadProgress': 'Descargando… {loaded} de {total} MB. Deja la aplicación abierta.',
+  'voices.storageBlocked': 'Aquí no es posible: tu navegador bloquea el almacenamiento (por ejemplo en una ventana privada). Ábrelo en una ventana normal.',
+  'voices.deleteModel': 'Eliminar el modelo de voz (liberar {mb} MB)',
+  'voices.deleteHeader': '¿Eliminar el modelo de voz?',
+  'voices.deleteBody': 'Se eliminarán todas las voces y presentaciones de este dispositivo. Para volver a leer en voz alta tendrás que descargar de nuevo los {mb} MB.',
+  'voices.details': 'Detalles técnicos',
+  'voices.notPrepared': 'La voz aún no está preparada: pulsa reproducir dentro de un libro.',
+  'voices.cores': 'Núcleos: {threads} hilos de {cores}',
+  'voices.singleThread': 'Atención: solo {threads} hilo. El modo multinúcleo está desactivado (eso frena mucho)',
+  'voices.prepareTime': 'Preparación: {seconds} s',
+  'voices.lastSentence': 'Última frase: {compute} s de cálculo para {audio} s de audio ({factor}×)',
+  'voices.fasterThanRealtime': 'Por debajo de 1× significa más rápido que el tiempo real: la reserva crece.',
+  'voices.slowerThanRealtime': 'Por encima de 1× significa más lento que el tiempo real: la reserva se agota.',
+  'speech.preview': 'Hola, soy {name}. Así sueno cuando te leo tu libro.',
+  'speech.displaced': 'La reproducción se interrumpió varias veces. Pulsa reproducir de nuevo.',
+  'speech.startFailed': 'La reproducción no pudo empezar. Pulsa reproducir otra vez.',
+  'speech.timedOut': 'Tu dispositivo tardó mucho más de lo normal con esta frase. Pulsa reproducir y seguirá en el mismo punto.',
+  'speech.failed': 'No se pudo generar la voz. Si vuelve a ocurrir, descarga de nuevo el modelo de voz desde la lista de voces.',
+  'download.storage': 'Tu navegador no permite almacenar aquí el modelo de voz, lo que suele pasar en ventanas privadas. Abre Booxnet en una ventana normal y descárgalo allí.',
+  'download.quota': 'No hay espacio suficiente en tu dispositivo para el modelo de voz (unos {mb} MB). Libera espacio e inténtalo de nuevo. Las partes ya descargadas se conservan.',
+  'download.network': 'Los datos de voz no están disponibles ahora mismo. Revisa tu conexión e inténtalo de nuevo en unos minutos. Las partes ya descargadas se conservan.',
+}
+
+/** Französisch – maschinell erstellt, noch nicht gegengelesen. */
+const fr: Record<MessageKey, string> = {
+  'common.cancel': 'Annuler',
+  'common.save': 'Enregistrer',
+  'common.done': 'Terminé',
+  'common.understood': 'Compris',
+  'common.delete': 'Supprimer',
+  'unit.page': 'Page',
+  'unit.pages': 'Pages',
+  'unit.chapter': 'Chapitre',
+  'unit.chapters': 'Chapitres',
+  'unit.section': 'Section',
+  'unit.sections': 'Sections',
+  'theme.auto': 'Automatique',
+  'theme.light': 'Clair',
+  'theme.dark': 'Sombre',
+  'theme.eink': 'Encre électronique (contraste élevé)',
+  'theme.header': 'Apparence',
+  'theme.change': 'Changer l\'apparence',
+  'library.title': 'Bibliothèque',
+  'library.empty.title': 'Aucun livre pour le moment',
+  'library.empty.body': 'Ajoute un PDF, un EPUB ou un fichier texte et laisse-le te lire à voix haute. Gratuit et entièrement hors ligne sur ton appareil.',
+  'library.empty.action': 'Choisir un livre',
+  'library.upload': 'Ajouter un livre',
+  'library.importing': 'Lecture du livre',
+  'library.actionsFor': 'Actions pour {title}',
+  'library.rename': 'Renommer',
+  'library.deleteBook': 'Supprimer le livre',
+  'library.listened': '{percent} % écouté',
+  'library.noText': 'Aucun texte n\'a été trouvé dans ce fichier. Les PDF scannés sans couche de texte ne peuvent pas être lus à voix haute.',
+  'library.readError': 'Le fichier n\'a pas pu être lu.',
+  'library.uiLanguage': 'Langue de l\'application',
+  'welcome.title': 'Bienvenue sur Booxnet',
+  'welcome.intro': 'Ajoute un livre et laisse-le te lire à voix haute. Sans compte, sans cloud : tout reste sur ton appareil.',
+  'welcome.soundOn': 'Monte le son !',
+  'welcome.soundOnNote': 'Désactive le mode silencieux ou utilise un casque.',
+  'welcome.language': 'Langue',
+  'welcome.languageNote': 'Détectée pour chaque livre, modifiable dans le lecteur.',
+  'welcome.installAdd': 'Ajouter comme application',
+  'welcome.installAsApp': 'Installer comme application',
+  'welcome.installNote': 'Fonctionne hors ligne et se met à jour toute seule.',
+  'welcome.downloadHeading': 'Téléchargement unique',
+  'welcome.downloadPrivate': 'Impossible dans une fenêtre privée.',
+  'welcome.downloadSize': 'Environ {mb} Mo, puis hors ligne pour de bon.',
+  'welcome.downloadProgress': '{loaded} sur {total} Mo – laisse l\'application ouverte.',
+  'welcome.start': 'Télécharger les fichiers',
+  'welcome.starting': 'Téléchargement…',
+  'welcome.later': 'Plus tard – juste jeter un œil',
+  'install.header': 'Ajouter à l\'écran d\'accueil',
+  'install.iosHelp': 'Sur iPhone et iPad, cela ne fonctionne que depuis Safari : touche l\'icône de partage en bas (un carré avec une flèche vers le haut) puis choisis « Sur l\'écran d\'accueil ». Booxnet démarrera comme une application.',
+  'install.addToHome': 'Ajouter à l\'écran d\'accueil',
+  'update.install': 'Installer la mise à jour',
+  'update.check': 'Rechercher une mise à jour',
+  'update.tapToReload': 'Touche pour recharger',
+  'update.upToDate': 'Tu as déjà la dernière version.',
+  'update.failed': 'La recherche de mise à jour a échoué. Vérifie ta connexion et réessaie plus tard.',
+  'update.noServiceWorker': 'La recherche de mise à jour est impossible ici, car l\'application fonctionne sans service worker (par exemple dans une fenêtre privée).',
+  'reader.back': 'Retour à la bibliothèque',
+  'reader.notFound': 'Livre introuvable',
+  'reader.loadingBook': 'Chargement du livre',
+  'reader.preparingBook': 'Préparation du livre…',
+  'reader.preparingBookAria': 'Préparation du livre',
+  'reader.displaySettings': 'Réglages d\'affichage',
+  'reader.displayHeader': 'Affichage',
+  'reader.fontSize': 'Taille du texte',
+  'reader.highlight': 'Surlignage',
+  'reader.highlightMark': 'Fond coloré',
+  'reader.highlightUnderline': 'Souligné',
+  'reader.highlightInvert': 'Inversé',
+  'reader.bookLanguage': 'Langue',
+  'reader.languageAuto': 'Automatique ({lang})',
+  'reader.cover': 'Couverture : {title}',
+  'reader.chooseVoice': 'Choisir une voix',
+  'reader.previousSentence': 'Phrase précédente',
+  'reader.nextSentence': 'Phrase suivante',
+  'reader.play': 'Lire à voix haute',
+  'reader.pause': 'Pause',
+  'reader.rate': 'Vitesse de lecture {rate}×, modifier',
+  'reader.needsModel': 'Télécharge d\'abord le modèle vocal, une seule fois.',
+  'reader.prepareProgress': 'Progression de la préparation vocale',
+  'reader.preparingVoice': 'Préparation de la voix',
+  'reader.preparingVoicePercent': 'Préparation de la voix de lecture, une seule fois – {percent} %',
+  'reader.computingPercent': 'Calcul de la phrase – {percent} %',
+  'reader.statePreparing': 'Préparation de la voix de lecture',
+  'reader.statePlaying': 'Lecture en cours',
+  'reader.statePaused': 'En pause',
+  'voices.title': 'Voix',
+  'voices.male': 'Masculine',
+  'voices.female': 'Féminine',
+  'voices.selected': ' (sélectionnée)',
+  'voices.needsModel': ' · nécessite le modèle vocal',
+  'voices.preview': 'Écouter la voix {name}',
+  'voices.previewFailed': 'L\'aperçu a échoué.{detail}',
+  'voices.download': 'Télécharger le modèle vocal',
+  'voices.downloadAria': 'Téléchargement du modèle vocal',
+  'voices.downloadSize': 'Environ {mb} Mo une seule fois, débloque les 10 voix',
+  'voices.downloadProgress': 'Téléchargement… {loaded} sur {total} Mo. Laisse l\'application ouverte.',
+  'voices.storageBlocked': 'Impossible ici : ton navigateur bloque le stockage (par exemple dans une fenêtre privée). Ouvre-le dans une fenêtre normale.',
+  'voices.deleteModel': 'Supprimer le modèle vocal (libérer {mb} Mo)',
+  'voices.deleteHeader': 'Supprimer le modèle vocal ?',
+  'voices.deleteBody': 'Toutes les voix et présentations seront supprimées de cet appareil. Pour lire à voix haute, il faudra retélécharger les {mb} Mo.',
+  'voices.details': 'Détails techniques',
+  'voices.notPrepared': 'La voix n\'est pas encore prête : touche lecture dans un livre.',
+  'voices.cores': 'Cœurs : {threads} fils sur {cores}',
+  'voices.singleThread': 'Attention : un seul fil ({threads}). Le mode multicœur est désactivé, ce qui ralentit beaucoup',
+  'voices.prepareTime': 'Préparation : {seconds} s',
+  'voices.lastSentence': 'Dernière phrase : {compute} s de calcul pour {audio} s de son ({factor}×)',
+  'voices.fasterThanRealtime': 'En dessous de 1×, c\'est plus rapide que le temps réel : la réserve augmente.',
+  'voices.slowerThanRealtime': 'Au-dessus de 1×, c\'est plus lent que le temps réel : la réserve diminue.',
+  'speech.preview': 'Bonjour, je suis {name}. Voici ma voix quand je te lis ton livre.',
+  'speech.displaced': 'La lecture a été interrompue plusieurs fois. Touche lecture à nouveau.',
+  'speech.startFailed': 'La lecture n\'a pas pu démarrer. Touche lecture encore une fois.',
+  'speech.timedOut': 'Ton appareil a mis très longtemps pour cette phrase. Touche lecture et cela reprendra au même endroit.',
+  'speech.failed': 'La voix n\'a pas pu être générée. Si cela se répète, retélécharge le modèle vocal depuis la liste des voix.',
+  'download.storage': 'Ton navigateur n\'autorise pas le stockage du modèle vocal ici, ce qui arrive surtout dans les fenêtres privées. Ouvre Booxnet dans une fenêtre normale et télécharge-le là.',
+  'download.quota': 'Il n\'y a pas assez d\'espace libre sur ton appareil pour le modèle vocal (environ {mb} Mo). Libère de la place et réessaie. Les parties déjà téléchargées sont conservées.',
+  'download.network': 'Les données vocales sont injoignables pour le moment. Vérifie ta connexion et réessaie dans quelques minutes. Les parties déjà téléchargées sont conservées.',
+}
+
+/** Russisch – maschinell erstellt, noch nicht gegengelesen. */
+const ru: Record<MessageKey, string> = {
+  'common.cancel': 'Отмена',
+  'common.save': 'Сохранить',
+  'common.done': 'Готово',
+  'common.understood': 'Понятно',
+  'common.delete': 'Удалить',
+  'unit.page': 'Страница',
+  'unit.pages': 'Страниц',
+  'unit.chapter': 'Глава',
+  'unit.chapters': 'Глав',
+  'unit.section': 'Раздел',
+  'unit.sections': 'Разделов',
+  'theme.auto': 'Автоматически',
+  'theme.light': 'Светлая',
+  'theme.dark': 'Тёмная',
+  'theme.eink': 'Электронные чернила (высокий контраст)',
+  'theme.header': 'Оформление',
+  'theme.change': 'Изменить оформление',
+  'library.title': 'Библиотека',
+  'library.empty.title': 'Книг пока нет',
+  'library.empty.body': 'Загрузите PDF, EPUB или текстовый файл и слушайте. Бесплатно и полностью офлайн на вашем устройстве.',
+  'library.empty.action': 'Выбрать книгу',
+  'library.upload': 'Загрузить книгу',
+  'library.importing': 'Книга обрабатывается',
+  'library.actionsFor': 'Действия для «{title}»',
+  'library.rename': 'Изменить название',
+  'library.deleteBook': 'Удалить книгу',
+  'library.listened': 'прослушано {percent} %',
+  'library.noText': 'В этом файле не найден текст. Отсканированные PDF без текстового слоя озвучить нельзя.',
+  'library.readError': 'Не удалось прочитать файл.',
+  'library.uiLanguage': 'Язык приложения',
+  'welcome.title': 'Добро пожаловать в Booxnet',
+  'welcome.intro': 'Загрузите книгу и слушайте её. Без учётной записи и без облака — всё остаётся на вашем устройстве.',
+  'welcome.soundOn': 'Включите звук!',
+  'welcome.soundOnNote': 'Отключите беззвучный режим или наденьте наушники.',
+  'welcome.language': 'Язык',
+  'welcome.languageNote': 'Определяется для каждой книги, меняется в читалке.',
+  'welcome.installAdd': 'Добавить как приложение',
+  'welcome.installAsApp': 'Установить как приложение',
+  'welcome.installNote': 'Работает офлайн и обновляется само.',
+  'welcome.downloadHeading': 'Разовая загрузка',
+  'welcome.downloadPrivate': 'В приватном окне это невозможно.',
+  'welcome.downloadSize': 'Около {mb} МБ, потом навсегда офлайн.',
+  'welcome.downloadProgress': '{loaded} из {total} МБ — не закрывайте приложение.',
+  'welcome.start': 'Загрузить файлы',
+  'welcome.starting': 'Загрузка…',
+  'welcome.later': 'Позже — сначала осмотреться',
+  'install.header': 'На экран «Домой»',
+  'install.iosHelp': 'На iPhone и iPad это работает только из Safari: нажмите значок «Поделиться» внизу (квадрат со стрелкой вверх) и выберите «На экран „Домой“». После этого Booxnet будет запускаться как приложение.',
+  'install.addToHome': 'Добавить на экран «Домой»',
+  'update.install': 'Установить обновление',
+  'update.check': 'Проверить обновления',
+  'update.tapToReload': 'Нажмите, чтобы перезагрузить',
+  'update.upToDate': 'У вас уже последняя версия.',
+  'update.failed': 'Не удалось проверить обновления. Проверьте подключение и попробуйте позже.',
+  'update.noServiceWorker': 'Здесь проверка обновлений недоступна, потому что приложение работает без service worker (например, в приватном окне).',
+  'reader.back': 'Назад в библиотеку',
+  'reader.notFound': 'Книга не найдена',
+  'reader.loadingBook': 'Книга загружается',
+  'reader.preparingBook': 'Книга подготавливается…',
+  'reader.preparingBookAria': 'Книга подготавливается',
+  'reader.displaySettings': 'Настройки отображения',
+  'reader.displayHeader': 'Отображение',
+  'reader.fontSize': 'Размер текста',
+  'reader.highlight': 'Подсветка',
+  'reader.highlightMark': 'Заливка',
+  'reader.highlightUnderline': 'Подчёркивание',
+  'reader.highlightInvert': 'Инверсия',
+  'reader.bookLanguage': 'Язык',
+  'reader.languageAuto': 'Автоматически ({lang})',
+  'reader.cover': 'Обложка: {title}',
+  'reader.chooseVoice': 'Выбрать голос',
+  'reader.previousSentence': 'Предыдущее предложение',
+  'reader.nextSentence': 'Следующее предложение',
+  'reader.play': 'Читать вслух',
+  'reader.pause': 'Пауза',
+  'reader.rate': 'Скорость чтения {rate}×, изменить',
+  'reader.needsModel': 'Сначала один раз загрузите речевую модель.',
+  'reader.prepareProgress': 'Ход подготовки голоса',
+  'reader.preparingVoice': 'Голос подготавливается',
+  'reader.preparingVoicePercent': 'Голос для чтения подготавливается, один раз — {percent} %',
+  'reader.computingPercent': 'Предложение вычисляется — {percent} %',
+  'reader.statePreparing': 'Голос для чтения подготавливается',
+  'reader.statePlaying': 'Идёт чтение',
+  'reader.statePaused': 'Пауза',
+  'voices.title': 'Голоса',
+  'voices.male': 'Мужской',
+  'voices.female': 'Женский',
+  'voices.selected': ' (выбран)',
+  'voices.needsModel': ' · нужна речевая модель',
+  'voices.preview': 'Прослушать голос {name}',
+  'voices.previewFailed': 'Не удалось воспроизвести образец.{detail}',
+  'voices.download': 'Загрузить речевую модель',
+  'voices.downloadAria': 'Речевая модель загружается',
+  'voices.downloadSize': 'Около {mb} МБ один раз, открывает все 10 голосов',
+  'voices.downloadProgress': 'Загрузка… {loaded} из {total} МБ. Не закрывайте приложение.',
+  'voices.storageBlocked': 'Здесь это невозможно: браузер блокирует хранилище (например, в приватном окне). Откройте приложение в обычном окне.',
+  'voices.deleteModel': 'Удалить речевую модель (освободить {mb} МБ)',
+  'voices.deleteHeader': 'Удалить речевую модель?',
+  'voices.deleteBody': 'Все голоса и приветствия будут удалены с этого устройства. Чтобы снова читать вслух, придётся заново загрузить {mb} МБ.',
+  'voices.details': 'Технические подробности',
+  'voices.notPrepared': 'Голос ещё не подготовлен — нажмите воспроизведение в книге.',
+  'voices.cores': 'Ядра: {threads} потоков из {cores}',
+  'voices.singleThread': 'Внимание: только {threads} поток. Многоядерный режим выключен, это сильно замедляет работу',
+  'voices.prepareTime': 'Подготовка: {seconds} с',
+  'voices.lastSentence': 'Последнее предложение: {compute} с вычислений на {audio} с звука ({factor}×)',
+  'voices.fasterThanRealtime': 'Меньше 1× — быстрее реального времени, запас растёт.',
+  'voices.slowerThanRealtime': 'Больше 1× — медленнее реального времени, запас тает.',
+  'speech.preview': 'Здравствуйте, меня зовут {name}. Так я звучу, когда читаю вам книгу.',
+  'speech.displaced': 'Воспроизведение прерывалось несколько раз. Нажмите воспроизведение ещё раз.',
+  'speech.startFailed': 'Не удалось начать воспроизведение. Нажмите воспроизведение ещё раз.',
+  'speech.timedOut': 'Устройству понадобилось необычно много времени на это предложение. Нажмите воспроизведение — чтение продолжится с того же места.',
+  'speech.failed': 'Не удалось создать голос. Если это повторяется, загрузите речевую модель заново из списка голосов.',
+  'download.storage': 'Браузер не разрешает хранить здесь речевую модель — так бывает прежде всего в приватных окнах. Откройте Booxnet в обычном окне и загрузите её там.',
+  'download.quota': 'На устройстве недостаточно места для речевой модели (около {mb} МБ). Освободите место и попробуйте снова. Уже загруженные части сохраняются.',
+  'download.network': 'Речевые данные сейчас недоступны. Проверьте подключение и попробуйте через несколько минут. Уже загруженные части сохраняются.',
+}
+
+/** Türkisch – maschinell erstellt, noch nicht gegengelesen. */
+const tr: Record<MessageKey, string> = {
+  'common.cancel': 'İptal',
+  'common.save': 'Kaydet',
+  'common.done': 'Bitti',
+  'common.understood': 'Anladım',
+  'common.delete': 'Sil',
+  'unit.page': 'Sayfa',
+  'unit.pages': 'Sayfa',
+  'unit.chapter': 'Bölüm',
+  'unit.chapters': 'Bölüm',
+  'unit.section': 'Kısım',
+  'unit.sections': 'Kısım',
+  'theme.auto': 'Otomatik',
+  'theme.light': 'Açık',
+  'theme.dark': 'Koyu',
+  'theme.eink': 'E-mürekkep (yüksek kontrast)',
+  'theme.header': 'Görünüm',
+  'theme.change': 'Görünümü değiştir',
+  'library.title': 'Kitaplık',
+  'library.empty.title': 'Henüz kitap yok',
+  'library.empty.body': 'Bir PDF, EPUB veya metin dosyası yükle ve sana okunsun. Ücretsiz ve tamamen çevrimdışı, cihazında.',
+  'library.empty.action': 'Kitap seç',
+  'library.upload': 'Kitap yükle',
+  'library.importing': 'Kitap okunuyor',
+  'library.actionsFor': '{title} için işlemler',
+  'library.rename': 'Başlığı değiştir',
+  'library.deleteBook': 'Kitabı sil',
+  'library.listened': '%{percent} dinlendi',
+  'library.noText': 'Bu dosyada metin bulunamadı. Metin katmanı olmayan taranmış PDF’ler sesli okunamaz.',
+  'library.readError': 'Dosya okunamadı.',
+  'library.uiLanguage': 'Uygulama dili',
+  'welcome.title': 'Booxnet’e hoş geldin',
+  'welcome.intro': 'Bir kitap yükle ve sana okunsun. Hesap yok, bulut yok – her şey cihazında kalır.',
+  'welcome.soundOn': 'Sesi aç!',
+  'welcome.soundOnNote': 'Sessiz modu kapat ya da kulaklık kullan.',
+  'welcome.language': 'Dil',
+  'welcome.languageNote': 'Her kitap için algılanır, okuyucuda değiştirilebilir.',
+  'welcome.installAdd': 'Uygulama olarak ekle',
+  'welcome.installAsApp': 'Uygulama olarak kur',
+  'welcome.installNote': 'Çevrimdışı çalışır, kendini günceller.',
+  'welcome.downloadHeading': 'Tek seferlik indirme',
+  'welcome.downloadPrivate': 'Gizli pencerede mümkün değil.',
+  'welcome.downloadSize': 'Yaklaşık {mb} MB, sonrası hep çevrimdışı.',
+  'welcome.downloadProgress': '{total} MB’ın {loaded} MB’ı – uygulamayı açık bırak.',
+  'welcome.start': 'Dosyaları indir',
+  'welcome.starting': 'İndiriliyor…',
+  'welcome.later': 'Sonra – önce bir bakayım',
+  'install.header': 'Ana ekrana ekle',
+  'install.iosHelp': 'iPhone ve iPad’de bu yalnızca Safari üzerinden çalışır: alttaki paylaşım simgesine (yukarı oklu kare) dokun ve “Ana Ekrana Ekle” seçeneğini seç. Booxnet bundan sonra bir uygulama gibi açılır.',
+  'install.addToHome': 'Ana ekrana ekle',
+  'update.install': 'Güncellemeyi kur',
+  'update.check': 'Güncelleme ara',
+  'update.tapToReload': 'Yeniden yüklemek için dokun',
+  'update.upToDate': 'Zaten en son sürümü kullanıyorsun.',
+  'update.failed': 'Güncelleme kontrolü başarısız oldu. Bağlantını kontrol et ve daha sonra tekrar dene.',
+  'update.noServiceWorker': 'Burada güncelleme kontrolü yapılamıyor, çünkü uygulama service worker olmadan çalışıyor (örneğin gizli pencerede).',
+  'reader.back': 'Kitaplığa dön',
+  'reader.notFound': 'Kitap bulunamadı',
+  'reader.loadingBook': 'Kitap yükleniyor',
+  'reader.preparingBook': 'Kitap hazırlanıyor…',
+  'reader.preparingBookAria': 'Kitap hazırlanıyor',
+  'reader.displaySettings': 'Görüntü ayarları',
+  'reader.displayHeader': 'Görüntü',
+  'reader.fontSize': 'Yazı boyutu',
+  'reader.highlight': 'Vurgu',
+  'reader.highlightMark': 'Zeminli',
+  'reader.highlightUnderline': 'Altı çizili',
+  'reader.highlightInvert': 'Ters renk',
+  'reader.bookLanguage': 'Dil',
+  'reader.languageAuto': 'Otomatik ({lang})',
+  'reader.cover': 'Kapak: {title}',
+  'reader.chooseVoice': 'Ses seç',
+  'reader.previousSentence': 'Önceki cümle',
+  'reader.nextSentence': 'Sonraki cümle',
+  'reader.play': 'Sesli oku',
+  'reader.pause': 'Duraklat',
+  'reader.rate': 'Okuma hızı {rate}×, değiştir',
+  'reader.needsModel': 'Önce konuşma modelini bir kez indir.',
+  'reader.prepareProgress': 'Ses hazırlığının ilerlemesi',
+  'reader.preparingVoice': 'Ses hazırlanıyor',
+  'reader.preparingVoicePercent': 'Okuma sesi bir kereye mahsus hazırlanıyor – %{percent}',
+  'reader.computingPercent': 'Cümle hesaplanıyor – %{percent}',
+  'reader.statePreparing': 'Okuma sesi hazırlanıyor',
+  'reader.statePlaying': 'Sesli okunuyor',
+  'reader.statePaused': 'Duraklatıldı',
+  'voices.title': 'Sesler',
+  'voices.male': 'Erkek',
+  'voices.female': 'Kadın',
+  'voices.selected': ' (seçili)',
+  'voices.needsModel': ' · konuşma modeli gerekir',
+  'voices.preview': '{name} sesini dinle',
+  'voices.previewFailed': 'Örnek çalınamadı.{detail}',
+  'voices.download': 'Konuşma modelini indir',
+  'voices.downloadAria': 'Konuşma modeli indiriliyor',
+  'voices.downloadSize': 'Tek seferlik yaklaşık {mb} MB, 10 sesin tamamını açar',
+  'voices.downloadProgress': 'İndiriliyor… {total} MB’ın {loaded} MB’ı. Uygulamayı açık bırak.',
+  'voices.storageBlocked': 'Burada mümkün değil: tarayıcın depolamayı engelliyor (örneğin gizli pencerede). Normal bir pencerede aç.',
+  'voices.deleteModel': 'Konuşma modelini sil ({mb} MB boşalt)',
+  'voices.deleteHeader': 'Konuşma modeli silinsin mi?',
+  'voices.deleteBody': 'Tüm sesler ve tanıtımlar bu cihazdan kaldırılacak. Yeniden sesli okumak için {mb} MB’ı tekrar indirmen gerekir.',
+  'voices.details': 'Teknik ayrıntılar',
+  'voices.notPrepared': 'Ses henüz hazır değil – bir kitapta oynata dokun.',
+  'voices.cores': 'İşlemci çekirdekleri: {cores} çekirdekten {threads} iş parçacığı',
+  'voices.singleThread': 'Dikkat: yalnızca {threads} iş parçacığı. Çok çekirdekli mod kapalı, bu çok yavaşlatır',
+  'voices.prepareTime': 'Hazırlık: {seconds} s',
+  'voices.lastSentence': 'Son cümle: {audio} s ses için {compute} s hesaplama ({factor}×)',
+  'voices.fasterThanRealtime': '1× altı gerçek zamandan hızlı demektir, yedek büyür.',
+  'voices.slowerThanRealtime': '1× üstü gerçek zamandan yavaş demektir, yedek erir.',
+  'speech.preview': 'Merhaba, ben {name}. Sana kitabını okurken böyle duyulurum.',
+  'speech.displaced': 'Oynatma birkaç kez kesildi. Yeniden oynata dokun.',
+  'speech.startFailed': 'Oynatma başlatılamadı. Bir kez daha oynata dokun.',
+  'speech.timedOut': 'Cihazın bu cümle için alışılmadık kadar uzun sürdü. Oynata dokun, aynı yerden devam eder.',
+  'speech.failed': 'Ses oluşturulamadı. Bu tekrar olursa konuşma modelini ses listesinden yeniden indir.',
+  'download.storage': 'Tarayıcın konuşma modeli için burada depolamaya izin vermiyor, bu özellikle gizli pencerelerde olur. Booxnet’i normal bir pencerede aç ve oradan indir.',
+  'download.quota': 'Cihazında konuşma modeli için yeterli boş alan yok (yaklaşık {mb} MB). Yer aç ve tekrar dene. İndirilmiş parçalar korunur.',
+  'download.network': 'Konuşma verilerine şu anda ulaşılamıyor. Bağlantını kontrol et ve birkaç dakika sonra tekrar dene. İndirilmiş parçalar korunur.',
+}
+
+const DICTIONARIES = { de, en, es, fr, ru, tr }
+
+export type UiLang = keyof typeof DICTIONARIES
+
+/**
+ * Jede Sprache mit ihrem EIGENEN Namen: Wer die App gerade auf Russisch
+ * sieht und zu Spanisch wechseln will, sucht nach "Español", nicht nach
+ * der russischen Bezeichnung dafür.
+ */
+export const UI_LANGUAGES: { code: UiLang; name: string }[] = [
+  { code: 'de', name: 'Deutsch' },
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Español' },
+  { code: 'fr', name: 'Français' },
+  { code: 'ru', name: 'Русский' },
+  { code: 'tr', name: 'Türkçe' },
+]
+
+/**
+ * Englisch ist der Rückfall, nicht Deutsch: Wer keine der angebotenen
+ * Sprachen spricht, kommt mit Englisch am ehesten zurecht.
+ */
+const FALLBACK: UiLang = 'en'
+
+function isUiLang(value: string | null): value is UiLang {
+  return value !== null && value in DICTIONARIES
+}
+
+function detectFromBrowser(): UiLang {
+  for (const tag of navigator.languages ?? [navigator.language]) {
+    const base = tag.split('-')[0]
+    if (isUiLang(base)) return base
+  }
+  return FALLBACK
+}
+
+let current: UiLang = (() => {
+  const stored = readSetting(LANG_KEY)
+  return isUiLang(stored) ? stored : detectFromBrowser()
+})()
+
+const listeners = new Set<() => void>()
+
+export function getUiLang(): UiLang {
+  return current
+}
+
+export function setUiLang(lang: UiLang): void {
+  if (lang === current) return
+  current = lang
+  writeSetting(LANG_KEY, lang)
+  applyDocumentLang()
+  for (const listener of listeners) listener()
+}
+
+/**
+ * Hält das lang-Attribut der Seite gleich – Screenreader lesen danach.
+ * Ohne DOM (Worker, Testlauf) ist das schlicht nichts zu tun; ohne diese
+ * Prüfung riss ein Sprachwechsel dort alles mit.
+ */
+export function applyDocumentLang(): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.lang = current
+}
+
+export function subscribeUiLang(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+/**
+ * Übersetzt einen Schlüssel. Platzhalter stehen in geschweiften
+ * Klammern: t('reader.rate', { rate: 1.5 }).
+ */
+export function t(key: MessageKey, vars?: Record<string, string | number>): string {
+  const template = DICTIONARIES[current][key] ?? DICTIONARIES[FALLBACK][key]
+  if (!vars) return template
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in vars ? String(vars[name]) : match,
+  )
+}

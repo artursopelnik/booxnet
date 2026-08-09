@@ -36,6 +36,8 @@ import {
 } from '../lib/supertonic/client'
 import { previewVoice, warmVoicePreviews } from '../lib/tts'
 import { useEngineDownload } from '../lib/useEngineDownload'
+import { t as translate } from '../lib/i18n'
+import { useT } from '../lib/useT'
 import { STUDIO_VOICES, type StudioVoiceMeta } from '../lib/voices'
 
 /** Deutsche Zahl mit einer Nachkommastelle (Komma statt Punkt). */
@@ -52,24 +54,32 @@ function num(value: number): string {
 function diagnosticLines(info: EngineInfo): string[] {
   const { engine, synth } = info
   if (!engine) {
-    return ['Stimme noch nicht vorbereitet – tippe im Buch auf Abspielen.']
+    return [translate('voices.notPrepared')]
   }
   const lines = [
     engine.isolated
-      ? `Rechenkerne: ${engine.threads} Threads von ${engine.cores ?? '?'} Kernen`
-      : `Achtung: nur ${engine.threads} Thread – Mehrkern-Modus nicht aktiv (das bremst stark)`,
-    `Vorbereitung: ${num(engine.loadSeconds)} s`,
+      ? translate('voices.cores', {
+          threads: engine.threads,
+          cores: engine.cores ?? '?',
+        })
+      : translate('voices.singleThread', { threads: engine.threads }),
+    translate('voices.prepareTime', { seconds: num(engine.loadSeconds) }),
   ]
   if (synth && synth.audioSeconds > 0) {
     const factor = synth.computeSeconds / synth.audioSeconds
     lines.push(
-      `Letzter Satz: ${num(synth.computeSeconds)} s Rechenzeit für ` +
-        `${num(synth.audioSeconds)} s Ton (${num(factor)}×)`,
+      translate('voices.lastSentence', {
+        compute: num(synth.computeSeconds),
+        audio: num(synth.audioSeconds),
+        factor: num(factor),
+      }),
     )
     lines.push(
-      factor < 1
-        ? 'Unter 1× heißt: schneller als Echtzeit, der Vorrat wächst.'
-        : 'Über 1× heißt: langsamer als Echtzeit, der Vorrat schrumpft.',
+      translate(
+        factor < 1
+          ? 'voices.fasterThanRealtime'
+          : 'voices.slowerThanRealtime',
+      ),
     )
   }
   return lines
@@ -104,6 +114,7 @@ export default function VoiceSheet({
   canWarmPreviews = true,
   onPreviewStart,
 }: Props) {
+  const t = useT()
   const [installed, setInstalled] = useState(false)
   const { progress, storageBlocked, start } = useEngineDownload()
   const [previewing, setPreviewing] = useState<string | null>(null)
@@ -150,13 +161,12 @@ export default function VoiceSheet({
   // Ein versehentlicher Tipper darf nicht 400 MB wegwerfen – erst fragen.
   const confirmDelete = () => {
     void presentAlert({
-      header: 'Sprachmodell löschen?',
-      message:
-        'Alle Stimmen und Begrüßungen werden von diesem Gerät entfernt. Zum Vorlesen musst du die ca. 400 MB danach erneut herunterladen.',
+      header: t('voices.deleteHeader'),
+      message: t('voices.deleteBody', { mb: STUDIO_ENGINE_SIZE_MB }),
       buttons: [
-        { text: 'Abbrechen', role: 'cancel' },
+        { text: t('common.cancel'), role: 'cancel' },
         {
-          text: 'Löschen',
+          text: t('common.delete'),
           role: 'destructive',
           handler: () => void deleteData(),
         },
@@ -175,7 +185,7 @@ export default function VoiceSheet({
       const detail =
         error instanceof Error && error.message ? ` (${error.message})` : ''
       presentToast({
-        message: `Probehören fehlgeschlagen.${detail}`,
+        message: t('voices.previewFailed', { detail }),
         duration: 4000,
         color: 'danger',
       })
@@ -201,10 +211,10 @@ export default function VoiceSheet({
     >
       <IonHeader>
         <IonToolbar>
-          <IonTitle role="heading" aria-level={1}>Stimmen</IonTitle>
+          <IonTitle role="heading" aria-level={1}>{t('voices.title')}</IonTitle>
           <IonButtons slot="end">
             <IonButton strong onClick={onDismiss}>
-              Fertig
+              {t('common.done')}
             </IonButton>
           </IonButtons>
         </IonToolbar>
@@ -222,18 +232,21 @@ export default function VoiceSheet({
             >
               <IonIcon aria-hidden="true" slot="start" icon={sparklesOutline} color="primary" />
               <IonLabel>
-                <h2>Sprachmodell herunterladen</h2>
+                <h2>{t('voices.download')}</h2>
                 <IonNote>
                   {storageBlocked
-                    ? 'Hier nicht möglich: Dein Browser blockiert den Speicher dafür (z. B. im privaten Fenster). Bitte in einem normalen Fenster öffnen.'
+                    ? t('voices.storageBlocked')
                     : progress === null
-                      ? `Einmalig ca. ${STUDIO_ENGINE_SIZE_MB} MB, schaltet alle 10 Stimmen frei`
-                      : `Wird geladen … ${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB. Lass die App dabei geöffnet.`}
+                      ? t('voices.downloadSize', { mb: STUDIO_ENGINE_SIZE_MB })
+                      : t('voices.downloadProgress', {
+                          loaded: progress.mb,
+                          total: STUDIO_ENGINE_SIZE_MB,
+                        })}
                 </IonNote>
                 {progress !== null && (
                   <IonProgressBar
                     value={progress.percent / 100}
-                    aria-label="Sprachmodell wird heruntergeladen"
+                    aria-label={t('voices.downloadAria')}
                     style={{ marginTop: 6 }}
                   />
                 )}
@@ -258,12 +271,14 @@ export default function VoiceSheet({
                 <h2>
                   {voice.name}
                   {voice.id === selectedId && (
-                    <span className="visually-hidden"> (ausgewählt)</span>
+                    <span className="visually-hidden">
+                      {t('voices.selected')}
+                    </span>
                   )}
                 </h2>
                 <IonNote>
-                  {voice.gender === 'm' ? 'Männlich' : 'Weiblich'}
-                  {!installed && ' · benötigt das Sprachmodell'}
+                  {t(voice.gender === 'm' ? 'voices.male' : 'voices.female')}
+                  {!installed && t('voices.needsModel')}
                 </IonNote>
               </IonLabel>
               {voice.id === selectedId && (
@@ -279,7 +294,7 @@ export default function VoiceSheet({
                     event.stopPropagation()
                     void preview(voice)
                   }}
-                  aria-label={`Stimme ${voice.name} probehören`}
+                  aria-label={t('voices.preview', { name: voice.name })}
                 >
                   {previewing === voice.id ? (
                     <IonSpinner name="crescent" />
@@ -294,7 +309,7 @@ export default function VoiceSheet({
             <IonItem button onClick={confirmDelete}>
               <IonIcon aria-hidden="true" slot="start" icon={trashOutline} color="medium" />
               <IonLabel color="medium">
-                Sprachmodell löschen ({STUDIO_ENGINE_SIZE_MB} MB freigeben)
+                {t('voices.deleteModel', { mb: STUDIO_ENGINE_SIZE_MB })}
               </IonLabel>
             </IonItem>
           )}
@@ -311,7 +326,7 @@ export default function VoiceSheet({
             <IonItem lines="none">
               <IonLabel className="ion-text-wrap">
                 <details className="engine-details">
-                  <summary>Technische Details</summary>
+                  <summary>{t('voices.details')}</summary>
                   <div className="engine-diagnostics">
                     {diagnosticLines(info).map((line) => (
                       <div key={line}>{line}</div>

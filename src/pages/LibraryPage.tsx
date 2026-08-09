@@ -30,6 +30,7 @@ import {
   add,
   bookOutline,
   contrastOutline,
+  languageOutline,
   createOutline,
   ellipsisVertical,
   trashOutline,
@@ -46,10 +47,13 @@ import {
 } from '../lib/db'
 import { ACCEPTED_FILES, importBook, unitCount } from '../lib/importers'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
-import { getTheme, setTheme, THEME_LABELS, type ThemeChoice } from '../lib/theme'
+import { getTheme, setTheme, themeLabel, type ThemeChoice } from '../lib/theme'
+import { getUiLang, setUiLang, UI_LANGUAGES, type UiLang } from '../lib/i18n'
+import { useT } from '../lib/useT'
 import { hasSeenWelcome, markWelcomeSeen } from './WelcomePage'
 
 export default function LibraryPage() {
+  const t = useT()
   const [books, setBooks] = useState<BookMeta[]>([])
   const [importing, setImporting] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -84,7 +88,7 @@ export default function LibraryPage() {
       if (book.sentenceCount === 0) {
         presentToast({
           message:
-            'In dieser Datei wurde kein Text gefunden. Gescannte PDFs ohne Textebene können nicht vorgelesen werden.',
+            t('library.noText'),
           duration: 4000,
           color: 'warning',
         })
@@ -98,7 +102,7 @@ export default function LibraryPage() {
         message:
           error instanceof Error && error.message
             ? error.message
-            : 'Die Datei konnte nicht gelesen werden.',
+            : t('library.readError'),
         duration: 4000,
         color: 'danger',
       })
@@ -124,24 +128,24 @@ export default function LibraryPage() {
       header: book.title,
       buttons: [
         {
-          text: 'Titel ändern',
+          text: t('library.rename'),
           icon: createOutline,
           handler: () => rename(book),
         },
         {
-          text: 'Buch löschen',
+          text: t('library.deleteBook'),
           icon: trashOutline,
           role: 'destructive',
           handler: () => void remove(book),
         },
-        { text: 'Abbrechen', role: 'cancel' },
+        { text: t('common.cancel'), role: 'cancel' },
       ],
     })
   }
 
   const rename = (book: BookMeta) => {
     void presentAlert({
-      header: 'Titel ändern',
+      header: t('library.rename'),
       inputs: [
         {
           name: 'title',
@@ -151,9 +155,9 @@ export default function LibraryPage() {
         },
       ],
       buttons: [
-        { text: 'Abbrechen', role: 'cancel' },
+        { text: t('common.cancel'), role: 'cancel' },
         {
-          text: 'Speichern',
+          text: t('common.save'),
           handler: (data: { title?: string }) => {
             const title = (data.title ?? '').trim()
             if (title && title !== book.title) {
@@ -175,17 +179,31 @@ export default function LibraryPage() {
   const chooseTheme = () => {
     const current = getTheme()
     const option = (choice: ThemeChoice) => ({
-      text: THEME_LABELS[choice] + (current === choice ? ' ✓' : ''),
+      text: themeLabel(choice) + (current === choice ? ' ✓' : ''),
       handler: () => setTheme(choice),
     })
     void presentActionSheet({
-      header: 'Darstellung',
+      header: t('theme.header'),
       buttons: [
         option('auto'),
         option('light'),
         option('dark'),
         option('eink'),
-        { text: 'Abbrechen', role: 'cancel' },
+        { text: t('common.cancel'), role: 'cancel' },
+      ],
+    })
+  }
+
+  const chooseUiLanguage = () => {
+    const current = getUiLang()
+    void presentActionSheet({
+      header: t('library.uiLanguage'),
+      buttons: [
+        ...UI_LANGUAGES.map(({ code, name }) => ({
+          text: name + (current === code ? ' ✓' : ''),
+          handler: () => setUiLang(code as UiLang),
+        })),
+        { text: t('common.cancel'), role: 'cancel' },
       ],
     })
   }
@@ -208,11 +226,21 @@ export default function LibraryPage() {
             slot="start"
             className="brand-mark"
             src={`${import.meta.env.BASE_URL}icon.svg`}
-            alt="Booxnet"
+            alt=""
           />
-          <IonTitle role="heading" aria-level={1}>Bibliothek</IonTitle>
+          <IonTitle role="heading" aria-level={1}>{t('library.title')}</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={chooseTheme} aria-label="Darstellung ändern">
+            <IonButton
+              onClick={chooseUiLanguage}
+              aria-label={t('library.uiLanguage')}
+            >
+              <IonIcon
+                aria-hidden="true"
+                slot="icon-only"
+                icon={languageOutline}
+              />
+            </IonButton>
+            <IonButton onClick={chooseTheme} aria-label={t('theme.change')}>
               <IonIcon aria-hidden="true" slot="icon-only" icon={contrastOutline} />
             </IonButton>
           </IonButtons>
@@ -221,7 +249,7 @@ export default function LibraryPage() {
       <IonContent fullscreen>
         <IonHeader collapse="condense">
           <IonToolbar>
-            <IonTitle size="large">Bibliothek</IonTitle>
+            <IonTitle size="large">{t('library.title')}</IonTitle>
           </IonToolbar>
         </IonHeader>
 
@@ -229,10 +257,10 @@ export default function LibraryPage() {
           <>
             <IonProgressBar
               type="indeterminate"
-              aria-label="Buch wird eingelesen"
+              aria-label={t('library.importing')}
             />
             <div className="visually-hidden" role="status">
-              Buch wird eingelesen
+              {t('library.importing')}
             </div>
           </>
         )}
@@ -240,13 +268,10 @@ export default function LibraryPage() {
         {books.length === 0 && !importing && (
           <div className="empty-state">
             <IonIcon aria-hidden="true" icon={bookOutline} />
-            <h2>Noch keine Bücher</h2>
-            <p>
-              Lade ein PDF, EPUB oder eine Textdatei hoch und lass es dir
-              vorlesen. Kostenlos und komplett offline auf deinem Gerät.
-            </p>
+            <h2>{t('library.empty.title')}</h2>
+            <p>{t('library.empty.body')}</p>
             <IonButton onClick={() => fileInput.current?.click()}>
-              Buch hochladen
+              {t('library.empty.action')}
             </IonButton>
           </div>
         )}
@@ -278,7 +303,7 @@ export default function LibraryPage() {
                       <IonNote>
                         {unitCount(book.unit, book.pageCount)}
                         {progress > 0 &&
-                          ` · ${Math.round(progress * 100)} % gehört`}
+                          ` · ${t('library.listened', { percent: Math.round(progress * 100) })}`}
                       </IonNote>
                     </IonLabel>
                     <IonReorder slot="end" />
@@ -291,7 +316,7 @@ export default function LibraryPage() {
                         event.stopPropagation()
                         openBookMenu(book)
                       }}
-                      aria-label={`Aktionen für ${book.title}`}
+                      aria-label={t('library.actionsFor', { title: book.title })}
                     >
                       <IonIcon
                         aria-hidden="true"
@@ -337,7 +362,7 @@ export default function LibraryPage() {
           <IonFabButton
             onClick={() => fileInput.current?.click()}
             disabled={importing}
-            aria-label="Buch hochladen"
+            aria-label={t('library.upload')}
           >
             <IonIcon aria-hidden="true" icon={add} />
           </IonFabButton>

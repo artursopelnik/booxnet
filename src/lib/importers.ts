@@ -1,4 +1,5 @@
 import type { Book } from './db'
+import { t } from './i18n'
 import { toSentences } from './text'
 
 /** File extensions the library's file picker accepts. */
@@ -71,15 +72,16 @@ export async function importBook(file: File): Promise<Book> {
 
 /** Singular label of a book's reading unit, e.g. for "Seite 3". */
 export function unitName(unit: Book['unit']): string {
-  if (unit === 'chapter') return 'Kapitel'
-  if (unit === 'section') return 'Abschnitt'
-  return 'Seite'
+  if (unit === 'chapter') return t('unit.chapter')
+  if (unit === 'section') return t('unit.section')
+  return t('unit.page')
 }
 
 /** Count with pluralized unit, e.g. "12 Seiten" / "1 Kapitel". */
 export function unitCount(unit: Book['unit'], count: number): string {
-  if (unit === 'chapter') return `${count} Kapitel`
+  if (unit === 'chapter')
+    return `${count} ${t(count === 1 ? 'unit.chapter' : 'unit.chapters')}`
   if (unit === 'section')
-    return `${count} ${count === 1 ? 'Abschnitt' : 'Abschnitte'}`
-  return `${count} ${count === 1 ? 'Seite' : 'Seiten'}`
+    return `${count} ${t(count === 1 ? 'unit.section' : 'unit.sections')}`
+  return `${count} ${t(count === 1 ? 'unit.page' : 'unit.pages')}`
 }

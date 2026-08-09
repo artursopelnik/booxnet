@@ -9,8 +9,6 @@ import {
   IonNote,
   IonPage,
   IonProgressBar,
-  IonSelect,
-  IonSelectOption,
   useIonRouter,
 } from '@ionic/react'
 import {
@@ -32,6 +30,7 @@ import {
 } from '../lib/pwa'
 import { readSetting, writeSetting } from '../lib/storage'
 import { warmVoicePreviews } from '../lib/tts'
+import { useT } from '../lib/useT'
 import { useEngineDownload } from '../lib/useEngineDownload'
 import { STUDIO_VOICES } from '../lib/voices'
 
@@ -56,6 +55,7 @@ export function hasSeenWelcome(): boolean {
  * (Bestandsinstallation), wird gar nicht erst hierher geleitet.
  */
 export default function WelcomePage() {
+  const t = useT()
   const { progress, storageBlocked, start } = useEngineDownload()
   const [installMethod, setInstallMethod] = useState<InstallMethod>(() =>
     getInstallMethod(),
@@ -106,27 +106,25 @@ export default function WelcomePage() {
           <img
             className="welcome__logo"
             src={`${import.meta.env.BASE_URL}icon.svg`}
-            alt="Booxnet"
+            alt=""
             width={72}
             height={72}
           />
-          <h1>Willkommen bei Booxnet</h1>
-          <p>
-            Deine kostenlose Vorlese-App: Lade ein Buch als PDF, EPUB oder
-            Textdatei hoch und lass es dir mit natürlichen Stimmen vorlesen.
-            Ohne Konto, ohne Cloud. Alles bleibt auf deinem Gerät.
-          </p>
+          <h1>{t('welcome.title')}</h1>
+          <p>{t('welcome.intro')}</p>
 
           <IonList inset>
-            <IonItem>
-              <IonSelect
-                label="Bevorzugte Sprache"
-                value="de"
-                disabled
-                interface="popover"
-              >
-                <IonSelectOption value="de">Deutsch</IonSelectOption>
-              </IonSelect>
+            {/* Frueher ein abgeschaltetes Auswahlfeld mit genau einer
+                Option: Es sah aus wie eine Einstellung, war aber keine -
+                und liess Nutzer spaeter danach suchen. Jetzt eine schlichte
+                Zeile. Die tatsaechliche Sprache erkennt die App am Buch und
+                laesst sich im Reader unter den Anzeige-Einstellungen
+                uebergehen. */}
+            <IonItem lines="full">
+              <IonLabel className="ion-text-wrap">
+                <h2>{t('welcome.language')}</h2>
+                <IonNote>{t('welcome.languageNote')}</IonNote>
+              </IonLabel>
             </IonItem>
             <IonItem
               button={installMethod !== null}
@@ -141,10 +139,10 @@ export default function WelcomePage() {
               <IonLabel>
                 <h2>
                   {installMethod !== null
-                    ? 'Zum Home-Bildschirm hinzufügen'
-                    : 'Als App aufs Handy'}
+                    ? t('welcome.installAdd')
+                    : t('welcome.installAsApp')}
                 </h2>
-                <IonNote>Aktualisiert sich selbst, läuft 100 % offline.</IonNote>
+                <IonNote>{t('welcome.installNote')}</IonNote>
               </IonLabel>
             </IonItem>
             <IonItem>
@@ -155,11 +153,8 @@ export default function WelcomePage() {
                 color="primary"
               />
               <IonLabel>
-                <h2>Ton an!</h2>
-                <IonNote>
-                  Stummschaltung aus oder Kopfhörer verbinden – sonst bleibt
-                  die Stimme lautlos.
-                </IonNote>
+                <h2>{t('welcome.soundOn')}</h2>
+                <IonNote>{t('welcome.soundOnNote')}</IonNote>
               </IonLabel>
             </IonItem>
             <IonItem>
@@ -170,18 +165,18 @@ export default function WelcomePage() {
                 color="primary"
               />
               <IonLabel>
-                <h2>Einmaliger Download</h2>
+                <h2>{t('welcome.downloadHeading')}</h2>
                 <IonNote>
                   {storageBlocked
-                    ? 'Im privaten Fenster nicht möglich – bitte normales Fenster nutzen.'
+                    ? t('welcome.downloadPrivate')
                     : progress === null
-                      ? `Ca. ${STUDIO_ENGINE_SIZE_MB} MB – alle Stimmen, für immer offline.`
-                      : `${progress.mb} von ca. ${STUDIO_ENGINE_SIZE_MB} MB … App geöffnet lassen.`}
+                      ? t('welcome.downloadSize', { mb: STUDIO_ENGINE_SIZE_MB })
+                      : t('welcome.downloadProgress', { loaded: progress.mb, total: STUDIO_ENGINE_SIZE_MB })}
                 </IonNote>
                 {progress !== null && (
                   <IonProgressBar
                     value={progress.percent / 100}
-                    aria-label="Sprachmodell wird heruntergeladen"
+                    aria-label={t('voices.downloadAria')}
                     style={{ marginTop: 6 }}
                   />
                 )}
@@ -196,20 +191,20 @@ export default function WelcomePage() {
             onClick={() => void startDownload()}
           >
             <IonIcon aria-hidden="true" slot="start" icon={cloudDownloadOutline} />
-            {progress === null ? 'Weiter: Dateien laden' : 'Wird geladen …'}
+            {progress === null ? t('welcome.start') : t('welcome.starting')}
           </IonButton>
           <IonButton fill="clear" expand="block" onClick={finish}>
-            Später – erst mal umschauen
+            {t('welcome.later')}
           </IonButton>
         </div>
         <IonAlert
           isOpen={showIosHelp}
           onDidDismiss={() => setShowIosHelp(false)}
-          header="Zum Home-Bildschirm"
+          header={t('install.header')}
           message={
-            'Auf dem iPhone/iPad geht das nur über Safari selbst: Tippe unten auf das Teilen-Symbol (Quadrat mit Pfeil nach oben) und wähle dann „Zum Home-Bildschirm". Danach startet Booxnet wie eine App.'
+            t('install.iosHelp')
           }
-          buttons={['Verstanden']}
+          buttons={[t('common.understood')]}
         />
       </IonContent>
     </IonPage>

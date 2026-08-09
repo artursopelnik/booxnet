@@ -11,7 +11,7 @@
 import { useIonToast } from '@ionic/react'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  DOWNLOAD_ERRORS,
+  downloadErrorMessage,
   downloadStudioEngine,
   StudioDownloadError,
 } from './supertonic/assets'
@@ -61,7 +61,7 @@ export function useEngineDownload(): EngineDownload {
       const reason =
         error instanceof StudioDownloadError ? error.reason : 'network'
       presentToast({
-        message: DOWNLOAD_ERRORS[reason],
+        message: downloadErrorMessage(reason),
         duration: 5000,
         color: 'danger',
       })
