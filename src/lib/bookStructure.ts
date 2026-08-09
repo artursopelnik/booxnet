@@ -45,12 +45,29 @@ export interface BookStructure {
 }
 
 /**
- * So viele Seiten bzw. Sätze werden am Stück verarbeitet, bevor der
- * Browser wieder zum Zug kommt. Klein genug, dass keine Portion
- * spürbar blockiert; groß genug, dass die Pausen nicht die Rechenzeit
- * dominieren.
+ * So oft wird nachgesehen, ob es Zeit für eine Pause ist. Nur ein
+ * Stichprobenraster – ob wirklich abgegeben wird, entscheidet SLICE_MS.
  */
 const CHUNK = 25
+
+/**
+ * Höchstens so lange am Stück rechnen, dann den Browser ranlassen.
+ *
+ * Vorher wurde stur nach je 25 Einträgen abgegeben. Das klang sparsam,
+ * war es aber nicht: Ein Buch mit 21.567 Sätzen kam so auf 933 Pausen.
+ * Jede kostet die Mindestverzögerung von setTimeout (rund 4 ms, unter
+ * Last mehr) UND eine Fortschrittsmeldung, die die Leseansicht neu
+ * zeichnen lässt. Gemessen auf einem echten Gerät: 7,3 s insgesamt für
+ * 0,3 s Rechenarbeit – die Pausen kosteten das Dreiundzwanzigfache
+ * dessen, wofür sie da waren.
+ *
+ * Nach der Zeit statt nach der Stückzahl abzugeben dreht das um: Die
+ * Zahl der Pausen hängt jetzt an der Rechenzeit, nicht an der Länge des
+ * Buchs. 12 ms liegen unter einem Bildschirmaufbau bei 60 Hz, die
+ * Oberfläche bleibt also flüssig – aber ein dickes Buch zahlt keine
+ * Sekunden mehr für Pausen, die niemand braucht.
+ */
+const SLICE_MS = 12
 
 /** Abbruchmarke: Wird das Buch gewechselt, hört der Aufbau sofort auf. */
 export interface BuildToken {
@@ -106,9 +123,17 @@ export async function buildBookStructure(
   let busy = 0
   let yields = 0
   let sliceStart = started
-  async function pause(): Promise<void> {
-    busy += performance.now() - sliceStart
+  /**
+   * Gibt ab, wenn die laufende Portion lang genug war – sonst sofort
+   * zurück. Die Fortschrittsmeldung hängt bewusst mit dran: Sie zeichnet
+   * die Leseansicht neu und wäre einzeln genauso teuer wie die Pause.
+   */
+  async function pauseIfDue(progress: number): Promise<void> {
+    const now = performance.now()
+    if (now - sliceStart < SLICE_MS) return
+    busy += now - sliceStart
     yields++
+    onProgress?.(progress)
     await yieldToBrowser()
     sliceStart = performance.now()
   }
@@ -118,8 +143,7 @@ export async function buildBookStructure(
     appendPageSentences(sentences, pageTexts[page], page)
     if ((page + 1) % CHUNK === 0) {
       // Erste Hälfte des Fortschritts: die Satztrennung.
-      onProgress?.((0.5 * (page + 1)) / pageTexts.length)
-      await pause()
+      await pauseIfDue((0.5 * (page + 1)) / pageTexts.length)
       if (token.cancelled) return null
     }
   }
@@ -156,8 +180,7 @@ export async function buildBookStructure(
     })
 
     if ((index + 1) % CHUNK === 0) {
-      onProgress?.(0.5 + (0.5 * (index + 1)) / sentences.length)
-      await pause()
+      await pauseIfDue(0.5 + (0.5 * (index + 1)) / sentences.length)
       if (token.cancelled) return null
     }
   }

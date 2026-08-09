@@ -72,10 +72,24 @@ describe('buildBookStructure', () => {
     expect(built!.sentences[0].text).toContain('♥')
   })
 
-  it('meldet Fortschritt bis 1', async () => {
+  it('meldet am Ende immer 1, auch ohne Zwischenschritt', async () => {
+    // Ein kurzes Buch ist fertig, bevor die erste Pause faellig waere -
+    // dann gibt es nichts zu melden ausser dem Ende. Ein Fortschritt,
+    // den niemand sieht, kostet nur Neuzeichnungen.
     const werte: number[] = []
     await buildBookStructure(
       Array.from({ length: 60 }, (_, i) => `Seite ${i} mit einem Satz.`),
+      { cancelled: false },
+      (value) => werte.push(value),
+    )
+    expect(werte[werte.length - 1]).toBe(1)
+  })
+
+  it('meldet bei einem langen Buch Zwischenstaende, monoton steigend', async () => {
+    const werte: number[] = []
+    const seite = 'Ein Satz. Noch ein Satz. Und ein dritter Satz. '.repeat(8)
+    await buildBookStructure(
+      Array.from({ length: 1200 }, () => seite),
       { cancelled: false },
       (value) => werte.push(value),
     )
