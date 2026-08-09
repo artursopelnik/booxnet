@@ -12,7 +12,6 @@ import {
   IonProgressBar,
   IonSpinner,
   IonTitle,
-  IonToggle,
   IonToolbar,
   useIonAlert,
   useIonToast,
@@ -20,7 +19,6 @@ import {
 import {
   checkmark,
   cloudDownloadOutline,
-  flaskOutline,
   sparklesOutline,
   trashOutline,
   volumeMediumOutline,
@@ -28,19 +26,14 @@ import {
 import { useEffect, useState } from 'react'
 import {
   DOWNLOAD_ERRORS,
-  downloadInt8VectorEstimator,
   downloadStudioEngine,
-  INT8_VECTOR_ESTIMATOR_SIZE_MB,
-  isInt8VariantInstalled,
   isStudioEngineInstalled,
   removeStudioData,
   STUDIO_ENGINE_SIZE_MB,
   StudioDownloadError,
 } from '../lib/supertonic/assets'
 import {
-  engineVariantSetting,
   resetStudioEngine,
-  setEngineVariantSetting,
   subscribeEngineInfo,
   type EngineInfo,
 } from '../lib/supertonic/client'
@@ -69,11 +62,7 @@ function diagnosticLines(info: EngineInfo): string[] {
       ? `Rechenkerne: ${engine.threads} Threads von ${engine.cores ?? '?'} Kernen`
       : `⚠️ Nur ${engine.threads} Thread: Mehrkern-Modus nicht aktiv (das bremst stark)`,
     `Vorbereitung: ${num(engine.loadSeconds)} s`,
-    `Rechenmodell: ${engine.variant === 'int8' ? 'int8 (Experiment)' : 'Standard'}`,
   ]
-  if (engine.variantRequested === 'int8' && engine.variant !== 'int8') {
-    lines.push('Hinweis: int8 ließ sich nicht laden, Standard wird benutzt.')
-  }
   if (synth && synth.audioSeconds > 0) {
     const factor = synth.computeSeconds / synth.audioSeconds
     lines.push(
@@ -122,17 +111,11 @@ export default function VoiceSheet({
   const [presentAlert] = useIonAlert()
   /** Diagnose: Am Handy gibt es keine Browser-Konsole. */
   const [info, setInfo] = useState<EngineInfo>({ engine: null, synth: null })
-  const [int8Installed, setInt8Installed] = useState(false)
-  const [int8Enabled, setInt8Enabled] = useState(
-    () => engineVariantSetting() === 'int8',
-  )
-  const [int8Progress, setInt8Progress] = useState<number | null>(null)
 
   useEffect(() => subscribeEngineInfo(setInfo), [])
 
   useEffect(() => {
     if (isOpen) {
-      void isInt8VariantInstalled().then(setInt8Installed)
       isStudioEngineInstalled().then((ok) => {
         setInstalled(ok)
         // Fehlende Begrüßungen im Hintergrund fertig rendern, damit das
@@ -186,46 +169,7 @@ export default function VoiceSheet({
     await removeStudioData()
     resetStudioEngine()
     setInstalled(false)
-    setInt8Installed(false)
     onEngineChange(false)
-  }
-
-  /**
-   * Schaltet das experimentelle int8-Rechenmodell um: Beim ersten
-   * Einschalten werden die ~65 MB nachgeladen. Die Engine wird danach
-   * zurückgesetzt, damit die neue Variante beim nächsten Abspielen
-   * wirklich greift (die Variante steht beim Engine-Aufbau fest).
-   */
-  const toggleInt8 = async (enabled: boolean) => {
-    if (enabled && !int8Installed) {
-      setInt8Progress(0)
-      try {
-        await downloadInt8VectorEstimator((percent) =>
-          setInt8Progress(percent),
-        )
-        setInt8Installed(true)
-      } catch (error) {
-        const reason =
-          error instanceof StudioDownloadError ? error.reason : 'network'
-        presentToast({
-          message: DOWNLOAD_ERRORS[reason],
-          duration: 5000,
-          color: 'danger',
-        })
-        return
-      } finally {
-        setInt8Progress(null)
-      }
-    }
-    setEngineVariantSetting(enabled ? 'int8' : 'standard')
-    setInt8Enabled(enabled)
-    resetStudioEngine()
-    presentToast({
-      message: enabled
-        ? 'Experiment aktiv. Die Stimme wird jetzt neu vorbereitet – achte auf Klang und Tempo.'
-        : 'Zurück auf Standard. Die Stimme wird neu vorbereitet.',
-      duration: 4000,
-    })
   }
 
   // Ein versehentlicher Tipper darf nicht 400 MB wegwerfen – erst fragen.
@@ -368,45 +312,11 @@ export default function VoiceSheet({
           )}
         </IonList>
 
-        {/* Experiment und Messwerte direkt in der App: Am Handy gibt es
-            keine Browser-Konsole, in der sich Threads, Ladezeit und
-            Rechentempo ablesen liessen. */}
+        {/* Messwerte direkt in der App: Am Handy gibt es keine
+            Browser-Konsole, in der sich Threads, Ladezeit und Rechentempo
+            ablesen liessen. */}
         {installed && (
           <IonList inset>
-            <div className="voice-section-note">Experiment</div>
-            <IonItem>
-              <IonIcon
-                aria-hidden="true"
-                slot="start"
-                icon={flaskOutline}
-                color="medium"
-              />
-              <IonLabel className="ion-text-wrap">
-                <h2>Schnelleres Rechenmodell</h2>
-                <IonNote>
-                  {int8Progress !== null
-                    ? `Wird geladen … ${int8Progress} %`
-                    : int8Installed
-                      ? 'Kleineres, verlustbehaftet gerechnetes Modell (int8). Kann spürbar schneller sein – achte darauf, ob die Stimme anders klingt.'
-                      : `Einmalig ca. ${INT8_VECTOR_ESTIMATOR_SIZE_MB} MB laden: kleineres Rechenmodell (int8), das schneller sein kann. Der Klang kann sich leicht ändern.`}
-                </IonNote>
-                {int8Progress !== null && (
-                  <IonProgressBar
-                    value={int8Progress / 100}
-                    style={{ marginTop: 6 }}
-                  />
-                )}
-              </IonLabel>
-              <IonToggle
-                slot="end"
-                checked={int8Enabled}
-                disabled={int8Progress !== null}
-                onIonChange={(event) =>
-                  void toggleInt8(event.detail.checked)
-                }
-                aria-label="Schnelleres Rechenmodell verwenden"
-              />
-            </IonItem>
             <IonItem lines="none">
               <IonLabel className="ion-text-wrap">
                 <h2>Technische Details</h2>

@@ -21,10 +21,6 @@ export interface EngineStats {
   isolated: boolean
   cores: number | null
   loadSeconds: number
-  /** Tatsächlich geladene Variante (nach evtl. Rückfall auf Standard). */
-  variant: 'standard' | 'int8'
-  /** Vom Nutzer gewünschte Variante. */
-  variantRequested: 'standard' | 'int8'
 }
 
 /** Messwerte der letzten fertigen Satz-Berechnung (ohne Vorschauen). */
@@ -59,7 +55,7 @@ function updateEngineInfo(patch: Partial<EngineInfo>): void {
 }
 
 /**
- * Abonniert die Diagnose-Eckdaten (Threads, Ladezeit, Variante, letzte
+ * Abonniert die Diagnose-Eckdaten (Threads, Ladezeit, letzte
  * Satz-Berechnung) für die Anzeige in der Stimmen-Auswahl – am Handy
  * gibt es keine Browser-Konsole. Sofort mit dem aktuellen Stand gerufen.
  */
@@ -73,26 +69,7 @@ export function subscribeEngineInfo(
   }
 }
 
-const VARIANT_KEY = 'vorleser.variante'
 
-/** Gewählte Engine-Variante: Standard (fp32) oder experimentelles int8. */
-export function engineVariantSetting(): 'standard' | 'int8' {
-  try {
-    return localStorage.getItem(VARIANT_KEY) === 'int8' ? 'int8' : 'standard'
-  } catch {
-    return 'standard'
-  }
-}
-
-/** Setzt die Variante; der Aufrufer startet die Engine danach neu. */
-export function setEngineVariantSetting(variant: 'standard' | 'int8'): void {
-  try {
-    if (variant === 'int8') localStorage.setItem(VARIANT_KEY, 'int8')
-    else localStorage.removeItem(VARIANT_KEY)
-  } catch {
-    // Ohne Speicher bleibt es beim Standard.
-  }
-}
 
 let engineProgress = 0
 const engineProgressListeners = new Set<(value: number) => void>()
@@ -281,7 +258,6 @@ function request(
       ...message,
       id,
       ortOpt: ortOptLevel(),
-      variant: engineVariantSetting(),
     })
   })
   return { id, promise }
@@ -327,7 +303,7 @@ export function resetStudioEngine(): void {
     for (const entry of pending.values()) {
       // Als "verdrängt" markiert: Läuft gerade eine Wiedergabe, fordert
       // der Sprecher den Satz einfach neu an (dann mit der neuen
-      // Variante), statt dem Nutzer einen Fehler zu zeigen.
+      // Engine), statt dem Nutzer einen Fehler zu zeigen.
       const error = new Error('Engine wurde zurückgesetzt')
       error.name = TTS_CANCELLED_ERROR
       entry.reject(error)
@@ -420,23 +396,6 @@ export function studioSynthesize(
   return entry.promise
 }
 
-/** Fire-and-forget warm-up of upcoming sentences, in good quality. */
-export function studioPrefetch(
-  voiceId: StudioVoiceId,
-  lang: string,
-  sentences: string[],
-  speed: number,
-): void {
-  for (const text of sentences) {
-    studioSynthesize(
-      voiceId,
-      lang,
-      text,
-      speed,
-      false,
-      QUALITY_SYNTH_STEPS,
-    ).catch(() => {
-      // Prefetch failures surface when the sentence is actually played.
-    })
-  }
-}
+// Das Vorausberechnen kommender Sätze liegt in lib/tts.ts
+// (prefetchSentences): Es legt die Ergebnisse zusätzlich dauerhaft ab,
+// damit der nächste App-Start ohne Warten auf die Engine losspielt.

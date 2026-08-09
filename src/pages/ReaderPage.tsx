@@ -44,7 +44,6 @@ import { detectStudioLang } from '../lib/lang'
 import { isStudioEngineInstalled } from '../lib/supertonic/assets'
 import {
   studioFlushPrefetches,
-  studioPrefetch,
   studioWarmup,
   subscribeEngineProgress,
   subscribeSynthProgress,
@@ -64,6 +63,7 @@ import {
   engineSpeed,
   getSavedRate,
   getSavedVoiceId,
+  prefetchSentences,
   saveRate,
   saveVoiceId,
   Speaker,
@@ -76,6 +76,13 @@ import {
 } from '../lib/voices'
 
 const RATES = [1, 1.25, 1.5, 1.75, 2, 0.5, 0.75]
+
+/**
+ * Sätze, die bei ruhender Wiedergabe ab der Leseposition vorgerechnet
+ * und dauerhaft gespeichert werden. Grob eine Minute Ton – genug, um
+ * beim nächsten App-Start das Laden der Engine zu überbrücken.
+ */
+const IDLE_PREFETCH_AHEAD = 5
 
 /** Punctuation-aware pause: questions/exclamations breathe a bit longer,
  * colons and semicolons connect more tightly to what follows. */
@@ -379,13 +386,16 @@ export default function ReaderPage() {
     // bei Tempo-/Stimmwechsel hörbar weiter und braucht keine neue Fassung.
     const speakerState = speaker.getState()
     if (speakerState === 'playing' || speakerState === 'loading') return
+    // Fünf Sätze statt zwei: Sie landen dauerhaft im Speicher und müssen
+    // beim nächsten App-Start das Laden der Engine mit Ton überbrücken –
+    // dafür reichen zwei Sätze nicht.
     const next = speakItems
       .slice(currentRef.current)
       .filter((item) => !item.skip)
-      .slice(0, 2)
+      .slice(0, IDLE_PREFETCH_AHEAD)
       .map((item) => item.text)
     if (next.length > 0) {
-      studioPrefetch(voice.id, bookLang, next, engineSpeed(rate))
+      prefetchSentences(voice.id, bookLang, next, engineSpeed(rate))
     }
   }, [engineInstalled, speakItems, voice.id, bookLang, rate, speaker])
 
