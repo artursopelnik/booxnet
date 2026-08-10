@@ -66,7 +66,6 @@ import {
   type HighlightStyle,
 } from '../lib/readerPrefs'
 import {
-  engineSpeed,
   getSavedRate,
   getSavedVoiceId,
   prefetchSentences,
@@ -412,7 +411,7 @@ export default function ReaderPage() {
       IDLE_PREFETCH_AHEAD,
     )
     if (next.length > 0) {
-      prefetchSentences(voice.id, bookLang, next, engineSpeed(rate))
+      prefetchSentences(voice.id, bookLang, next, rate)
     }
   }, [engineInstalled, speakItems, voice.id, bookLang, rate, speaker])
 

@@ -92,12 +92,15 @@ export function prefetchSentences(
   voiceId: StudioVoiceId,
   lang: string,
   texts: string[],
-  speed: number,
+  rate: number,
 ): void {
   const generation = ++prefetchGeneration
   void (async () => {
     for (const text of texts) {
       if (generation !== prefetchGeneration) return
+      // Tempo je Satz – wie in der Wiedergabe. Anders gerechnet legte der
+      // Vorabruf Dateien unter einem Schluessel ab, den niemand sucht.
+      const speed = speechSpeed(text, rate)
       try {
         if (await hasCachedSentence(voiceId, lang, speed, text)) continue
         const blob = await studioSynthesize(voiceId, lang, text, speed, false)
@@ -120,9 +123,47 @@ export function prefetchSentences(
   })()
 }
 
+/**
+ * Kurze Ausrufe und Auslassungen werden gedehnt statt heruntergerattert.
+ *
+ * Das Modell bekommt fuer einen Satz EINE vorhergesagte Gesamtdauer. Bei
+ * wenigen Zeichen faellt die knapp aus, und Emotion braucht nun einmal
+ * Zeit: "Ach, ach, ach!" klang wie hingeworfen, obwohl genau dieser Satz
+ * Raum braucht. Ein Ausrufe- oder Auslassungszeichen am Ende ist das
+ * Signal, das der Text dafuer hergibt - es steht da, WEIL betont werden
+ * soll.
+ *
+ * Nur bei kurzen Saetzen: Ein langer Ausrufesatz traegt seine Betonung
+ * ueber die Satzmelodie und wuerde gedehnt bloss schleppend klingen.
+ */
+const EMPHATIC_MAX_LEN = 40
+const EMPHATIC_SLOWDOWN = 0.85
+/** Schlusszeichen, die nach Dehnung verlangen, ggf. hinter Anfuehrungen. */
+const EMPHATIC_END = /[!…][\"'»«›‹)\]}]*$/
+
+/** Ob ein Satz gedehnt gesprochen gehoert. */
+export function isEmphatic(text: string): boolean {
+  const trimmed = text.trim()
+  return trimmed.length <= EMPHATIC_MAX_LEN && EMPHATIC_END.test(trimmed)
+}
+
 /** Maps the user rate (0.5–2) to the engine's supported speed range. */
 export function engineSpeed(rate: number): number {
   return Math.min(2, Math.max(0.7, Math.round(rate * BASE_SPEED * 100) / 100))
+}
+
+/**
+ * Das Tempo FUER DIESEN SATZ. Die eingestellte Lesegeschwindigkeit bleibt
+ * dabei massgeblich - gedehnt wird relativ dazu, wer 2x eingestellt hat,
+ * bekommt auch den Ausruf zuegig.
+ *
+ * Bewusst hier und nirgends sonst gebildet: Das Tempo geht in den
+ * Schluessel des Satz-Caches ein. Wuerde der Vorabruf anders rechnen als
+ * die Wiedergabe, legte er Dateien an, die nie wiedergefunden werden -
+ * jeder Satz waere doppelt berechnet und der Vorrat bliebe leer.
+ */
+export function speechSpeed(text: string, rate: number): number {
+  return engineSpeed(isEmphatic(text) ? rate * EMPHATIC_SLOWDOWN : rate)
 }
 
 export function getSavedVoiceId(): string | null {
@@ -345,7 +386,7 @@ export class Speaker {
         this.voice.id,
         this.langHint,
         this.upcoming(PREFETCH_AHEAD),
-        engineSpeed(rate),
+        rate,
       )
     }
   }
@@ -521,7 +562,7 @@ export class Speaker {
       return
     }
 
-    const speed = engineSpeed(this.rate)
+    const speed = speechSpeed(text, this.rate)
     this.setState('loading')
     let audio: Blob
     try {
@@ -589,7 +630,7 @@ export class Speaker {
       voice.id,
       this.langHint,
       this.upcoming(PREFETCH_AHEAD),
-      speed,
+      this.rate,
     )
   }
 }

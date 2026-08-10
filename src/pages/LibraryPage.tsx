@@ -64,7 +64,6 @@ import { useT } from '../lib/useT'
 import { hasSeenWelcome, markWelcomeSeen } from './WelcomePage'
 import { readResumePoint } from '../lib/resumeQueue'
 import {
-  engineSpeed,
   getSavedRate,
   getSavedVoiceId,
   prefetchSentences,
@@ -110,7 +109,7 @@ export default function LibraryPage() {
         voice.id,
         resume.lang,
         resume.texts,
-        engineSpeed(getSavedRate()),
+        getSavedRate(),
       )
     })
   })
