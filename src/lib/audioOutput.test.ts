@@ -3,6 +3,7 @@ import {
   playAudioBlob,
   playPreviewBlob,
   stopPreviewOutput,
+  trimSilence,
   withTrailingSilence,
 } from './audioOutput'
 
@@ -84,6 +85,72 @@ function makeWav(samples: number[]): Blob {
 async function read(blob: Blob): Promise<DataView> {
   return new DataView(await blob.arrayBuffer())
 }
+
+const KEEP = Math.floor((30 * SAMPLE_RATE) / 1000) // SILENCE_KEEP_MS
+
+/** Stille + Ton + Stille, in Proben. */
+function padded(lead: number, tone: number, tail: number): number[] {
+  return [
+    ...new Array(lead).fill(0),
+    ...new Array(tone).fill(9000),
+    ...new Array(tail).fill(0),
+  ]
+}
+
+async function sampleCount(blob: Blob): Promise<number> {
+  return (await read(blob)).getUint32(40, true) / 2
+}
+
+describe('trimSilence', () => {
+  // Der gemeldete Fall: Die Synthese fuellt eine selbst vorhergesagte
+  // Zeitspanne; was der Text nicht braucht, wird Stille. Auf die kam die
+  // Sprechpause noch obendrauf - aus einem kurzen Satz wurde ein Loch.
+  it('nimmt die Stille an beiden Enden weg, mit Rand', async () => {
+    const original = makeWav(padded(20000, 5000, 40000))
+    const getrimmt = await trimSilence(original)
+    expect(await sampleCount(getrimmt)).toBe(5000 + 2 * KEEP)
+  })
+
+  it('laesst einen Rand stehen, damit nichts abgeschnitten klingt', async () => {
+    const getrimmt = await trimSilence(makeWav(padded(20000, 100, 20000)))
+    const view = await read(getrimmt)
+    // Beginnt mit Stille, nicht mit dem vollen Ausschlag.
+    expect(view.getInt16(44, true)).toBe(0)
+  })
+
+  it('kuerzt auch dann, wenn fast alles Stille ist', async () => {
+    // Genau der Fall eines sehr kurzen Satzes - eine Obergrenze fuers
+    // Kuerzen wuerde hier gegen den Zweck arbeiten.
+    const getrimmt = await trimSilence(makeWav(padded(0, 200, 200000)))
+    expect(await sampleCount(getrimmt)).toBe(200 + KEEP)
+  })
+
+  it('laesst eine durchgehend stille Datei unveraendert', async () => {
+    // Sie zu leeren waere schlimmer, als sie zu behalten.
+    const original = makeWav(new Array(1000).fill(0))
+    expect(await sampleCount(await trimSilence(original))).toBe(1000)
+  })
+
+  it('haelt leises Ausklingen fuer Ton, nicht fuer Stille', async () => {
+    // 500 liegt ueber der Schwelle: Ein leise auslaufendes Wort darf
+    // nicht als Stille durchgehen und weggeschnitten werden.
+    const leise = [...new Array(100).fill(9000), ...new Array(100).fill(500)]
+    const getrimmt = await trimSilence(makeWav(leise))
+    expect(await sampleCount(getrimmt)).toBe(200)
+  })
+
+  it('laesst eine Datei ohne Stille unangetastet', async () => {
+    const original = makeWav(new Array(500).fill(9000))
+    expect(await sampleCount(await trimSilence(original))).toBe(500)
+  })
+
+  it('laesst Daten in Ruhe, die kein WAV sind', async () => {
+    const fremd = new Blob([new Uint8Array(100)], { type: 'audio/mpeg' })
+    expect(await trimSilence(fremd)).toBe(fremd)
+    const winzig = new Blob([new Uint8Array(10)])
+    expect(await trimSilence(winzig)).toBe(winzig)
+  })
+})
 
 describe('withTrailingSilence', () => {
   it('verlängert die Datei um genau die gewünschte Stille', async () => {

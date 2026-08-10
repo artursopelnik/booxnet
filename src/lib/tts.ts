@@ -27,6 +27,7 @@ import {
   unlockAudioOutput,
   unlockPreviewOutput,
   updateMediaSessionInfo,
+  trimSilence,
   withTrailingSilence,
 } from './audioOutput'
 import { hasAsset, readAsset, writeAsset } from './supertonic/opfs'
@@ -585,7 +586,13 @@ export class Speaker {
       // Sprechpause direkt anhaengen statt sie spaeter abzuwarten – so
       // laeuft das Medien-Element durch und behaelt im Hintergrund die
       // Tonsitzung.
-      audio = await withTrailingSilence(blob, this.silenceAfter())
+      // Erst die Stille wegschneiden, die die Synthese selbst angehaengt
+      // hat, dann die gewollte Pause setzen. Sonst summieren sich beide,
+      // und gerade kurze Saetze bekommen ein Loch hinterher.
+      audio = await withTrailingSilence(
+        await trimSilence(blob),
+        this.silenceAfter(),
+      )
     } catch (error) {
       if (generation !== this.generation) return
       // Verdrängt, obwohl weiterhin gewollt (gleiche Generation): erneut
