@@ -203,6 +203,73 @@ export function playPreviewBlob(blob: Blob): Promise<void> {
  * Arbeitet direkt auf den Bytes (44-Byte-Kopf, danach 16-Bit-Werte),
  * ohne Dekodieren und Neukodieren.
  */
+/**
+ * Unterhalb dieses Ausschlags gilt eine Probe als Stille (16-Bit-Skala:
+ * rund 0,5 % vom Vollausschlag). Hoch genug, um das Grundrauschen der
+ * Synthese zu erfassen, niedrig genug, um ein leise ausklingendes Wort
+ * nicht abzuschneiden.
+ */
+const SILENCE_LEVEL = 164
+
+/** So viel Stille bleibt an beiden Enden stehen, damit nichts klemmt. */
+const SILENCE_KEEP_MS = 30
+
+/**
+ * Schneidet die Stille an Anfang und Ende weg.
+ *
+ * Die Synthese fuellt eine Zeitspanne, die sie sich selbst vorhersagt
+ * (worker.ts: wavLen aus duration). Was der Text nicht braucht, wird
+ * Stille - bei kurzen Saetzen anteilig viel. Darauf kommt dann noch die
+ * Sprechpause zwischen den Saetzen, und aus einem kurzen Satz wird ein
+ * langes Loch: "Hallo, ich bin Alex." klingt, als haenge die App.
+ *
+ * Nach dem Beschnitt ist die Pause zwischen zwei Saetzen genau das, was
+ * silenceAfter() sagt - und nicht mehr das plus einem unbekannten Rest.
+ *
+ * Findet sich gar kein Ausschlag ueber der Schwelle, bleibt die Datei
+ * unveraendert: Eine stumme Datei zu leeren waere schlimmer als sie zu
+ * behalten.
+ */
+export async function trimSilence(blob: Blob): Promise<Blob> {
+  const buffer = await blob.arrayBuffer()
+  if (buffer.byteLength <= 44) return blob
+  const view = new DataView(buffer)
+  // "RIFF" – bei allem anderen lieber unveraendert lassen.
+  if (view.getUint32(0, false) !== 0x52494646) return blob
+  if (view.getUint16(34, true) !== 16) return blob // nur 16-Bit-PCM
+  const sampleRate = view.getUint32(24, true)
+  const channels = view.getUint16(22, true) || 1
+  if (!sampleRate) return blob
+
+  const declared = view.getUint32(40, true)
+  const available = buffer.byteLength - 44
+  const dataBytes = Math.min(declared || available, available)
+  const total = Math.floor(dataBytes / 2)
+  if (total === 0) return blob
+
+  const loud = (index: number) => Math.abs(view.getInt16(44 + index * 2, true))
+  let first = 0
+  while (first < total && loud(first) <= SILENCE_LEVEL) first++
+  if (first === total) return blob // durchgehend still
+  let last = total - 1
+  while (last > first && loud(last) <= SILENCE_LEVEL) last--
+
+  // Rand stehen lassen, auf Kanalgrenzen gerundet.
+  const keep = Math.floor((SILENCE_KEEP_MS * sampleRate) / 1000) * channels
+  const start = Math.max(0, first - keep) - (Math.max(0, first - keep) % channels)
+  const end = Math.min(total, last + 1 + keep)
+  if (start === 0 && end === total) return blob
+
+  const size = (end - start) * 2
+  const head = buffer.slice(0, 44)
+  const headView = new DataView(head)
+  headView.setUint32(4, 36 + size, true)
+  headView.setUint32(40, size, true)
+  return new Blob([head, buffer.slice(44 + start * 2, 44 + end * 2)], {
+    type: 'audio/wav',
+  })
+}
+
 export async function withTrailingSilence(
   blob: Blob,
   seconds: number,
