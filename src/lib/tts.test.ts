@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   engineSpeed,
   getSavedRate,
+  isEmphatic,
+  speechSpeed,
   getSavedVoiceId,
   previewTextFor,
   saveRate,
@@ -80,5 +82,56 @@ describe('previewTextFor', () => {
     const text = previewTextFor({ id: 'F1', name: 'Eva', gender: 'f' })
     expect(text).toContain('Eva')
     expect(text.endsWith('.')).toBe(true)
+  })
+})
+
+describe('Tempo je Satz', () => {
+  it('dehnt den kurzen Ausruf, der sonst hingeworfen klingt', () => {
+    // Der gemeldete Fall: "Ach, ach, ach!" lief viel zu schnell durch.
+    expect(speechSpeed('Ach, ach, ach!', 1)).toBeLessThan(
+      speechSpeed('Ach, ach, ach.', 1),
+    )
+  })
+
+  it('erkennt Ausrufe und Auslassungen, auch hinter Anfuehrungen', () => {
+    expect(isEmphatic('Ach, ach, ach!')).toBe(true)
+    expect(isEmphatic('Nie wieder …')).toBe(true)
+    expect(isEmphatic('»Halt!«')).toBe(true)
+    expect(isEmphatic('Er ging nach Hause.')).toBe(false)
+    expect(isEmphatic('Was ist das?')).toBe(false)
+  })
+
+  it('laesst lange Ausrufesaetze in Ruhe', () => {
+    // Die tragen ihre Betonung ueber die Satzmelodie; gedehnt klaengen
+    // sie bloss schleppend.
+    const lang =
+      'Und dann rief er aus vollem Halse durch den ganzen dunklen Wald!'
+    expect(isEmphatic(lang)).toBe(false)
+    expect(speechSpeed(lang, 1)).toBe(speechSpeed('Er ging.', 1))
+  })
+
+  it('behaelt die eingestellte Lesegeschwindigkeit als Massstab', () => {
+    // Wer 2x eingestellt hat, will auch den Ausruf zuegig hoeren.
+    expect(speechSpeed('Ach!', 2)).toBeGreaterThan(speechSpeed('Ach!', 1))
+  })
+
+  it('bleibt im Bereich, den die Engine annimmt', () => {
+    for (const rate of [0.5, 0.7, 1, 1.5, 2]) {
+      for (const text of ['Ach!', 'Ein ganz normaler Satz.']) {
+        const speed = speechSpeed(text, rate)
+        expect(speed).toBeGreaterThanOrEqual(0.7)
+        expect(speed).toBeLessThanOrEqual(2)
+      }
+    }
+  })
+
+  // Der Schluessel des Satz-Caches enthaelt das Tempo. Rechnete der
+  // Vorabruf anders als die Wiedergabe, legte er Dateien an, die nie
+  // wiedergefunden werden: jeder Satz doppelt berechnet, Vorrat leer.
+  it('liefert fuer denselben Satz immer dasselbe Tempo', () => {
+    for (const text of ['Ach, ach, ach!', 'Er ging.', 'Nie wieder …']) {
+      expect(speechSpeed(text, 1)).toBe(speechSpeed(text, 1))
+      expect(speechSpeed(text, 1)).toBe(speechSpeed(` ${text} `, 1))
+    }
   })
 })
