@@ -136,20 +136,61 @@ fremde Quelle.
 
 ## Auf eigenem Server ausliefern (Docker / Coolify)
 
-Der Endpunkt der ganzen Übung: eigene Auslieferung, eigene Bandbreite,
-niemand, der etwas abschalten kann.
+Das Projekt liefert **zwei** Container aus:
+
+| Was | Dockerfile | Domain |
+| --- | --- | --- |
+| Werbeseite | `Dockerfile.landing` | `booxnet.tld` |
+| Anwendung | `Dockerfile` | `app.booxnet.tld` |
+
+Bewusst getrennt, nicht aus Ordnungsliebe: Die App bringt ~400 MB
+Sprachmodelle mit. Lägen beide im selben Abbild, würde jede Korrektur an
+einem Werbetext einen 400-MB-Build und -Deploy auslösen.
+
+### In Coolify
+
+Zweimal *New Resource → Application → Public/Private Repository*, beide
+auf dieses Repository und den Branch `main`:
+
+**1. Werbeseite**
+- Build Pack: `Dockerfile`, Dockerfile Location: `Dockerfile.landing`
+- Port: `80`
+- Build Argument: `APP_URL=https://app.deine-domain.tld`
+  (ohne dieses Argument bricht der Build ab — sonst zeigte der wichtigste
+  Knopf der Seite ins Leere)
+- Domain: `https://deine-domain.tld`
+
+**2. Anwendung**
+- Build Pack: `Dockerfile`, Dockerfile Location: `Dockerfile`
+- Port: `80`
+- Domain: `https://app.deine-domain.tld`
+
+Der erste Build der App dauert spürbar: `npm ci`, Vite-Build und das
+Zusammensetzen der Sprachmodelle samt Prüfsummen.
+
+### Vor dem Öffentlichmachen
+
+`landing/impressum.html` und `landing/datenschutz.html` enthalten
+Platzhalter in eckigen Klammern und blau umrandete Hinweiskästen. Ein
+Impressum ist für geschäftsmäßige Angebote in Deutschland Pflicht
+(§ 5 DDG); die Datenschutzerklärung ist ein Entwurf, dessen technische
+Aussagen stimmen, dem aber deine Angaben als Verantwortlicher und die
+Protokollierung deines Servers fehlen.
+
+### Lokal ansehen
 
 ```bash
 docker build -t booxnet .
 docker run -p 8080:80 booxnet
+
+docker build -f Dockerfile.landing \
+  --build-arg APP_URL=http://localhost:8080 -t booxnet-landing .
+docker run -p 8081:80 booxnet-landing
 ```
 
-Für Coolify: Anwendung vom Typ **Dockerfile** aus diesem Repository,
-Port **80**. Es braucht keine Umgebungsvariablen — das Sprachpaket liegt
-im Repository und wird beim Build aus `models/supertonic/` zusammengesetzt.
+### Warum eigener Server statt GitHub Pages
 
-**Warum eigener Server statt GitHub Pages:** Pages kann keine
-HTTP-Header setzen. Ohne `Cross-Origin-Opener-Policy` und
+GitHub Pages kann keine HTTP-Header setzen. Ohne `Cross-Origin-Opener-Policy` und
 `Cross-Origin-Embedder-Policy` gibt es keinen `SharedArrayBuffer`, und
 die Sprach-Engine rechnet **einkernig** statt auf allen Kernen — je nach
 Gerät ein Vielfaches langsamer. `docker/nginx.conf` setzt beide Header;

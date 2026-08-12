@@ -1,0 +1,36 @@
+# Die Werbeseite von Booxnet (booxnet.tld).
+#
+# Eigenes Abbild, nicht Teil der App: Die App bringt ~400 MB
+# Sprachmodelle mit, die Seite ein paar Kilobyte. Zusammen in einem
+# Abbild wuerde jede Textkorrektur einen 400-MB-Build ausloesen.
+#
+# Kein Node, kein Build-Schritt - statisches HTML mit eingebettetem CSS.
+# Eine Werbeseite, die eine Toolchain braucht, ist eine Werbeseite, die
+# irgendwann nicht mehr baut.
+
+FROM nginx:alpine
+
+# Wohin der "App oeffnen"-Knopf zeigt, z.B. https://app.booxnet.de
+# In Coolify unter Build > Build Arguments setzen.
+ARG APP_URL
+
+COPY landing/ /usr/share/nginx/html/
+# Das Symbol aus der App mitnehmen, damit beide dasselbe Zeichen zeigen.
+COPY public/icon.svg /usr/share/nginx/html/icon.svg
+COPY docker/nginx-landing.conf /etc/nginx/conf.d/default.conf
+
+# Ohne Ziel waere der wichtigste Knopf der Seite tot. Lieber der Build
+# scheitert hier laut, als dass die Seite still ins Leere zeigt.
+RUN test -n "$APP_URL" || { \
+      echo "FEHLER: Build-Argument APP_URL fehlt."; \
+      echo "Beispiel: --build-arg APP_URL=https://app.booxnet.de"; \
+      exit 1; \
+    } && \
+    grep -rl '__APP_URL__' /usr/share/nginx/html \
+      | xargs sed -i "s|__APP_URL__|$APP_URL|g" && \
+    ! grep -rq '__APP_URL__' /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s \
+  CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1

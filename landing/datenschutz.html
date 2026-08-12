@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datenschutz – Booxnet</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<style>
+:root { --primary:#0b63d6; --bg:#fff; --text:#1c1c1e; --muted:#545456;
+        --border:#e3e5e8; }
+@media (prefers-color-scheme: dark) {
+  :root { --primary:#409cff; --bg:#000; --text:#f2f2f7; --muted:#a1a1a6;
+          --border:#2c2c2e; }
+}
+body { margin:0; background:var(--bg); color:var(--text);
+  font:17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  "Helvetica Neue", Arial, sans-serif; }
+.wrap { max-width:720px; margin:0 auto; padding:48px 24px 72px; }
+a { color:var(--primary); }
+h1 { font-size:32px; letter-spacing:-.02em; margin:0 0 8px; }
+h2 { font-size:20px; letter-spacing:-.01em; margin:36px 0 8px; }
+p, li { margin:0 0 14px; }
+ul { padding-left:22px; }
+.back { display:inline-block; margin-bottom:28px; color:var(--muted);
+  text-decoration:none; font-size:15px; }
+.back:hover { color:var(--text); }
+.todo { border:1px solid var(--primary); border-radius:12px;
+  padding:16px 18px; margin:0 0 28px; font-size:15.5px; }
+.todo strong { color:var(--primary); }
+.muted { color:var(--muted); font-size:15.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← Zurück zur Startseite</a>
+  <h1>Datenschutzerklärung</h1>
+
+  <div class="todo">
+    <strong>Entwurf, noch zu prüfen.</strong> Die technischen Aussagen
+    unten beschreiben, was die Anwendung tatsächlich tut — das ist aus
+    dem Quelltext belegbar. Was noch fehlt, sind deine Angaben als
+    Verantwortlicher und die Frage, was dein Server protokolliert. Lass
+    den Text vor der Veröffentlichung von jemandem prüfen, der dafür
+    haftet; dieser Entwurf ist keine Rechtsberatung.
+  </div>
+
+  <h2>Verantwortlicher</h2>
+  <p>
+    [VORNAME NACHNAME], [ANSCHRIFT], [E-MAIL-ADRESSE].
+    Siehe auch das <a href="/impressum.html">Impressum</a>.
+  </p>
+
+  <h2>Der Kern: Deine Bücher verlassen dein Gerät nicht</h2>
+  <p>
+    Booxnet verarbeitet Bücher und Texte ausschließlich lokal in deinem
+    Browser. Hochgeladene Dateien werden auf deinem Gerät gelesen, dort
+    in einer lokalen Datenbank (IndexedDB) gespeichert und dort
+    vorgelesen. Es findet keine Übertragung an uns oder an Dritte statt.
+  </p>
+  <p>
+    Auch die Sprachausgabe läuft auf deinem Gerät: Das Sprachmodell wird
+    einmalig heruntergeladen und danach lokal ausgeführt. Es wird kein
+    Text zur Umwandlung in Sprache an einen Server geschickt.
+  </p>
+
+  <h2>Was lokal auf deinem Gerät gespeichert wird</h2>
+  <ul>
+    <li>Die importierten Bücher samt extrahiertem Text und Titelbild</li>
+    <li>Deine Leseposition je Buch</li>
+    <li>Einstellungen: gewählte Stimme, Lesetempo, Schriftgröße,
+      Darstellung, Oberflächensprache</li>
+    <li>Das Sprachmodell (rund 400 MB) und bereits berechnete
+      Sprachaufnahmen einzelner Sätze</li>
+  </ul>
+  <p class="muted">
+    Diese Daten liegen im Speicher deines Browsers. Wir haben keinen
+    Zugriff darauf. Löschst du die Websitedaten deines Browsers oder die
+    installierte App, sind sie fort.
+  </p>
+
+  <h2>Server-Protokolle</h2>
+  <p>
+    Beim Aufruf der Seite übermittelt dein Browser technisch notwendige
+    Daten an unseren Server, insbesondere IP-Adresse, Zeitpunkt,
+    aufgerufene Adresse und Browserkennung. Rechtsgrundlage ist Art. 6
+    Abs. 1 lit. f DSGVO — unser berechtigtes Interesse am sicheren
+    Betrieb.
+  </p>
+  <div class="todo">
+    <strong>Hier musst du nachtragen:</strong> ob dein Webserver
+    Zugriffsprotokolle schreibt, wie lange sie aufbewahrt werden und wer
+    der Hoster ist (Anschrift, gegebenenfalls Auftragsverarbeitungs­vertrag).
+  </div>
+
+  <h2>Keine Cookies, kein Tracking</h2>
+  <p>
+    Booxnet setzt keine Cookies zu Analyse- oder Werbezwecken, bindet
+    keine Werbenetzwerke ein und nutzt keine Reichweitenmessung. Die
+    gespeicherten Einstellungen liegen im lokalen Speicher deines
+    Browsers und werden nicht übertragen.
+  </p>
+
+  <h2>Keine Inhalte von Dritten</h2>
+  <p>
+    Die Anwendung lädt alle benötigten Dateien — auch das Sprachmodell —
+    von diesem Server. Es werden keine Schriftarten, Skripte oder
+    Mediendateien von fremden Servern nachgeladen.
+  </p>
+
+  <h2>Deine Rechte</h2>
+  <p>
+    Dir stehen die Rechte auf Auskunft, Berichtigung, Löschung,
+    Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch
+    zu (Art. 15–21 DSGVO) sowie das Recht, dich bei einer
+    Aufsichtsbehörde zu beschweren. Da wir außerhalb der
+    Server-Protokolle keine personenbezogenen Daten über dich
+    speichern, betreffen diese Rechte im Wesentlichen genau diese
+    Protokolle.
+  </p>
+
+  <p class="muted">Stand: [DATUM EINTRAGEN]</p>
+</div>
+</body>
+</html>
