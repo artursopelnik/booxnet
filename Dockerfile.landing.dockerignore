@@ -4,5 +4,7 @@
 # paar Kilobyte HTML besteht.
 *
 !landing
+!scripts/build-landing.mjs
 !docker/nginx-landing.conf
 !public/icon.svg
+landing/dist

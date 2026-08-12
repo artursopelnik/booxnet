@@ -1,14 +1,16 @@
 <!doctype html>
-<html lang="de">
+<html lang="{{lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Booxnet – dein Buch, vorgelesen</title>
-<meta name="description" content="Lade ein Buch hoch und lass es dir vorlesen. Zehn Studiostimmen, 31 Sprachen, komplett offline auf deinem Gerät. Ohne Konto, ohne Cloud, kostenlos.">
+<title>{{meta.title}}</title>
+<meta name="description" content="{{meta.description}}">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
-<meta property="og:title" content="Booxnet – dein Buch, vorgelesen">
-<meta property="og:description" content="Zehn Studiostimmen, 31 Sprachen, komplett offline. Deine Bücher verlassen dein Gerät nicht.">
+<meta property="og:title" content="{{meta.title}}">
+<meta property="og:locale" content="{{lang}}">
+<meta property="og:description" content="{{meta.ogDescription}}">
 <meta property="og:type" content="website">
+{{alternates}}
 <style>
 /*
  * Farben aus src/theme.css der App übernommen, damit Seite und
@@ -261,15 +263,38 @@ footer {
   display: inline-flex; align-items: center; min-height: 44px;
 }
 .foot a:hover { color: var(--text); text-decoration: underline; }
+
+/* Sprachwahl: eine Liste echter Links, kein Auswahlfeld. So funktioniert
+   sie ohne Skript, laesst sich in einem neuen Tab oeffnen, und jede
+   Sprache hat eine eigene Adresse, die Suchmaschinen und Lesezeichen
+   verstehen. */
+.langs {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px;
+  margin-top: 8px; font-size: 14.5px;
+}
+.langs-label { color: var(--muted); }
+.langs ul {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 0 16px;
+}
+.langs a {
+  color: var(--muted); text-decoration: none;
+  display: inline-flex; align-items: center; min-height: 44px;
+}
+.langs a:hover { color: var(--text); text-decoration: underline; }
+/* Die aktuelle Sprache bleibt ein Link (sie ist ja erreichbar), wird
+   aber hervorgehoben - aria-current allein saehe niemand. */
+.langs a[aria-current="true"] { color: var(--text); font-weight: 600; }
+.legal-note { margin-top: 4px; font-size: 13.5px; color: var(--muted); }
 </style>
 </head>
 <body>
 
-<a class="skip-link" href="#inhalt">Zum Inhalt springen</a>
+<a class="skip-link" href="#inhalt">{{skip}}</a>
 
 <header>
   <div class="wrap bar">
-    <a class="logo" href="/" aria-label="Booxnet, zur Startseite">
+    <a class="logo" href="/" aria-label="{{logoAria}}">
       <!-- Das Zeichen der App, unveraendert aus public/icon.svg. Es
            bringt seinen eigenen Grund mit und sitzt deshalb in hell wie
            dunkel richtig. aria-hidden, weil direkt daneben "Booxnet"
@@ -282,11 +307,11 @@ footer {
       </svg>
       Booxnet
     </a>
-    <nav aria-label="Hauptnavigation">
-      <a href="#funktionen" class="hide-s">Funktionen</a>
-      <a href="#so-gehts" class="hide-s">So geht's</a>
-      <a href="#fragen" class="hide-s">Fragen</a>
-      <a class="btn small" href="__APP_URL__">App öffnen</a>
+    <nav aria-label="{{nav.label}}">
+      <a href="#funktionen" class="hide-s">{{nav.features}}</a>
+      <a href="#so-gehts" class="hide-s">{{nav.how}}</a>
+      <a href="#fragen" class="hide-s">{{nav.faq}}</a>
+      <a class="btn small" href="__APP_URL__">{{nav.openApp}}</a>
     </nav>
   </div>
 </header>
@@ -295,25 +320,22 @@ footer {
 
 <section class="hero">
   <div class="wrap">
-    <h1>Dein Buch,<br><em>vorgelesen</em>.</h1>
+    <h1>{{hero.line1}}<br><em>{{hero.accent}}</em>.</h1>
     <p class="lead">
-      Lade ein PDF, EPUB oder einen Text hoch und hör zu. Zehn
-      Studiostimmen, 31 Sprachen — und alles rechnet auf deinem Gerät.
+      {{hero.lead}}
     </p>
     <div class="cta-row">
-      <a class="btn" href="__APP_URL__">Kostenlos vorlesen lassen</a>
-      <a class="btn ghost" href="#so-gehts">So funktioniert's</a>
+      <a class="btn" href="__APP_URL__">{{hero.cta}}</a>
+      <a class="btn ghost" href="#so-gehts">{{hero.cta2}}</a>
     </div>
-    <p class="note">Kein Konto. Keine Cloud. Keine Kosten.</p>
+    <p class="note">{{hero.note}}</p>
 
     <div class="preview" aria-hidden="true">
-      <div class="top"><span class="dot"></span> Kapitel 4 · Seite 128</div>
+      <div class="top"><span class="dot"></span> {{preview.chapter}}</div>
       <div class="page">
-        <p>Der Weg führte weiter am Fluss entlang, vorbei an den alten
-          Weiden, deren Zweige das Wasser berührten.</p>
-        <p><span class="now">Sie hielt einen Moment inne und lauschte
-          dem Wind.</span></p>
-        <p>Irgendwo hinter den Hügeln schlug eine Turmuhr.</p>
+        <p>{{preview.p1}}</p>
+        <p><span class="now">{{preview.p2}}</span></p>
+        <p>{{preview.p3}}</p>
       </div>
       <div class="controls">
         <svg class="skip" viewBox="0 0 24 24"><path d="M19 5v14l-11-7 11-7zM6 5h2v14H6z"/></svg>
@@ -328,53 +350,46 @@ footer {
 
 <section class="soft" id="funktionen">
   <div class="wrap">
-    <h2>Was Booxnet kann</h2>
+    <h2>{{features.h2}}</h2>
     <p class="sub">
-      Kein Abo-Modell mit Vorlese-Kontingent. Die Sprachausgabe läuft
-      lokal — deshalb ist sie unbegrenzt.
+      {{features.sub}}
     </p>
     <div class="grid">
 
       <div class="card">
         <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
-        <h3>PDF, EPUB, Text</h3>
-        <p>Datei wählen oder Text einfügen. Der Inhalt wird direkt im
-          Browser gelesen — hochgeladen wird nichts.</p>
+        <h3>{{features.items.0.h}}</h3>
+        <p>{{features.items.0.p}}</p>
       </div>
 
       <div class="card">
         <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
-        <h3>Zehn Studiostimmen</h3>
-        <p>Männlich und weiblich, in Studioqualität mit 44,1 kHz. Jede
-          Stimme spricht alle 31 Sprachen.</p>
+        <h3>{{features.items.1.h}}</h3>
+        <p>{{features.items.1.p}}</p>
       </div>
 
       <div class="card">
         <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21a9 9 0 1 0-9-9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></div>
-        <h3>31 Sprachen</h3>
-        <p>Die Sprache des Buchs wird automatisch erkannt und lässt sich
-          jederzeit von Hand umstellen.</p>
+        <h3>{{features.items.2.h}}</h3>
+        <p>{{features.items.2.p}}</p>
       </div>
 
       <div class="card">
         <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 4 6v6c0 4.5 3.2 8.4 8 9 4.8-.6 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg></div>
-        <h3>Nichts verlässt dein Gerät</h3>
-        <p>Kein Server sieht deine Bücher, weil keiner beteiligt ist.
-          Auch die Sprachausgabe rechnet lokal.</p>
+        <h3>{{features.items.3.h}}</h3>
+        <p>{{features.items.3.p}}</p>
       </div>
 
       <div class="card">
         <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12a7 7 0 0 1 14 0"/><path d="M2 12h1m18 0h1M6 19h12M9 16h6"/></svg></div>
-        <h3>Offline nutzbar</h3>
-        <p>Einmal eingerichtet, funktioniert alles im Flugzeug, im Zug
-          und im Funkloch.</p>
+        <h3>{{features.items.4.h}}</h3>
+        <p>{{features.items.4.p}}</p>
       </div>
 
       <div class="card">
         <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h10M4 12h16M4 18h7"/><path d="M17 15v6m3-3h-6"/></svg></div>
-        <h3>Mitlesen und springen</h3>
-        <p>Der gelesene Satz wird markiert. Tippen springt dorthin,
-          Tempo 0,5× bis 2×, Leseposition bleibt gespeichert.</p>
+        <h3>{{features.items.5.h}}</h3>
+        <p>{{features.items.5.p}}</p>
       </div>
 
     </div>
@@ -383,27 +398,23 @@ footer {
 
 <section id="so-gehts">
   <div class="wrap">
-    <h2>In drei Schritten</h2>
-    <p class="sub">Beim ersten Mal lädt das Sprachpaket einmalig herunter.
-      Danach geht es sofort los.</p>
+    <h2>{{steps.h2}}</h2>
+    <p class="sub">{{steps.sub}}</p>
     <div class="steps">
       <div class="step">
         <div class="num">1</div>
-        <h3>Buch hinzufügen</h3>
-        <p>PDF, EPUB oder Textdatei auswählen — oder einen Text aus der
-          Zwischenablage einfügen.</p>
+        <h3>{{steps.items.0.h}}</h3>
+        <p>{{steps.items.0.p}}</p>
       </div>
       <div class="step">
         <div class="num">2</div>
-        <h3>Stimme wählen</h3>
-        <p>Zehn Stimmen zum Probehören. Jede stellt sich selbst vor,
-          damit du sie vergleichen kannst.</p>
+        <h3>{{steps.items.1.h}}</h3>
+        <p>{{steps.items.1.p}}</p>
       </div>
       <div class="step">
         <div class="num">3</div>
-        <h3>Zuhören</h3>
-        <p>Abspielen drücken. Der Text läuft mit, die Position wird
-          gemerkt, das Tempo bestimmst du.</p>
+        <h3>{{steps.items.2.h}}</h3>
+        <p>{{steps.items.2.p}}</p>
       </div>
     </div>
   </div>
@@ -411,67 +422,51 @@ footer {
 
 <section class="soft">
   <div class="wrap claim">
-    <h2>Datenschutz ist hier keine Einstellung</h2>
-    <p>
-      Die meisten Vorlese-Dienste schicken deinen Text an einen Server,
-      der ihn in Sprache verwandelt. Booxnet nicht: Die komplette
-      Sprachsynthese läuft im Browser auf deinem Gerät. Deshalb gibt es
-      keine Datei, die hochgeladen wird, kein Konto, das man anlegen
-      müsste, und keine Nutzung, die sich abrechnen ließe.
-    </p>
+    <h2>{{privacy.h2}}</h2>
+    <p>{{privacy.p}}</p>
     <div class="pill-row">
-      <span class="pill">Kein Konto</span>
-      <span class="pill">Kein Upload</span>
-      <span class="pill">Keine Werbung</span>
-      <span class="pill">Kein Tracking</span>
-      <span class="pill">Unbegrenzt vorlesen</span>
+      <span class="pill">{{privacy.pills.0}}</span>
+      <span class="pill">{{privacy.pills.1}}</span>
+      <span class="pill">{{privacy.pills.2}}</span>
+      <span class="pill">{{privacy.pills.3}}</span>
+      <span class="pill">{{privacy.pills.4}}</span>
     </div>
   </div>
 </section>
 
 <section id="fragen">
   <div class="wrap">
-    <h2>Häufige Fragen</h2>
+    <h2>{{faq.h2}}</h2>
     <div class="faq">
 
       <details open>
-        <summary>Was kostet Booxnet?</summary>
-        <p>Nichts. Da die Sprachausgabe auf deinem Gerät rechnet,
-          entstehen keine laufenden Kosten pro vorgelesener Seite — es
-          gibt also auch nichts abzurechnen.</p>
+        <summary>{{faq.items.0.q}}</summary>
+        <p>{{faq.items.0.a}}</p>
       </details>
 
       <details>
-        <summary>Warum lädt beim ersten Start etwas herunter?</summary>
-        <p>Die Stimmen brauchen ein Sprachmodell von rund 400 MB. Es
-          wird einmalig geladen und bleibt auf dem Gerät. Am besten im
-          WLAN und mit geöffneter App.</p>
+        <summary>{{faq.items.1.q}}</summary>
+        <p>{{faq.items.1.a}}</p>
       </details>
 
       <details>
-        <summary>Werden meine Bücher hochgeladen?</summary>
-        <p>Nein. Die Datei wird im Browser gelesen und in der lokalen
-          Bibliothek deines Geräts gespeichert. Sie verlässt es nicht.</p>
+        <summary>{{faq.items.2.q}}</summary>
+        <p>{{faq.items.2.a}}</p>
       </details>
 
       <details>
-        <summary>Funktioniert es ohne Internet?</summary>
-        <p>Ja, nach dem einmaligen Download. Booxnet lässt sich zum
-          Startbildschirm hinzufügen und läuft dann wie eine App.</p>
+        <summary>{{faq.items.3.q}}</summary>
+        <p>{{faq.items.3.a}}</p>
       </details>
 
       <details>
-        <summary>Welche Dateien kann ich verwenden?</summary>
-        <p>PDF, EPUB und Textdateien. Eingescannte PDFs ohne Textebene
-          enthalten keinen lesbaren Text — die kann Booxnet nicht
-          vorlesen, weil es keine Texterkennung mitbringt.</p>
+        <summary>{{faq.items.4.q}}</summary>
+        <p>{{faq.items.4.a}}</p>
       </details>
 
       <details>
-        <summary>Welche Sprachen werden gesprochen?</summary>
-        <p>31, darunter Deutsch, Englisch, Spanisch, Französisch,
-          Italienisch, Russisch, Türkisch, Japanisch, Koreanisch und
-          Arabisch. Jede Stimme beherrscht alle.</p>
+        <summary>{{faq.items.5.q}}</summary>
+        <p>{{faq.items.5.a}}</p>
       </details>
 
     </div>
@@ -480,9 +475,9 @@ footer {
 
 <section class="final">
   <div class="wrap">
-    <h2>Fang mit einem Buch an</h2>
-    <p>Keine Anmeldung, kein Download aus einem App-Store.</p>
-    <a class="btn" href="__APP_URL__">Booxnet öffnen</a>
+    <h2>{{final.h2}}</h2>
+    <p>{{final.p}}</p>
+    <a class="btn" href="__APP_URL__">{{final.cta}}</a>
   </div>
 </section>
 
@@ -491,12 +486,21 @@ footer {
 <footer>
   <div class="wrap foot">
     <span>© <span id="jahr">2026</span> Booxnet</span>
-    <nav aria-label="Rechtliches">
-      <a href="/impressum.html">Impressum</a>
-      <a href="/datenschutz.html">Datenschutz</a>
-      <a href="__APP_URL__">App öffnen</a>
+    <nav aria-label="{{footer.label}}">
+      <a href="/impressum.html">{{footer.imprint}}</a>
+      <a href="/datenschutz.html">{{footer.privacy}}</a>
+      <a href="__APP_URL__">{{footer.openApp}}</a>
     </nav>
   </div>
+  <!-- Sprachwahl als Liste echter Links, nicht als Auswahlfeld: So
+       funktioniert sie ohne Skript, laesst sich in einem neuen Tab
+       oeffnen und jede Sprache hat eine eigene Adresse, die Suchmaschinen
+       und Lesezeichen verstehen. -->
+  <div class="wrap langs">
+    <span class="langs-label">{{footer.langLabel}}</span>
+    <ul>{{languages}}</ul>
+  </div>
+  <div class="wrap legal-note">{{footer.legalNote}}</div>
 </footer>
 
 <script>

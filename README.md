@@ -147,6 +147,35 @@ Bewusst getrennt, nicht aus Ordnungsliebe: Die App bringt ~400 MB
 Sprachmodelle mit. Lägen beide im selben Abbild, würde jede Korrektur an
 einem Werbetext einen 400-MB-Build und -Deploy auslösen.
 
+### Die Werbeseite ist mehrsprachig
+
+Dieselben sechs Sprachen wie die App: Deutsch, Englisch, Spanisch,
+Französisch, Russisch, Türkisch. Ein Test hält fest, dass die Listen
+nicht auseinanderlaufen — eine Sprache anzubieten, die die App nicht
+kann, führt Besucher in eine Oberfläche, die sie nicht lesen können.
+
+| Datei | Zweck |
+| --- | --- |
+| `landing/template.html` | Aufbau und Gestaltung, mit `{{platzhaltern}}` |
+| `landing/i18n.json` | alle Texte, je Sprache |
+| `scripts/build-landing.mjs` | setzt daraus `dist/<sprache>/index.html` |
+
+Bei einer Sprache war eine einzelne HTML-Datei richtig: nichts zu bauen,
+nichts, das kaputtgehen kann. Bei sechs dreht sich das um — sechs
+handgepflegte Kopien derselben Seite driften auseinander, und der Fehler
+fällt erst auf, wenn ihn jemand liest, der genau diese Sprache spricht.
+Der Generator ist reines Node ohne Abhängigkeiten.
+
+`/` leitet nach `Accept-Language` auf `/de/`, `/en/` … weiter; jede
+Fassung hat eine eigene Adresse mit `hreflang`-Verweisen und einen
+Umschalter in der Fußzeile. Impressum und Datenschutz bleiben
+sprachneutral unter der Wurzel und auf Deutsch: Ein Impressum ist ein
+deutsches Rechtsdokument, keine Werbebotschaft.
+
+```bash
+node scripts/build-landing.mjs landing/dist   # lokal erzeugen
+```
+
 ### In Coolify
 
 Zweimal *New Resource → Application → Public/Private Repository*, beide
