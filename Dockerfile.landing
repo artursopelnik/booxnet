@@ -15,11 +15,17 @@ WORKDIR /app
 # In Coolify unter Build > Build Arguments setzen.
 ARG APP_URL
 
+# Eigene Adresse der Werbeseite, z.B. https://booxnet.de. Ohne sie
+# entfallen die hreflang-Angaben - Suchmaschinen ignorieren relative,
+# und etwas Unwirksames, das nach Erledigung aussieht, ist schlechter
+# als nichts.
+ARG SITE_URL
+
 COPY landing/ ./landing/
 COPY scripts/build-landing.mjs ./scripts/
 COPY public/icon.svg ./public/icon.svg
 
-RUN node scripts/build-landing.mjs /out
+RUN SITE_URL="$SITE_URL" node scripts/build-landing.mjs /out
 
 # Ohne Ziel waere der wichtigste Knopf der Seite tot. Lieber der Build
 # scheitert hier laut, als dass die Seite still ins Leere zeigt.

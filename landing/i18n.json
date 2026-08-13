@@ -4,7 +4,8 @@
     "meta": {
       "title": "Booxnet – dein Buch, vorgelesen",
       "description": "Lade ein Buch hoch und lass es dir vorlesen. Zehn Studiostimmen, 31 Sprachen, komplett offline auf deinem Gerät. Ohne Konto, ohne Cloud, kostenlos.",
-      "ogDescription": "Zehn Studiostimmen, 31 Sprachen, komplett offline. Deine Bücher verlassen dein Gerät nicht."
+      "ogDescription": "Zehn Studiostimmen, 31 Sprachen, komplett offline. Deine Bücher verlassen dein Gerät nicht.",
+      "locale": "de_DE"
     },
     "skip": "Zum Inhalt springen",
     "logoAria": "Booxnet, zur Startseite",
@@ -160,7 +161,8 @@
     "meta": {
       "title": "Booxnet – your book, read aloud",
       "description": "Upload a book and listen. Ten studio voices, 31 languages, entirely offline on your device. No account, no cloud, free.",
-      "ogDescription": "Ten studio voices, 31 languages, entirely offline. Your books never leave your device."
+      "ogDescription": "Ten studio voices, 31 languages, entirely offline. Your books never leave your device.",
+      "locale": "en_US"
     },
     "skip": "Skip to content",
     "logoAria": "Booxnet, to the home page",
@@ -316,7 +318,8 @@
     "meta": {
       "title": "Booxnet – tu libro, leído en voz alta",
       "description": "Sube un libro y escúchalo. Diez voces de estudio, 31 idiomas, completamente sin conexión en tu dispositivo. Sin cuenta, sin nube, gratis.",
-      "ogDescription": "Diez voces de estudio, 31 idiomas, completamente sin conexión. Tus libros no salen de tu dispositivo."
+      "ogDescription": "Diez voces de estudio, 31 idiomas, completamente sin conexión. Tus libros no salen de tu dispositivo.",
+      "locale": "es_ES"
     },
     "skip": "Saltar al contenido",
     "logoAria": "Booxnet, ir a la página de inicio",
@@ -472,7 +475,8 @@
     "meta": {
       "title": "Booxnet – ton livre, lu à voix haute",
       "description": "Charge un livre et écoute. Dix voix de studio, 31 langues, entièrement hors ligne sur ton appareil. Sans compte, sans cloud, gratuit.",
-      "ogDescription": "Dix voix de studio, 31 langues, entièrement hors ligne. Tes livres ne quittent pas ton appareil."
+      "ogDescription": "Dix voix de studio, 31 langues, entièrement hors ligne. Tes livres ne quittent pas ton appareil.",
+      "locale": "fr_FR"
     },
     "skip": "Aller au contenu",
     "logoAria": "Booxnet, vers la page d'accueil",
@@ -628,7 +632,8 @@
     "meta": {
       "title": "Booxnet — ваша книга, прочитанная вслух",
       "description": "Загрузите книгу и слушайте. Десять студийных голосов, 31 язык, полностью офлайн на вашем устройстве. Без аккаунта, без облака, бесплатно.",
-      "ogDescription": "Десять студийных голосов, 31 язык, полностью офлайн. Ваши книги не покидают устройство."
+      "ogDescription": "Десять студийных голосов, 31 язык, полностью офлайн. Ваши книги не покидают устройство.",
+      "locale": "ru_RU"
     },
     "skip": "Перейти к содержимому",
     "logoAria": "Booxnet, на главную страницу",
@@ -784,7 +789,8 @@
     "meta": {
       "title": "Booxnet – kitabın, sesli okunmuş",
       "description": "Bir kitap yükle ve dinle. On stüdyo sesi, 31 dil, tamamen çevrimdışı olarak cihazında. Hesap yok, bulut yok, ücretsiz.",
-      "ogDescription": "On stüdyo sesi, 31 dil, tamamen çevrimdışı. Kitapların cihazından çıkmaz."
+      "ogDescription": "On stüdyo sesi, 31 dil, tamamen çevrimdışı. Kitapların cihazından çıkmaz.",
+      "locale": "tr_TR"
     },
     "skip": "İçeriğe geç",
     "logoAria": "Booxnet, ana sayfaya",

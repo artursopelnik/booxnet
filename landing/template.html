@@ -7,7 +7,7 @@
 <meta name="description" content="{{meta.description}}">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <meta property="og:title" content="{{meta.title}}">
-<meta property="og:locale" content="{{lang}}">
+<meta property="og:locale" content="{{meta.locale}}">
 <meta property="og:description" content="{{meta.ogDescription}}">
 <meta property="og:type" content="website">
 {{alternates}}
@@ -308,7 +308,7 @@ footer {
 
 <header>
   <div class="wrap bar">
-    <a class="logo" href="/" aria-label="{{logoAria}}">
+    <a class="logo" href="/{{lang}}/" aria-label="{{logoAria}}">
       <!-- Das Zeichen der App, unveraendert aus public/icon.svg. Es
            bringt seinen eigenen Grund mit und sitzt deshalb in hell wie
            dunkel richtig. aria-hidden, weil direkt daneben "Booxnet"

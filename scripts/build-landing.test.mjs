@@ -4,6 +4,7 @@ import {
   alternativen,
   auflösen,
   füllen,
+  pruefeZiel,
   sprachliste,
   STANDARD,
 } from './build-landing.mjs'
@@ -91,12 +92,33 @@ describe('Vollständigkeit der Übersetzungen', () => {
   )
 })
 
+describe('Schutz des Zielverzeichnisses', () => {
+  // Das Ziel wird vor dem Schreiben restlos geleert. Ein Aufruf mit
+  // "landing" statt "landing/dist" - ein Zeichen daneben - haette damit
+  // die Vorlage und das Woerterbuch mitgenommen.
+  it.each(['landing', '.', 'src'])('lehnt %s ab', async (ziel) => {
+    const voll = new URL(`../${ziel}`, import.meta.url).pathname
+    if (ziel === 'src') {
+      // src enthaelt keine Wache, muss also durchgehen - der Schutz
+      // greift gezielt, nicht pauschal.
+      await expect(pruefeZiel(voll)).resolves.toBeTruthy()
+      return
+    }
+    await expect(pruefeZiel(voll)).rejects.toThrow()
+  })
+
+  it('lässt ein echtes Zielverzeichnis zu', async () => {
+    const ziel = new URL('../landing/dist', import.meta.url).pathname
+    await expect(pruefeZiel(ziel)).resolves.toContain('landing/dist')
+  })
+})
+
 describe('Zusammensetzen', () => {
   it('füllt jeden Platzhalter der Vorlage', () => {
     for (const code of sprachen) {
       const seite = füllen(vorlage, woerterbuch[code], {
         lang: code,
-        alternates: alternativen(sprachen),
+        alternates: alternativen(sprachen, 'https://booxnet.de'),
         languages: sprachliste(woerterbuch, code),
       })
       expect(seite).not.toMatch(/\{\{/)
@@ -116,12 +138,29 @@ describe('Zusammensetzen', () => {
     expect(seite).toBe('<p>&lt;script&gt;&quot;böse&quot;</p>')
   })
 
-  it('verweist auf jede Sprachfassung und auf eine Vorgabe', () => {
-    const html = alternativen(sprachen)
+  it('verweist mit vollständigen Adressen auf jede Sprachfassung', () => {
+    // Suchmaschinen ignorieren relative hreflang-Angaben - die
+    // Verknuepfung waere wirkungslos.
+    const html = alternativen(sprachen, 'https://booxnet.de')
     for (const code of sprachen) {
-      expect(html).toContain(`hreflang="${code}" href="/${code}/"`)
+      expect(html).toContain(`hreflang="${code}" href="https://booxnet.de/${code}/"`)
     }
-    expect(html).toContain(`hreflang="x-default" href="/${STANDARD}/"`)
+    // x-default zeigt auf die Wurzel: Dort steht die Aushandlung, und
+    // die ist die richtige Antwort auf "keine dieser Sprachen".
+    expect(html).toContain('hreflang="x-default" href="https://booxnet.de/"')
+  })
+
+  it('lässt hreflang weg, wenn die Adresse unbekannt ist', () => {
+    // Nichts ist besser als etwas Unwirksames, das aussieht, als waere
+    // es erledigt.
+    expect(alternativen(sprachen, undefined)).toBe('')
+    expect(alternativen(sprachen, '')).toBe('')
+  })
+
+  it('verträgt einen Schrägstrich am Ende der Adresse', () => {
+    expect(alternativen(['de'], 'https://booxnet.de/')).toContain(
+      'href="https://booxnet.de/de/"',
+    )
   })
 
   it('markiert die aktuelle Sprache in der Auswahl', () => {

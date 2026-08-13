@@ -202,9 +202,13 @@ auf dieses Repository und den Branch `main`:
 **1. Werbeseite**
 - Build Pack: `Dockerfile`, Dockerfile Location: `Dockerfile.landing`
 - Port: `80`
-- Build Argument: `APP_URL=https://app.deine-domain.tld`
-  (ohne dieses Argument bricht der Build ab — sonst zeigte der wichtigste
-  Knopf der Seite ins Leere)
+- Build Arguments:
+  - `APP_URL=https://app.deine-domain.tld` — **Pflicht**, ohne bricht der
+    Build ab, sonst zeigte der wichtigste Knopf der Seite ins Leere
+  - `SITE_URL=https://deine-domain.tld` — optional; fehlt sie, entfallen
+    die `hreflang`-Angaben. Suchmaschinen ignorieren relative Adressen,
+    und etwas Unwirksames, das nach Erledigung aussieht, ist schlechter
+    als nichts
 - Domain: `https://deine-domain.tld`
 
 **2. Anwendung**
