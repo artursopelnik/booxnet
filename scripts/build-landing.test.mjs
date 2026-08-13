@@ -80,8 +80,13 @@ describe('Vollständigkeit der Übersetzungen', () => {
           auflösen(woerterbuch[code], pfad) ===
           auflösen(woerterbuch[STANDARD], pfad),
       )
-      // "name" darf gleich sein, sonst nichts.
-      expect(gleich.filter((p) => p !== 'name')).toEqual([])
+      // Gleich sein DUERFEN nur: der Sprachname selbst und die
+      // Bildpfade - die Szenenbilder zeigen Situationen ohne Schrift und
+      // gelten sprachneutral. Alles andere waere eine vergessene
+      // Uebersetzung, die niemandem auffiele, weil die Seite ja
+      // "irgendwas" anzeigt.
+      const erlaubt = (pfad) => pfad === 'name' || pfad.endsWith('.img')
+      expect(gleich.filter((pfad) => !erlaubt(pfad))).toEqual([])
     },
   )
 })

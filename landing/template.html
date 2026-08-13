@@ -212,6 +212,20 @@ section.soft .card { background: var(--bg); }
 .step h3 { margin: 0 0 6px; font-size: 18px; }
 .step p { margin: 0; color: var(--muted); font-size: 15.5px; }
 
+/* Szenen mit Menschen. width/height stehen im Markup, damit der Platz
+   schon vor dem Laden stimmt und nichts nachspringt. */
+.scenes { display: grid; gap: 26px; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 860px) { .scenes { grid-template-columns: 1fr; } }
+.scenes figure { margin: 0; }
+.scenes img {
+  width: 100%; height: auto; display: block;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+.scenes figcaption { padding: 18px 4px 0; }
+.scenes h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.01em; }
+.scenes p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
 /* Datenschutz-Block */
 .claim {
   max-width: 760px; margin: 0 auto; text-align: center;
@@ -420,7 +434,40 @@ footer {
   </div>
 </section>
 
-<section class="soft">
+<section class="soft" id="szenen">
+  <div class="wrap">
+    <h2>{{scenes.h2}}</h2>
+    <p class="sub">{{scenes.sub}}</p>
+    <div class="scenes">
+      <figure>
+        <img src="/{{scenes.items.0.img}}" alt="{{scenes.items.0.alt}}"
+             width="480" height="360" loading="lazy" decoding="async">
+        <figcaption>
+          <h3>{{scenes.items.0.h}}</h3>
+          <p>{{scenes.items.0.p}}</p>
+        </figcaption>
+      </figure>
+      <figure>
+        <img src="/{{scenes.items.1.img}}" alt="{{scenes.items.1.alt}}"
+             width="480" height="360" loading="lazy" decoding="async">
+        <figcaption>
+          <h3>{{scenes.items.1.h}}</h3>
+          <p>{{scenes.items.1.p}}</p>
+        </figcaption>
+      </figure>
+      <figure>
+        <img src="/{{scenes.items.2.img}}" alt="{{scenes.items.2.alt}}"
+             width="480" height="360" loading="lazy" decoding="async">
+        <figcaption>
+          <h3>{{scenes.items.2.h}}</h3>
+          <p>{{scenes.items.2.p}}</p>
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section>
   <div class="wrap claim">
     <h2>{{privacy.h2}}</h2>
     <p>{{privacy.p}}</p>

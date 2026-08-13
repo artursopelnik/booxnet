@@ -15,11 +15,11 @@
  * Ergebnis:
  *   dist/de/index.html, dist/en/index.html, …
  *   dist/impressum.html, dist/datenschutz.html   (sprachneutral, deutsch)
- *   dist/icon.svg
+ *   dist/img/…, dist/icon.svg
  *
  * Aufruf: node scripts/build-landing.mjs <zielverzeichnis>
  */
-import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
 const ROOT = new URL('..', import.meta.url).pathname
@@ -116,6 +116,9 @@ export async function bauen(ziel = ZIEL) {
     await copyFile(join(LANDING, datei), join(ziel, datei))
   }
   await copyFile(join(ROOT, 'public', 'icon.svg'), join(ziel, 'icon.svg'))
+  // Die Szenenbilder liegen sprachneutral unter /img/ - sie zeigen
+  // Situationen, keine Schrift, und gelten damit fuer jede Fassung.
+  await cp(join(LANDING, 'img'), join(ziel, 'img'), { recursive: true })
 
   return { sprachen, ziel }
 }

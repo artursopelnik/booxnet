@@ -176,6 +176,24 @@ deutsches Rechtsdokument, keine Werbebotschaft.
 node scripts/build-landing.mjs landing/dist   # lokal erzeugen
 ```
 
+### Bilder austauschen
+
+`landing/img/` enthält drei gezeichnete Szenen (Pendeln, nebenbei hören,
+müde Augen). Sie sind bewusst keine Stockfotos: Ein Bilder-CDN wäre
+wieder eine fremde Quelle im Laufzeitpfad. Sie taugen als endgültige
+Bebilderung — wer echte Fotos will, ersetzt sie:
+
+1. Foto im Seitenverhältnis **4:3** ablegen, etwa 960 × 720 px.
+2. In `landing/i18n.json` den Wert `scenes.items.N.img` auf die neue
+   Datei zeigen lassen (`img/…`), in **allen sechs Sprachen** — die
+   Bildpfade sind sprachneutral und müssen übereinstimmen, ein Test
+   prüft das.
+3. `alt` je Sprache anpassen, falls das Foto etwas anderes zeigt.
+
+Bei Fotos von echten Personen: Einwilligung einholen. Erfundene
+Kundenstimmen mit Namen und Gesicht gehören nicht auf die Seite — die
+Szenen zeigen deshalb Situationen, keine Testimonials.
+
 ### In Coolify
 
 Zweimal *New Resource → Application → Public/Private Repository*, beide
