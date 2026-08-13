@@ -10,3 +10,6 @@ tsconfig.tsbuildinfo
 public/supertonic/
 # onnxruntime-WASM-Binärdateien, kopiert von scripts/copy-ort-wasm.mjs
 public/ort/
+
+# Erzeugte Sprachfassungen der Werbeseite (scripts/build-landing.mjs)
+landing/dist/

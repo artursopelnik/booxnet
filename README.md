@@ -136,20 +136,112 @@ fremde Quelle.
 
 ## Auf eigenem Server ausliefern (Docker / Coolify)
 
-Der Endpunkt der ganzen Übung: eigene Auslieferung, eigene Bandbreite,
-niemand, der etwas abschalten kann.
+Das Projekt liefert **zwei** Container aus:
+
+| Was | Dockerfile | Domain |
+| --- | --- | --- |
+| Werbeseite | `Dockerfile.landing` | `booxnet.tld` |
+| Anwendung | `Dockerfile` | `app.booxnet.tld` |
+
+Bewusst getrennt, nicht aus Ordnungsliebe: Die App bringt ~400 MB
+Sprachmodelle mit. Lägen beide im selben Abbild, würde jede Korrektur an
+einem Werbetext einen 400-MB-Build und -Deploy auslösen.
+
+### Die Werbeseite ist mehrsprachig
+
+Dieselben sechs Sprachen wie die App: Deutsch, Englisch, Spanisch,
+Französisch, Russisch, Türkisch. Ein Test hält fest, dass die Listen
+nicht auseinanderlaufen — eine Sprache anzubieten, die die App nicht
+kann, führt Besucher in eine Oberfläche, die sie nicht lesen können.
+
+| Datei | Zweck |
+| --- | --- |
+| `landing/template.html` | Aufbau und Gestaltung, mit `{{platzhaltern}}` |
+| `landing/i18n.json` | alle Texte, je Sprache |
+| `scripts/build-landing.mjs` | setzt daraus `dist/<sprache>/index.html` |
+
+Bei einer Sprache war eine einzelne HTML-Datei richtig: nichts zu bauen,
+nichts, das kaputtgehen kann. Bei sechs dreht sich das um — sechs
+handgepflegte Kopien derselben Seite driften auseinander, und der Fehler
+fällt erst auf, wenn ihn jemand liest, der genau diese Sprache spricht.
+Der Generator ist reines Node ohne Abhängigkeiten.
+
+`/` leitet nach `Accept-Language` auf `/de/`, `/en/` … weiter; jede
+Fassung hat eine eigene Adresse mit `hreflang`-Verweisen und einen
+Umschalter in der Fußzeile. Impressum und Datenschutz bleiben
+sprachneutral unter der Wurzel und auf Deutsch: Ein Impressum ist ein
+deutsches Rechtsdokument, keine Werbebotschaft.
+
+```bash
+node scripts/build-landing.mjs landing/dist   # lokal erzeugen
+```
+
+### Bilder austauschen
+
+`landing/img/` enthält drei gezeichnete Szenen (Pendeln, nebenbei hören,
+müde Augen). Sie sind bewusst keine Stockfotos: Ein Bilder-CDN wäre
+wieder eine fremde Quelle im Laufzeitpfad. Sie taugen als endgültige
+Bebilderung — wer echte Fotos will, ersetzt sie:
+
+1. Foto im Seitenverhältnis **4:3** ablegen, etwa 960 × 720 px.
+2. In `landing/i18n.json` den Wert `scenes.items.N.img` auf die neue
+   Datei zeigen lassen (`img/…`), in **allen sechs Sprachen** — die
+   Bildpfade sind sprachneutral und müssen übereinstimmen, ein Test
+   prüft das.
+3. `alt` je Sprache anpassen, falls das Foto etwas anderes zeigt.
+
+Bei Fotos von echten Personen: Einwilligung einholen. Erfundene
+Kundenstimmen mit Namen und Gesicht gehören nicht auf die Seite — die
+Szenen zeigen deshalb Situationen, keine Testimonials.
+
+### In Coolify
+
+Zweimal *New Resource → Application → Public/Private Repository*, beide
+auf dieses Repository und den Branch `main`:
+
+**1. Werbeseite**
+- Build Pack: `Dockerfile`, Dockerfile Location: `Dockerfile.landing`
+- Port: `80`
+- Build Arguments:
+  - `APP_URL=https://app.deine-domain.tld` — **Pflicht**, ohne bricht der
+    Build ab, sonst zeigte der wichtigste Knopf der Seite ins Leere
+  - `SITE_URL=https://deine-domain.tld` — optional; fehlt sie, entfallen
+    die `hreflang`-Angaben. Suchmaschinen ignorieren relative Adressen,
+    und etwas Unwirksames, das nach Erledigung aussieht, ist schlechter
+    als nichts
+- Domain: `https://deine-domain.tld`
+
+**2. Anwendung**
+- Build Pack: `Dockerfile`, Dockerfile Location: `Dockerfile`
+- Port: `80`
+- Domain: `https://app.deine-domain.tld`
+
+Der erste Build der App dauert spürbar: `npm ci`, Vite-Build und das
+Zusammensetzen der Sprachmodelle samt Prüfsummen.
+
+### Vor dem Öffentlichmachen
+
+`landing/impressum.html` und `landing/datenschutz.html` enthalten
+Platzhalter in eckigen Klammern und blau umrandete Hinweiskästen. Ein
+Impressum ist für geschäftsmäßige Angebote in Deutschland Pflicht
+(§ 5 DDG); die Datenschutzerklärung ist ein Entwurf, dessen technische
+Aussagen stimmen, dem aber deine Angaben als Verantwortlicher und die
+Protokollierung deines Servers fehlen.
+
+### Lokal ansehen
 
 ```bash
 docker build -t booxnet .
 docker run -p 8080:80 booxnet
+
+docker build -f Dockerfile.landing \
+  --build-arg APP_URL=http://localhost:8080 -t booxnet-landing .
+docker run -p 8081:80 booxnet-landing
 ```
 
-Für Coolify: Anwendung vom Typ **Dockerfile** aus diesem Repository,
-Port **80**. Es braucht keine Umgebungsvariablen — das Sprachpaket liegt
-im Repository und wird beim Build aus `models/supertonic/` zusammengesetzt.
+### Warum eigener Server statt GitHub Pages
 
-**Warum eigener Server statt GitHub Pages:** Pages kann keine
-HTTP-Header setzen. Ohne `Cross-Origin-Opener-Policy` und
+GitHub Pages kann keine HTTP-Header setzen. Ohne `Cross-Origin-Opener-Policy` und
 `Cross-Origin-Embedder-Policy` gibt es keinen `SharedArrayBuffer`, und
 die Sprach-Engine rechnet **einkernig** statt auf allen Kernen — je nach
 Gerät ein Vielfaches langsamer. `docker/nginx.conf` setzt beide Header;

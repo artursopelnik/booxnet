@@ -1,0 +1,10 @@
+# Eigene Ausschlussliste fuer den Landing-Build (BuildKit liest
+# <Dockerfile>.dockerignore). Ohne sie wanderten die ~400 MB
+# Sprachmodelle als Build-Kontext mit, obwohl die Werbeseite aus ein
+# paar Kilobyte HTML besteht.
+*
+!landing
+!scripts/build-landing.mjs
+!docker/nginx-landing.conf
+!public/icon.svg
+landing/dist

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" role="img">
+  <!-- Platzhalter-Szene "Augen ausruhen". Siehe szene-pendeln.svg. -->
+  <defs>
+    <clipPath id="a-rund"><rect width="480" height="360" rx="20"/></clipPath>
+  </defs>
+  <g clip-path="url(#a-rund)">
+    <rect width="480" height="360" fill="#f3eeea"/>
+
+    <!-- Stehlampe -->
+    <path d="M372 60h56l18 46h-92z" fill="#f0c98a"/>
+    <rect x="394" y="106" width="8" height="150" fill="#c9b7a6"/>
+    <rect x="368" y="256" width="60" height="10" rx="5" fill="#c9b7a6"/>
+    <circle cx="398" cy="126" r="46" fill="#f7dfae" opacity=".45"/>
+
+    <!-- Sofa -->
+    <rect x="24" y="182" width="330" height="30" rx="15" fill="#c8b6d8"/>
+    <rect x="24" y="206" width="330" height="70" rx="18" fill="#dccbe9"/>
+    <rect x="18" y="196" width="34" height="80" rx="16" fill="#c8b6d8"/>
+    <rect x="326" y="196" width="34" height="80" rx="16" fill="#c8b6d8"/>
+    <rect x="60" y="272" width="16" height="26" rx="6" fill="#a58fbb"/>
+    <rect x="300" y="272" width="16" height="26" rx="6" fill="#a58fbb"/>
+
+    <!-- Kissen -->
+    <rect x="46" y="150" width="66" height="52" rx="16" fill="#f0a02a" opacity=".75"/>
+
+    <!-- Liegende Figur -->
+    <g>
+      <!-- Beine -->
+      <path d="M186 178h118a18 18 0 0 1 0 36H186z" fill="#25457a"/>
+      <path d="M292 178h30a16 16 0 0 1 0 32h-30z" fill="#1c3563"/>
+      <!-- Rumpf -->
+      <path d="M138 172h72v42h-72a21 21 0 0 1 0-42z" fill="#0b63d6"/>
+      <!-- Arm, entspannt -->
+      <path d="M178 206c16 4 28 2 40-6" stroke="#0b63d6" stroke-width="16" stroke-linecap="round" fill="none"/>
+      <!-- Kopf auf dem Kissen -->
+      <circle cx="112" cy="176" r="28" fill="#8d5a3b"/>
+      <path d="M84 176a28 28 0 0 1 56 0c0-18-12-28-28-28s-28 10-28 28z" fill="#241a14"/>
+      <!-- Geschlossenes Auge: der Kern der Szene -->
+      <path d="M100 174c5 5 12 5 17 0" stroke="#241a14" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <!-- Kopfhoerer -->
+      <path d="M84 172a28 28 0 0 1 56 0" stroke="#16294c" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <rect x="76" y="166" width="16" height="26" rx="8" fill="#16294c"/>
+      <rect x="132" y="166" width="16" height="26" rx="8" fill="#16294c"/>
+    </g>
+
+    <!-- Zugeklapptes Buch auf dem Tisch daneben -->
+    <rect x="384" y="286" width="76" height="14" rx="4" fill="#0b63d6"/>
+    <rect x="390" y="278" width="64" height="10" rx="3" fill="#4b8ce4"/>
+
+    <!-- Tonwellen -->
+    <g stroke="#0b63d6" stroke-width="6" stroke-linecap="round" opacity=".5" fill="none">
+      <path d="M186 118a26 26 0 0 1 0 32"/>
+      <path d="M204 106a48 48 0 0 1 0 56"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" role="img">
+  <!--
+    Platzhalter-Szene "Pendeln". Eigenständige Illustration, kein
+    Fremdmaterial: Ein Stockfoto-CDN waere wieder eine fremde Quelle im
+    Laufzeitpfad. Die Farben stecken in der Datei statt in CSS-Variablen,
+    weil ein per <img> geladenes SVG die Seitengestaltung nicht erbt -
+    und weil ein spaeteres Foto sich genauso wenig an den Dunkelmodus
+    anpasst. Zum Austauschen: gleiches Seitenverhaeltnis 4:3.
+  -->
+  <defs>
+    <clipPath id="p-rund"><rect width="480" height="360" rx="20"/></clipPath>
+  </defs>
+  <g clip-path="url(#p-rund)">
+    <rect width="480" height="360" fill="#e8f0fc"/>
+
+    <!-- Bushaltestelle: Dach und Pfosten -->
+    <rect x="60" y="70" width="300" height="12" rx="6" fill="#c3d8f5"/>
+    <rect x="72" y="82" width="9" height="180" fill="#c3d8f5"/>
+    <rect x="339" y="82" width="9" height="180" fill="#c3d8f5"/>
+
+    <!-- Wartendes Fahrzeug, angedeutet -->
+    <rect x="366" y="120" width="150" height="130" rx="18" fill="#cfe0f8"/>
+    <rect x="386" y="140" width="52" height="42" rx="8" fill="#e8f0fc"/>
+    <rect x="452" y="140" width="52" height="42" rx="8" fill="#e8f0fc"/>
+
+    <!-- Boden -->
+    <rect x="0" y="262" width="480" height="98" fill="#d6e4f9"/>
+
+    <!-- Figur -->
+    <g>
+      <!-- Beine -->
+      <rect x="186" y="212" width="20" height="58" rx="10" fill="#25457a"/>
+      <rect x="214" y="212" width="20" height="58" rx="10" fill="#1c3563"/>
+      <!-- Schuhe -->
+      <rect x="180" y="262" width="34" height="12" rx="6" fill="#16294c"/>
+      <rect x="210" y="262" width="34" height="12" rx="6" fill="#16294c"/>
+      <!-- Rumpf -->
+      <path d="M186 140h48a20 20 0 0 1 20 20v42a14 14 0 0 1-14 14h-60a14 14 0 0 1-14-14v-42a20 20 0 0 1 20-20z" fill="#0b63d6"/>
+      <!-- Arm mit Tasche -->
+      <path d="M258 156c14 6 20 20 18 36" stroke="#0b63d6" stroke-width="17" stroke-linecap="round" fill="none"/>
+      <rect x="262" y="196" width="42" height="34" rx="8" fill="#f0a02a"/>
+      <path d="M272 196v-8a12 12 0 0 1 24 0v8" stroke="#d98a1c" stroke-width="5" fill="none"/>
+      <!-- Hals und Kopf -->
+      <rect x="202" y="126" width="16" height="18" fill="#e8b58c"/>
+      <circle cx="210" cy="106" r="27" fill="#f2c39c"/>
+      <!-- Haare -->
+      <path d="M183 104a27 27 0 0 1 54 0c0-16-10-24-27-24s-27 8-27 24z" fill="#3a2b21"/>
+      <path d="M183 104c0 8 2 12 2 12l-6 2c-2-6-2-10-2-14z" fill="#3a2b21"/>
+      <!-- Kopfhoerer -->
+      <path d="M180 106a30 30 0 0 1 60 0" stroke="#16294c" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <rect x="172" y="98" width="16" height="26" rx="8" fill="#16294c"/>
+      <rect x="232" y="98" width="16" height="26" rx="8" fill="#16294c"/>
+    </g>
+
+    <!-- Tonwellen, die vom Kopfhoerer ausgehen -->
+    <g stroke="#0b63d6" stroke-width="6" stroke-linecap="round" opacity=".55" fill="none">
+      <path d="M136 96a26 26 0 0 0 0 32"/>
+      <path d="M118 84a48 48 0 0 0 0 56"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,944 @@
+{
+  "de": {
+    "name": "Deutsch",
+    "meta": {
+      "title": "Booxnet – dein Buch, vorgelesen",
+      "description": "Lade ein Buch hoch und lass es dir vorlesen. Zehn Studiostimmen, 31 Sprachen, komplett offline auf deinem Gerät. Ohne Konto, ohne Cloud, kostenlos.",
+      "ogDescription": "Zehn Studiostimmen, 31 Sprachen, komplett offline. Deine Bücher verlassen dein Gerät nicht.",
+      "locale": "de_DE"
+    },
+    "skip": "Zum Inhalt springen",
+    "logoAria": "Booxnet, zur Startseite",
+    "nav": {
+      "label": "Hauptnavigation",
+      "features": "Funktionen",
+      "how": "So geht's",
+      "faq": "Fragen",
+      "openApp": "App öffnen"
+    },
+    "hero": {
+      "line1": "Dein Buch,",
+      "accent": "vorgelesen",
+      "lead": "Lade ein PDF, EPUB oder einen Text hoch und hör zu. Zehn Studiostimmen, 31 Sprachen — und alles rechnet auf deinem Gerät.",
+      "cta": "Kostenlos vorlesen lassen",
+      "cta2": "So funktioniert's",
+      "note": "Kein Konto. Keine Cloud. Keine Kosten."
+    },
+    "preview": {
+      "chapter": "Kapitel 4 · Seite 128",
+      "p1": "Der Weg führte weiter am Fluss entlang, vorbei an den alten Weiden, deren Zweige das Wasser berührten.",
+      "p2": "Sie hielt einen Moment inne und lauschte dem Wind.",
+      "p3": "Irgendwo hinter den Hügeln schlug eine Turmuhr."
+    },
+    "features": {
+      "h2": "Was Booxnet kann",
+      "sub": "Kein Abo-Modell mit Vorlese-Kontingent. Die Sprachausgabe läuft lokal — deshalb ist sie unbegrenzt.",
+      "items": [
+        {
+          "h": "PDF, EPUB, Text",
+          "p": "Datei wählen oder Text einfügen. Der Inhalt wird direkt im Browser gelesen — hochgeladen wird nichts."
+        },
+        {
+          "h": "Zehn Studiostimmen",
+          "p": "Männlich und weiblich, in Studioqualität mit 44,1 kHz. Jede Stimme spricht alle 31 Sprachen."
+        },
+        {
+          "h": "31 Sprachen",
+          "p": "Die Sprache des Buchs wird automatisch erkannt und lässt sich jederzeit von Hand umstellen."
+        },
+        {
+          "h": "Nichts verlässt dein Gerät",
+          "p": "Kein Server sieht deine Bücher, weil keiner beteiligt ist. Auch die Sprachausgabe rechnet lokal."
+        },
+        {
+          "h": "Offline nutzbar",
+          "p": "Einmal eingerichtet, funktioniert alles im Flugzeug, im Zug und im Funkloch."
+        },
+        {
+          "h": "Mitlesen und springen",
+          "p": "Der gelesene Satz wird markiert. Tippen springt dorthin, Tempo 0,5× bis 2×, Leseposition bleibt gespeichert."
+        }
+      ]
+    },
+    "steps": {
+      "h2": "In drei Schritten",
+      "sub": "Beim ersten Mal lädt das Sprachpaket einmalig herunter. Danach geht es sofort los.",
+      "items": [
+        {
+          "h": "Buch hinzufügen",
+          "p": "PDF, EPUB oder Textdatei auswählen — oder einen Text aus der Zwischenablage einfügen."
+        },
+        {
+          "h": "Stimme wählen",
+          "p": "Zehn Stimmen zum Probehören. Jede stellt sich selbst vor, damit du sie vergleichen kannst."
+        },
+        {
+          "h": "Zuhören",
+          "p": "Abspielen drücken. Der Text läuft mit, die Position wird gemerkt, das Tempo bestimmst du."
+        }
+      ]
+    },
+    "scenes": {
+      "h2": "Wann Booxnet zum Einsatz kommt",
+      "sub": "Nicht statt Lesen — sondern dann, wenn Lesen gerade nicht geht.",
+      "items": [
+        {
+          "h": "Auf dem Weg",
+          "p": "Bus, Bahn, Fußweg. Zwanzig Minuten Pendeln sind zwanzig Minuten Buch.",
+          "alt": "Eine Person mit Kopfhörern wartet mit einer Tasche an einer Haltestelle.",
+          "img": "img/szene-pendeln.svg"
+        },
+        {
+          "h": "Nebenbei",
+          "p": "Kochen, aufräumen, spazieren. Die Hände sind beschäftigt, die Ohren nicht.",
+          "alt": "Eine Person mit Kopfhörern steht in der Küche, daneben eine dampfende Tasse.",
+          "img": "img/szene-haushalt.svg"
+        },
+        {
+          "h": "Wenn die Augen müde sind",
+          "p": "Nach einem langen Bildschirmtag, bei schlechtem Licht oder einfach mit geschlossenen Augen.",
+          "alt": "Eine Person mit Kopfhörern liegt entspannt auf dem Sofa, die Augen geschlossen.",
+          "img": "img/szene-augen.svg"
+        }
+      ]
+    },
+    "privacy": {
+      "h2": "Datenschutz ist hier keine Einstellung",
+      "p": "Die meisten Vorlese-Dienste schicken deinen Text an einen Server, der ihn in Sprache verwandelt. Booxnet nicht: Die komplette Sprachsynthese läuft im Browser auf deinem Gerät. Deshalb gibt es keine Datei, die hochgeladen wird, kein Konto, das man anlegen müsste, und keine Nutzung, die sich abrechnen ließe.",
+      "pills": [
+        "Kein Konto",
+        "Kein Upload",
+        "Keine Werbung",
+        "Kein Tracking",
+        "Unbegrenzt vorlesen"
+      ]
+    },
+    "faq": {
+      "h2": "Häufige Fragen",
+      "items": [
+        {
+          "q": "Was kostet Booxnet?",
+          "a": "Nichts. Da die Sprachausgabe auf deinem Gerät rechnet, entstehen keine laufenden Kosten pro vorgelesener Seite — es gibt also auch nichts abzurechnen."
+        },
+        {
+          "q": "Warum lädt beim ersten Start etwas herunter?",
+          "a": "Die Stimmen brauchen ein Sprachmodell von rund 400 MB. Es wird einmalig geladen und bleibt auf dem Gerät. Am besten im WLAN und mit geöffneter App."
+        },
+        {
+          "q": "Werden meine Bücher hochgeladen?",
+          "a": "Nein. Die Datei wird im Browser gelesen und in der lokalen Bibliothek deines Geräts gespeichert. Sie verlässt es nicht."
+        },
+        {
+          "q": "Funktioniert es ohne Internet?",
+          "a": "Ja, nach dem einmaligen Download. Booxnet lässt sich zum Startbildschirm hinzufügen und läuft dann wie eine App."
+        },
+        {
+          "q": "Welche Dateien kann ich verwenden?",
+          "a": "PDF, EPUB und Textdateien. Eingescannte PDFs ohne Textebene enthalten keinen lesbaren Text — die kann Booxnet nicht vorlesen, weil es keine Texterkennung mitbringt."
+        },
+        {
+          "q": "Welche Sprachen werden gesprochen?",
+          "a": "31, darunter Deutsch, Englisch, Spanisch, Französisch, Italienisch, Russisch, Türkisch, Japanisch, Koreanisch und Arabisch. Jede Stimme beherrscht alle."
+        }
+      ]
+    },
+    "final": {
+      "h2": "Fang mit einem Buch an",
+      "p": "Keine Anmeldung, kein Download aus einem App-Store.",
+      "cta": "Booxnet öffnen"
+    },
+    "footer": {
+      "label": "Rechtliches",
+      "imprint": "Impressum",
+      "privacy": "Datenschutz",
+      "openApp": "App öffnen",
+      "langLabel": "Sprache",
+      "legalNote": "Impressum und Datenschutz liegen auf Deutsch vor."
+    }
+  },
+  "en": {
+    "name": "English",
+    "meta": {
+      "title": "Booxnet – your book, read aloud",
+      "description": "Upload a book and listen. Ten studio voices, 31 languages, entirely offline on your device. No account, no cloud, free.",
+      "ogDescription": "Ten studio voices, 31 languages, entirely offline. Your books never leave your device.",
+      "locale": "en_US"
+    },
+    "skip": "Skip to content",
+    "logoAria": "Booxnet, to the home page",
+    "nav": {
+      "label": "Main navigation",
+      "features": "Features",
+      "how": "How it works",
+      "faq": "Questions",
+      "openApp": "Open the app"
+    },
+    "hero": {
+      "line1": "Your book,",
+      "accent": "read aloud",
+      "lead": "Upload a PDF, EPUB or plain text and listen. Ten studio voices, 31 languages — and everything runs on your device.",
+      "cta": "Start listening, free",
+      "cta2": "How it works",
+      "note": "No account. No cloud. No cost."
+    },
+    "preview": {
+      "chapter": "Chapter 4 · Page 128",
+      "p1": "The path ran on beside the river, past the old willows whose branches brushed the water.",
+      "p2": "She paused for a moment and listened to the wind.",
+      "p3": "Somewhere beyond the hills a church clock struck."
+    },
+    "features": {
+      "h2": "What Booxnet does",
+      "sub": "No subscription with a reading quota. The speech runs locally — which is why it is unlimited.",
+      "items": [
+        {
+          "h": "PDF, EPUB, text",
+          "p": "Pick a file or paste text. The content is read straight in the browser — nothing is uploaded."
+        },
+        {
+          "h": "Ten studio voices",
+          "p": "Male and female, in studio quality at 44.1 kHz. Every voice speaks all 31 languages."
+        },
+        {
+          "h": "31 languages",
+          "p": "The language of the book is detected automatically and can be changed by hand at any time."
+        },
+        {
+          "h": "Nothing leaves your device",
+          "p": "No server sees your books, because none is involved. The speech is computed locally too."
+        },
+        {
+          "h": "Works offline",
+          "p": "Once set up, everything works on a plane, on a train and out of signal range."
+        },
+        {
+          "h": "Follow along and jump",
+          "p": "The sentence being read is highlighted. Tap to jump there, speed 0.5× to 2×, your position is remembered."
+        }
+      ]
+    },
+    "steps": {
+      "h2": "Three steps",
+      "sub": "The first time, the speech package downloads once. After that it starts right away.",
+      "items": [
+        {
+          "h": "Add a book",
+          "p": "Choose a PDF, EPUB or text file — or paste text from the clipboard."
+        },
+        {
+          "h": "Pick a voice",
+          "p": "Ten voices to preview. Each introduces itself so you can compare them."
+        },
+        {
+          "h": "Listen",
+          "p": "Press play. The text follows along, your position is remembered, you set the pace."
+        }
+      ]
+    },
+    "scenes": {
+      "h2": "When Booxnet comes in",
+      "sub": "Not instead of reading — for the moments when reading isn't possible.",
+      "items": [
+        {
+          "h": "On the way",
+          "p": "Bus, train, walking. Twenty minutes of commuting are twenty minutes of book.",
+          "alt": "A person with headphones waits at a stop, holding a bag.",
+          "img": "img/szene-pendeln.svg"
+        },
+        {
+          "h": "While doing something else",
+          "p": "Cooking, tidying up, walking. Your hands are busy, your ears are not.",
+          "alt": "A person with headphones stands in a kitchen next to a steaming mug.",
+          "img": "img/szene-haushalt.svg"
+        },
+        {
+          "h": "When your eyes are tired",
+          "p": "After a long day at a screen, in poor light, or simply with your eyes closed.",
+          "alt": "A person with headphones rests on a sofa with their eyes closed.",
+          "img": "img/szene-augen.svg"
+        }
+      ]
+    },
+    "privacy": {
+      "h2": "Privacy here is not a setting",
+      "p": "Most read-aloud services send your text to a server that turns it into speech. Booxnet does not: the entire synthesis runs in the browser on your device. That is why there is no file to upload, no account to create, and no usage that could be billed.",
+      "pills": [
+        "No account",
+        "No upload",
+        "No ads",
+        "No tracking",
+        "Unlimited reading"
+      ]
+    },
+    "faq": {
+      "h2": "Common questions",
+      "items": [
+        {
+          "q": "What does Booxnet cost?",
+          "a": "Nothing. Because the speech is computed on your device, there is no running cost per page read aloud — so there is nothing to bill."
+        },
+        {
+          "q": "Why does something download on first start?",
+          "a": "The voices need a speech model of about 400 MB. It downloads once and stays on the device. Best over Wi-Fi with the app open."
+        },
+        {
+          "q": "Are my books uploaded?",
+          "a": "No. The file is read in the browser and stored in your device's local library. It never leaves it."
+        },
+        {
+          "q": "Does it work without internet?",
+          "a": "Yes, after the one-time download. Booxnet can be added to the home screen and then runs like an app."
+        },
+        {
+          "q": "Which files can I use?",
+          "a": "PDF, EPUB and text files. Scanned PDFs without a text layer contain no readable text — Booxnet cannot read those aloud, because it has no text recognition."
+        },
+        {
+          "q": "Which languages are spoken?",
+          "a": "31, among them English, German, Spanish, French, Italian, Russian, Turkish, Japanese, Korean and Arabic. Every voice speaks all of them."
+        }
+      ]
+    },
+    "final": {
+      "h2": "Start with one book",
+      "p": "No sign-up, no download from an app store.",
+      "cta": "Open Booxnet"
+    },
+    "footer": {
+      "label": "Legal",
+      "imprint": "Imprint",
+      "privacy": "Privacy",
+      "openApp": "Open the app",
+      "langLabel": "Language",
+      "legalNote": "Imprint and privacy policy are provided in German."
+    }
+  },
+  "es": {
+    "name": "Español",
+    "meta": {
+      "title": "Booxnet – tu libro, leído en voz alta",
+      "description": "Sube un libro y escúchalo. Diez voces de estudio, 31 idiomas, completamente sin conexión en tu dispositivo. Sin cuenta, sin nube, gratis.",
+      "ogDescription": "Diez voces de estudio, 31 idiomas, completamente sin conexión. Tus libros no salen de tu dispositivo.",
+      "locale": "es_ES"
+    },
+    "skip": "Saltar al contenido",
+    "logoAria": "Booxnet, ir a la página de inicio",
+    "nav": {
+      "label": "Navegación principal",
+      "features": "Funciones",
+      "how": "Cómo funciona",
+      "faq": "Preguntas",
+      "openApp": "Abrir la app"
+    },
+    "hero": {
+      "line1": "Tu libro,",
+      "accent": "leído en voz alta",
+      "lead": "Sube un PDF, un EPUB o un texto y escucha. Diez voces de estudio, 31 idiomas — y todo se calcula en tu dispositivo.",
+      "cta": "Escuchar gratis",
+      "cta2": "Cómo funciona",
+      "note": "Sin cuenta. Sin nube. Sin coste."
+    },
+    "preview": {
+      "chapter": "Capítulo 4 · Página 128",
+      "p1": "El camino seguía junto al río, más allá de los viejos sauces cuyas ramas rozaban el agua.",
+      "p2": "Se detuvo un momento y escuchó el viento.",
+      "p3": "En algún lugar tras las colinas sonó el reloj de una torre."
+    },
+    "features": {
+      "h2": "Qué hace Booxnet",
+      "sub": "Sin suscripción con cuota de lectura. La voz se genera localmente — por eso no tiene límite.",
+      "items": [
+        {
+          "h": "PDF, EPUB, texto",
+          "p": "Elige un archivo o pega texto. El contenido se lee directamente en el navegador — no se sube nada."
+        },
+        {
+          "h": "Diez voces de estudio",
+          "p": "Masculinas y femeninas, en calidad de estudio a 44,1 kHz. Cada voz habla los 31 idiomas."
+        },
+        {
+          "h": "31 idiomas",
+          "p": "El idioma del libro se detecta automáticamente y puede cambiarse a mano en cualquier momento."
+        },
+        {
+          "h": "Nada sale de tu dispositivo",
+          "p": "Ningún servidor ve tus libros, porque ninguno interviene. La voz también se calcula localmente."
+        },
+        {
+          "h": "Funciona sin conexión",
+          "p": "Una vez configurado, todo funciona en el avión, en el tren y sin cobertura."
+        },
+        {
+          "h": "Seguir y saltar",
+          "p": "La frase que se lee queda resaltada. Toca para saltar ahí, velocidad de 0,5× a 2×, tu posición se recuerda."
+        }
+      ]
+    },
+    "steps": {
+      "h2": "En tres pasos",
+      "sub": "La primera vez se descarga el paquete de voz una sola vez. Después empieza de inmediato.",
+      "items": [
+        {
+          "h": "Añade un libro",
+          "p": "Elige un PDF, un EPUB o un archivo de texto — o pega texto desde el portapapeles."
+        },
+        {
+          "h": "Elige una voz",
+          "p": "Diez voces para probar. Cada una se presenta sola para que puedas compararlas."
+        },
+        {
+          "h": "Escucha",
+          "p": "Pulsa reproducir. El texto acompaña, la posición se guarda, tú marcas el ritmo."
+        }
+      ]
+    },
+    "scenes": {
+      "h2": "Cuándo entra Booxnet",
+      "sub": "No en lugar de leer, sino cuando leer no es posible.",
+      "items": [
+        {
+          "h": "De camino",
+          "p": "Autobús, tren, a pie. Veinte minutos de trayecto son veinte minutos de libro.",
+          "alt": "Una persona con auriculares espera en una parada con un bolso.",
+          "img": "img/szene-pendeln.svg"
+        },
+        {
+          "h": "Mientras haces otra cosa",
+          "p": "Cocinar, ordenar, pasear. Las manos están ocupadas, los oídos no.",
+          "alt": "Una persona con auriculares está en la cocina junto a una taza humeante.",
+          "img": "img/szene-haushalt.svg"
+        },
+        {
+          "h": "Cuando los ojos están cansados",
+          "p": "Tras un día largo de pantalla, con poca luz o simplemente con los ojos cerrados.",
+          "alt": "Una persona con auriculares descansa en el sofá con los ojos cerrados.",
+          "img": "img/szene-augen.svg"
+        }
+      ]
+    },
+    "privacy": {
+      "h2": "Aquí la privacidad no es un ajuste",
+      "p": "La mayoría de los servicios de lectura envían tu texto a un servidor que lo convierte en voz. Booxnet no: toda la síntesis ocurre en el navegador, en tu dispositivo. Por eso no hay ningún archivo que subir, ninguna cuenta que crear y ningún uso que se pueda facturar.",
+      "pills": [
+        "Sin cuenta",
+        "Sin subida",
+        "Sin publicidad",
+        "Sin rastreo",
+        "Lectura ilimitada"
+      ]
+    },
+    "faq": {
+      "h2": "Preguntas frecuentes",
+      "items": [
+        {
+          "q": "¿Cuánto cuesta Booxnet?",
+          "a": "Nada. Como la voz se calcula en tu dispositivo, no hay coste recurrente por página leída — así que tampoco hay nada que facturar."
+        },
+        {
+          "q": "¿Por qué se descarga algo al primer inicio?",
+          "a": "Las voces necesitan un modelo de voz de unos 400 MB. Se descarga una sola vez y permanece en el dispositivo. Mejor por wifi y con la app abierta."
+        },
+        {
+          "q": "¿Se suben mis libros?",
+          "a": "No. El archivo se lee en el navegador y se guarda en la biblioteca local de tu dispositivo. No sale de él."
+        },
+        {
+          "q": "¿Funciona sin internet?",
+          "a": "Sí, tras la descarga única. Booxnet puede añadirse a la pantalla de inicio y funciona como una app."
+        },
+        {
+          "q": "¿Qué archivos puedo usar?",
+          "a": "PDF, EPUB y archivos de texto. Los PDF escaneados sin capa de texto no contienen texto legible — esos Booxnet no puede leerlos, porque no incluye reconocimiento de texto."
+        },
+        {
+          "q": "¿Qué idiomas se hablan?",
+          "a": "31, entre ellos español, alemán, inglés, francés, italiano, ruso, turco, japonés, coreano y árabe. Cada voz los habla todos."
+        }
+      ]
+    },
+    "final": {
+      "h2": "Empieza con un libro",
+      "p": "Sin registro, sin descarga desde una tienda de aplicaciones.",
+      "cta": "Abrir Booxnet"
+    },
+    "footer": {
+      "label": "Aviso legal",
+      "imprint": "Aviso legal",
+      "privacy": "Privacidad",
+      "openApp": "Abrir la app",
+      "langLabel": "Idioma",
+      "legalNote": "El aviso legal y la política de privacidad están en alemán."
+    }
+  },
+  "fr": {
+    "name": "Français",
+    "meta": {
+      "title": "Booxnet – ton livre, lu à voix haute",
+      "description": "Charge un livre et écoute. Dix voix de studio, 31 langues, entièrement hors ligne sur ton appareil. Sans compte, sans cloud, gratuit.",
+      "ogDescription": "Dix voix de studio, 31 langues, entièrement hors ligne. Tes livres ne quittent pas ton appareil.",
+      "locale": "fr_FR"
+    },
+    "skip": "Aller au contenu",
+    "logoAria": "Booxnet, vers la page d'accueil",
+    "nav": {
+      "label": "Navigation principale",
+      "features": "Fonctions",
+      "how": "Comment ça marche",
+      "faq": "Questions",
+      "openApp": "Ouvrir l'app"
+    },
+    "hero": {
+      "line1": "Ton livre,",
+      "accent": "lu à voix haute",
+      "lead": "Charge un PDF, un EPUB ou un texte et écoute. Dix voix de studio, 31 langues — et tout est calculé sur ton appareil.",
+      "cta": "Écouter gratuitement",
+      "cta2": "Comment ça marche",
+      "note": "Sans compte. Sans cloud. Sans frais."
+    },
+    "preview": {
+      "chapter": "Chapitre 4 · Page 128",
+      "p1": "Le chemin longeait encore la rivière, passant devant les vieux saules dont les branches effleuraient l'eau.",
+      "p2": "Elle s'arrêta un instant et écouta le vent.",
+      "p3": "Quelque part derrière les collines, une horloge sonna."
+    },
+    "features": {
+      "h2": "Ce que fait Booxnet",
+      "sub": "Pas d'abonnement avec quota de lecture. La synthèse tourne en local — c'est pourquoi elle est illimitée.",
+      "items": [
+        {
+          "h": "PDF, EPUB, texte",
+          "p": "Choisis un fichier ou colle du texte. Le contenu est lu directement dans le navigateur — rien n'est envoyé."
+        },
+        {
+          "h": "Dix voix de studio",
+          "p": "Masculines et féminines, en qualité studio à 44,1 kHz. Chaque voix parle les 31 langues."
+        },
+        {
+          "h": "31 langues",
+          "p": "La langue du livre est détectée automatiquement et peut être changée à la main à tout moment."
+        },
+        {
+          "h": "Rien ne quitte ton appareil",
+          "p": "Aucun serveur ne voit tes livres, parce qu'aucun n'intervient. La synthèse aussi est calculée en local."
+        },
+        {
+          "h": "Utilisable hors ligne",
+          "p": "Une fois installé, tout fonctionne en avion, en train et sans réseau."
+        },
+        {
+          "h": "Suivre et sauter",
+          "p": "La phrase lue est surlignée. Touche pour y aller, vitesse de 0,5× à 2×, ta position est conservée."
+        }
+      ]
+    },
+    "steps": {
+      "h2": "En trois étapes",
+      "sub": "La première fois, le paquet vocal se télécharge une seule fois. Ensuite, ça démarre tout de suite.",
+      "items": [
+        {
+          "h": "Ajoute un livre",
+          "p": "Choisis un PDF, un EPUB ou un fichier texte — ou colle un texte depuis le presse-papiers."
+        },
+        {
+          "h": "Choisis une voix",
+          "p": "Dix voix à écouter. Chacune se présente elle-même pour que tu puisses comparer."
+        },
+        {
+          "h": "Écoute",
+          "p": "Appuie sur lecture. Le texte suit, la position est retenue, c'est toi qui règles le rythme."
+        }
+      ]
+    },
+    "scenes": {
+      "h2": "Quand Booxnet entre en jeu",
+      "sub": "Pas à la place de la lecture — pour les moments où lire n'est pas possible.",
+      "items": [
+        {
+          "h": "En chemin",
+          "p": "Bus, train, à pied. Vingt minutes de trajet, ce sont vingt minutes de livre.",
+          "alt": "Une personne avec un casque attend à un arrêt, un sac à la main.",
+          "img": "img/szene-pendeln.svg"
+        },
+        {
+          "h": "En faisant autre chose",
+          "p": "Cuisiner, ranger, marcher. Les mains sont occupées, pas les oreilles.",
+          "alt": "Une personne avec un casque se tient dans une cuisine près d'une tasse fumante.",
+          "img": "img/szene-haushalt.svg"
+        },
+        {
+          "h": "Quand les yeux fatiguent",
+          "p": "Après une longue journée d'écran, sous une lumière faible, ou simplement les yeux fermés.",
+          "alt": "Une personne avec un casque se repose sur un canapé, les yeux fermés.",
+          "img": "img/szene-augen.svg"
+        }
+      ]
+    },
+    "privacy": {
+      "h2": "Ici, la confidentialité n'est pas un réglage",
+      "p": "La plupart des services de lecture envoient ton texte à un serveur qui le transforme en voix. Pas Booxnet : toute la synthèse tourne dans le navigateur, sur ton appareil. C'est pourquoi il n'y a aucun fichier à envoyer, aucun compte à créer et aucun usage à facturer.",
+      "pills": [
+        "Sans compte",
+        "Sans envoi",
+        "Sans publicité",
+        "Sans pistage",
+        "Lecture illimitée"
+      ]
+    },
+    "faq": {
+      "h2": "Questions fréquentes",
+      "items": [
+        {
+          "q": "Combien coûte Booxnet ?",
+          "a": "Rien. Comme la synthèse est calculée sur ton appareil, il n'y a pas de coût courant par page lue — il n'y a donc rien à facturer."
+        },
+        {
+          "q": "Pourquoi un téléchargement au premier démarrage ?",
+          "a": "Les voix ont besoin d'un modèle vocal d'environ 400 Mo. Il se télécharge une seule fois et reste sur l'appareil. De préférence en wifi, l'app ouverte."
+        },
+        {
+          "q": "Mes livres sont-ils envoyés ?",
+          "a": "Non. Le fichier est lu dans le navigateur et rangé dans la bibliothèque locale de ton appareil. Il n'en sort pas."
+        },
+        {
+          "q": "Est-ce que ça marche sans internet ?",
+          "a": "Oui, après le téléchargement unique. Booxnet s'ajoute à l'écran d'accueil et fonctionne alors comme une application."
+        },
+        {
+          "q": "Quels fichiers puis-je utiliser ?",
+          "a": "PDF, EPUB et fichiers texte. Les PDF scannés sans couche de texte ne contiennent aucun texte lisible — Booxnet ne peut pas les lire, faute de reconnaissance de caractères."
+        },
+        {
+          "q": "Quelles langues sont parlées ?",
+          "a": "31, dont le français, l'allemand, l'anglais, l'espagnol, l'italien, le russe, le turc, le japonais, le coréen et l'arabe. Chaque voix les parle toutes."
+        }
+      ]
+    },
+    "final": {
+      "h2": "Commence par un livre",
+      "p": "Pas d'inscription, pas de téléchargement depuis un magasin d'applications.",
+      "cta": "Ouvrir Booxnet"
+    },
+    "footer": {
+      "label": "Mentions légales",
+      "imprint": "Mentions légales",
+      "privacy": "Confidentialité",
+      "openApp": "Ouvrir l'app",
+      "langLabel": "Langue",
+      "legalNote": "Les mentions légales et la politique de confidentialité sont en allemand."
+    }
+  },
+  "ru": {
+    "name": "Русский",
+    "meta": {
+      "title": "Booxnet — ваша книга, прочитанная вслух",
+      "description": "Загрузите книгу и слушайте. Десять студийных голосов, 31 язык, полностью офлайн на вашем устройстве. Без аккаунта, без облака, бесплатно.",
+      "ogDescription": "Десять студийных голосов, 31 язык, полностью офлайн. Ваши книги не покидают устройство.",
+      "locale": "ru_RU"
+    },
+    "skip": "Перейти к содержимому",
+    "logoAria": "Booxnet, на главную страницу",
+    "nav": {
+      "label": "Основная навигация",
+      "features": "Возможности",
+      "how": "Как это работает",
+      "faq": "Вопросы",
+      "openApp": "Открыть приложение"
+    },
+    "hero": {
+      "line1": "Ваша книга,",
+      "accent": "прочитанная вслух",
+      "lead": "Загрузите PDF, EPUB или текст и слушайте. Десять студийных голосов, 31 язык — и всё считается на вашем устройстве.",
+      "cta": "Слушать бесплатно",
+      "cta2": "Как это работает",
+      "note": "Без аккаунта. Без облака. Без оплаты."
+    },
+    "preview": {
+      "chapter": "Глава 4 · Страница 128",
+      "p1": "Дорога тянулась дальше вдоль реки, мимо старых ив, чьи ветви касались воды.",
+      "p2": "Она на мгновение остановилась и прислушалась к ветру.",
+      "p3": "Где-то за холмами пробили башенные часы."
+    },
+    "features": {
+      "h2": "Что умеет Booxnet",
+      "sub": "Никакой подписки с лимитом страниц. Речь синтезируется локально — поэтому она неограниченна.",
+      "items": [
+        {
+          "h": "PDF, EPUB, текст",
+          "p": "Выберите файл или вставьте текст. Содержимое читается прямо в браузере — ничего не загружается на сервер."
+        },
+        {
+          "h": "Десять студийных голосов",
+          "p": "Мужские и женские, студийного качества 44,1 кГц. Каждый голос говорит на всех 31 языке."
+        },
+        {
+          "h": "31 язык",
+          "p": "Язык книги определяется автоматически и в любой момент переключается вручную."
+        },
+        {
+          "h": "Ничего не покидает устройство",
+          "p": "Ни один сервер не видит ваши книги, потому что ни один в этом не участвует. Речь тоже считается локально."
+        },
+        {
+          "h": "Работает офлайн",
+          "p": "После настройки всё работает в самолёте, в поезде и вне зоны покрытия."
+        },
+        {
+          "h": "Следить и переходить",
+          "p": "Читаемое предложение подсвечивается. Нажатие переносит туда, скорость от 0,5× до 2×, позиция сохраняется."
+        }
+      ]
+    },
+    "steps": {
+      "h2": "Три шага",
+      "sub": "В первый раз речевой пакет загружается один раз. Дальше всё начинается сразу.",
+      "items": [
+        {
+          "h": "Добавьте книгу",
+          "p": "Выберите PDF, EPUB или текстовый файл — либо вставьте текст из буфера обмена."
+        },
+        {
+          "h": "Выберите голос",
+          "p": "Десять голосов для прослушивания. Каждый представляется сам, чтобы их можно было сравнить."
+        },
+        {
+          "h": "Слушайте",
+          "p": "Нажмите воспроизведение. Текст идёт следом, позиция запоминается, темп задаёте вы."
+        }
+      ]
+    },
+    "scenes": {
+      "h2": "Когда пригодится Booxnet",
+      "sub": "Не вместо чтения — а тогда, когда читать не получается.",
+      "items": [
+        {
+          "h": "В дороге",
+          "p": "Автобус, электричка, пешком. Двадцать минут пути — это двадцать минут книги.",
+          "alt": "Человек в наушниках ждёт на остановке с сумкой в руке.",
+          "img": "img/szene-pendeln.svg"
+        },
+        {
+          "h": "Между делом",
+          "p": "Готовка, уборка, прогулка. Руки заняты, а уши свободны.",
+          "alt": "Человек в наушниках стоит на кухне рядом с дымящейся чашкой.",
+          "img": "img/szene-haushalt.svg"
+        },
+        {
+          "h": "Когда устали глаза",
+          "p": "После долгого дня перед экраном, при плохом свете или просто с закрытыми глазами.",
+          "alt": "Человек в наушниках отдыхает на диване с закрытыми глазами.",
+          "img": "img/szene-augen.svg"
+        }
+      ]
+    },
+    "privacy": {
+      "h2": "Здесь приватность — не настройка",
+      "p": "Большинство сервисов чтения отправляют ваш текст на сервер, который превращает его в речь. Booxnet — нет: весь синтез выполняется в браузере на вашем устройстве. Поэтому нет файла для загрузки, нет аккаунта для регистрации и нет использования, которое можно было бы тарифицировать.",
+      "pills": [
+        "Без аккаунта",
+        "Без загрузки",
+        "Без рекламы",
+        "Без слежки",
+        "Без лимита"
+      ]
+    },
+    "faq": {
+      "h2": "Частые вопросы",
+      "items": [
+        {
+          "q": "Сколько стоит Booxnet?",
+          "a": "Нисколько. Поскольку речь считается на вашем устройстве, нет текущих затрат за прочитанную страницу — а значит, и выставлять нечего."
+        },
+        {
+          "q": "Почему при первом запуске что-то загружается?",
+          "a": "Голосам нужна речевая модель около 400 МБ. Она загружается один раз и остаётся на устройстве. Лучше по Wi-Fi и с открытым приложением."
+        },
+        {
+          "q": "Загружаются ли мои книги на сервер?",
+          "a": "Нет. Файл читается в браузере и хранится в локальной библиотеке вашего устройства. Он его не покидает."
+        },
+        {
+          "q": "Работает ли это без интернета?",
+          "a": "Да, после однократной загрузки. Booxnet можно добавить на главный экран, и тогда он работает как приложение."
+        },
+        {
+          "q": "Какие файлы можно использовать?",
+          "a": "PDF, EPUB и текстовые файлы. Отсканированные PDF без текстового слоя не содержат читаемого текста — их Booxnet озвучить не может, так как распознавания текста в нём нет."
+        },
+        {
+          "q": "На каких языках говорят голоса?",
+          "a": "На 31, среди них русский, немецкий, английский, испанский, французский, итальянский, турецкий, японский, корейский и арабский. Каждый голос владеет всеми."
+        }
+      ]
+    },
+    "final": {
+      "h2": "Начните с одной книги",
+      "p": "Без регистрации и без загрузки из магазина приложений.",
+      "cta": "Открыть Booxnet"
+    },
+    "footer": {
+      "label": "Правовая информация",
+      "imprint": "Выходные данные",
+      "privacy": "Конфиденциальность",
+      "openApp": "Открыть приложение",
+      "langLabel": "Язык",
+      "legalNote": "Выходные данные и политика конфиденциальности представлены на немецком языке."
+    }
+  },
+  "tr": {
+    "name": "Türkçe",
+    "meta": {
+      "title": "Booxnet – kitabın, sesli okunmuş",
+      "description": "Bir kitap yükle ve dinle. On stüdyo sesi, 31 dil, tamamen çevrimdışı olarak cihazında. Hesap yok, bulut yok, ücretsiz.",
+      "ogDescription": "On stüdyo sesi, 31 dil, tamamen çevrimdışı. Kitapların cihazından çıkmaz.",
+      "locale": "tr_TR"
+    },
+    "skip": "İçeriğe geç",
+    "logoAria": "Booxnet, ana sayfaya",
+    "nav": {
+      "label": "Ana gezinme",
+      "features": "Özellikler",
+      "how": "Nasıl çalışır",
+      "faq": "Sorular",
+      "openApp": "Uygulamayı aç"
+    },
+    "hero": {
+      "line1": "Kitabın,",
+      "accent": "sesli okunmuş",
+      "lead": "Bir PDF, EPUB ya da metin yükle ve dinle. On stüdyo sesi, 31 dil — ve her şey senin cihazında hesaplanır.",
+      "cta": "Ücretsiz dinlemeye başla",
+      "cta2": "Nasıl çalışır",
+      "note": "Hesap yok. Bulut yok. Ücret yok."
+    },
+    "preview": {
+      "chapter": "Bölüm 4 · Sayfa 128",
+      "p1": "Yol nehir boyunca uzanıyordu, dalları suya değen yaşlı söğütlerin yanından geçerek.",
+      "p2": "Bir an durdu ve rüzgârı dinledi.",
+      "p3": "Tepelerin ardında bir yerde kule saati çaldı."
+    },
+    "features": {
+      "h2": "Booxnet neler yapar",
+      "sub": "Okuma kotalı abonelik yok. Ses cihazda üretilir — sınırsız olmasının nedeni bu.",
+      "items": [
+        {
+          "h": "PDF, EPUB, metin",
+          "p": "Dosya seç ya da metin yapıştır. İçerik doğrudan tarayıcıda okunur — hiçbir şey yüklenmez."
+        },
+        {
+          "h": "On stüdyo sesi",
+          "p": "Erkek ve kadın, 44,1 kHz stüdyo kalitesinde. Her ses 31 dilin hepsini konuşur."
+        },
+        {
+          "h": "31 dil",
+          "p": "Kitabın dili otomatik algılanır ve istediğin zaman elle değiştirilebilir."
+        },
+        {
+          "h": "Hiçbir şey cihazından çıkmaz",
+          "p": "Hiçbir sunucu kitaplarını görmez, çünkü işin içinde sunucu yok. Ses de cihazda hesaplanır."
+        },
+        {
+          "h": "Çevrimdışı çalışır",
+          "p": "Bir kez kurulduktan sonra uçakta, trende ve kapsama alanı dışında da çalışır."
+        },
+        {
+          "h": "Takip et ve atla",
+          "p": "Okunan cümle vurgulanır. Dokununca oraya atlar, hız 0,5× ile 2× arası, konumun saklanır."
+        }
+      ]
+    },
+    "steps": {
+      "h2": "Üç adımda",
+      "sub": "İlk seferde konuşma paketi bir kez iner. Sonrasında hemen başlar.",
+      "items": [
+        {
+          "h": "Kitap ekle",
+          "p": "PDF, EPUB ya da metin dosyası seç — veya panodan metin yapıştır."
+        },
+        {
+          "h": "Ses seç",
+          "p": "Dinleyip karşılaştırabileceğin on ses. Her biri kendini tanıtır."
+        },
+        {
+          "h": "Dinle",
+          "p": "Oynat'a bas. Metin birlikte akar, konum hatırlanır, tempoyu sen belirlersin."
+        }
+      ]
+    },
+    "scenes": {
+      "h2": "Booxnet ne zaman devreye girer",
+      "sub": "Okumanın yerine değil — okumanın mümkün olmadığı anlar için.",
+      "items": [
+        {
+          "h": "Yolda",
+          "p": "Otobüs, tren, yürüyüş. Yirmi dakikalık yol, yirmi dakikalık kitap demek.",
+          "alt": "Kulaklıklı bir kişi elinde çantayla durakta bekliyor.",
+          "img": "img/szene-pendeln.svg"
+        },
+        {
+          "h": "Başka bir şey yaparken",
+          "p": "Yemek, toplanma, yürüyüş. Eller meşgul, kulaklar değil.",
+          "alt": "Kulaklıklı bir kişi mutfakta, yanında dumanı tüten bir fincan var.",
+          "img": "img/szene-haushalt.svg"
+        },
+        {
+          "h": "Gözler yorulduğunda",
+          "p": "Uzun bir ekran gününün ardından, loş ışıkta ya da sadece gözler kapalıyken.",
+          "alt": "Kulaklıklı bir kişi gözleri kapalı hâlde kanepede dinleniyor.",
+          "img": "img/szene-augen.svg"
+        }
+      ]
+    },
+    "privacy": {
+      "h2": "Burada gizlilik bir ayar değil",
+      "p": "Sesli okuma hizmetlerinin çoğu metnini bir sunucuya gönderip orada sese çevirir. Booxnet öyle değil: sentezin tamamı tarayıcıda, senin cihazında çalışır. Bu yüzden yüklenecek bir dosya, açılacak bir hesap ve faturalandırılacak bir kullanım yok.",
+      "pills": [
+        "Hesap yok",
+        "Yükleme yok",
+        "Reklam yok",
+        "İzleme yok",
+        "Sınırsız okuma"
+      ]
+    },
+    "faq": {
+      "h2": "Sık sorulanlar",
+      "items": [
+        {
+          "q": "Booxnet ne kadar?",
+          "a": "Hiç. Ses senin cihazında hesaplandığı için okunan sayfa başına süregelen bir maliyet yok — dolayısıyla faturalandırılacak bir şey de yok."
+        },
+        {
+          "q": "İlk açılışta neden bir indirme oluyor?",
+          "a": "Sesler yaklaşık 400 MB'lık bir konuşma modeline ihtiyaç duyar. Bir kez iner ve cihazda kalır. En iyisi Wi-Fi ile ve uygulama açıkken."
+        },
+        {
+          "q": "Kitaplarım yükleniyor mu?",
+          "a": "Hayır. Dosya tarayıcıda okunur ve cihazının yerel kitaplığında saklanır. Cihazdan çıkmaz."
+        },
+        {
+          "q": "İnternetsiz çalışır mı?",
+          "a": "Evet, tek seferlik indirmeden sonra. Booxnet ana ekrana eklenebilir ve o zaman bir uygulama gibi çalışır."
+        },
+        {
+          "q": "Hangi dosyaları kullanabilirim?",
+          "a": "PDF, EPUB ve metin dosyaları. Metin katmanı olmayan taranmış PDF'ler okunabilir metin içermez — Booxnet bunları seslendiremez, çünkü metin tanıma özelliği yoktur."
+        },
+        {
+          "q": "Hangi diller konuşuluyor?",
+          "a": "31 dil; aralarında Türkçe, Almanca, İngilizce, İspanyolca, Fransızca, İtalyanca, Rusça, Japonca, Korece ve Arapça var. Her ses hepsini konuşur."
+        }
+      ]
+    },
+    "final": {
+      "h2": "Bir kitapla başla",
+      "p": "Kayıt yok, uygulama mağazasından indirme yok.",
+      "cta": "Booxnet'i aç"
+    },
+    "footer": {
+      "label": "Yasal",
+      "imprint": "Künye",
+      "privacy": "Gizlilik",
+      "openApp": "Uygulamayı aç",
+      "langLabel": "Dil",
+      "legalNote": "Künye ve gizlilik politikası Almanca olarak sunulmaktadır."
+    }
+  }
+}

@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{meta.title}}</title>
+<meta name="description" content="{{meta.description}}">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<meta property="og:title" content="{{meta.title}}">
+<meta property="og:locale" content="{{meta.locale}}">
+<meta property="og:description" content="{{meta.ogDescription}}">
+<meta property="og:type" content="website">
+{{alternates}}
+<style>
+/*
+ * Farben aus src/theme.css der App übernommen, damit Seite und
+ * Anwendung als ein Stück wirken. Bewusst ohne Framework und ohne
+ * Build-Schritt: Eine Werbeseite, die eine Toolchain braucht, ist eine
+ * Werbeseite, die irgendwann nicht mehr baut.
+ */
+:root {
+  --primary: #0b63d6;
+  --primary-shade: #0a57bc;
+  /* Schrift AUF der Akzentfarbe. Muss mitkippen: Weiss auf dem hellen
+     Blau des Dunkelmodus ergibt 2,83:1 und faellt damit durch AA. Die
+     App loest es genauso (--ion-color-primary-contrast in theme.css). */
+  --on-primary: #ffffff;
+  --bg: #ffffff;
+  --bg-soft: #f4f5f7;
+  --text: #1c1c1e;
+  --muted: #545456;
+  --border: #e3e5e8;
+  --radius: 18px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #409cff;
+    --primary-shade: #53a6ff;
+    --on-primary: #000000;
+    --bg: #000000;
+    --bg-soft: #1c1c1e;
+    --text: #f2f2f7;
+    --muted: #a1a1a6;
+    --border: #2c2c2e;
+    --shadow: 0 1px 3px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.4);
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--primary); }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+/* ---------------------------------------------------------- Kopfzeile */
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.bar { display: flex; align-items: center; gap: 16px; height: 60px; }
+.logo {
+  display: flex; align-items: center; gap: 10px; min-height: 44px;
+  font-weight: 650; letter-spacing: -.02em; font-size: 19px;
+  color: var(--text); text-decoration: none;
+}
+.logo svg { width: 28px; height: 28px; border-radius: 7px; }
+.bar nav { margin-left: auto; display: flex; align-items: center; gap: 22px; }
+/* Auch die Textlinks der Kopfzeile bekommen eine treffbare Flaeche.
+   :not(.btn) ist hier kein Schoenheitsfehler, sondern noetig: Ohne den
+   Ausschluss ueberschreibt diese Regel wegen hoeherer Spezifitaet die
+   Schriftfarbe des Knopfes - graue Schrift auf blauem Grund, 1,35:1. */
+.bar nav a:not(.btn) {
+  color: var(--muted); text-decoration: none; font-size: 15px;
+  display: inline-flex; align-items: center; min-height: 44px;
+}
+.bar nav a:not(.btn):hover { color: var(--text); }
+@media (max-width: 720px) { .bar nav a.hide-s { display: none; } }
+
+/* Sichtbarer Fokus auf ALLEM, was bedienbar ist. Der Ring liegt in der
+   Akzentfarbe (5,6:1 hell, 7,4:1 dunkel gegen den Grund) und bekommt
+   einen Abstand, damit er auch auf farbigen Flaechen ablesbar bleibt. */
+:where(a, button, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Sprungmarke: Wer mit der Tastatur kommt, soll nicht durch die
+   Kopfzeile tabben muessen, um zum Inhalt zu gelangen. */
+.skip-link {
+  position: absolute; left: 12px; top: -60px; z-index: 20;
+  background: var(--primary); color: var(--on-primary);
+  padding: 12px 20px; border-radius: 0 0 12px 12px;
+  text-decoration: none; font-weight: 600;
+  transition: top .15s ease;
+}
+.skip-link:focus { top: 0; }
+@media (prefers-reduced-motion: reduce) { .skip-link { transition: none; } }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  /* 44 px Mindesthoehe: kleiner ist auf dem Touchscreen nicht sicher
+     zu treffen (WCAG 2.5.5). */
+  min-height: 44px;
+  padding: 13px 24px; border-radius: 999px;
+  background: var(--primary); color: var(--on-primary); text-decoration: none;
+  font-weight: 600; font-size: 16px; border: 0; cursor: pointer;
+  transition: background .15s ease;
+}
+.btn:hover { background: var(--primary-shade); }
+.btn.small { padding: 10px 18px; font-size: 15px; }
+.btn.ghost {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn.ghost:hover { background: var(--bg-soft); }
+
+/* -------------------------------------------------------------- Hero */
+.hero { padding: 88px 0 72px; text-align: center; }
+.hero h1 {
+  margin: 0 0 20px; font-size: clamp(38px, 7vw, 62px); line-height: 1.05;
+  letter-spacing: -.035em; font-weight: 700;
+}
+.hero h1 em { font-style: normal; color: var(--primary); }
+.hero p.lead {
+  margin: 0 auto 32px; max-width: 620px; font-size: 20px; color: var(--muted);
+}
+.cta-row {
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+}
+.hero .note { margin-top: 18px; font-size: 14px; color: var(--muted); }
+
+/* Reader-Vorschau: reines CSS, kein Bild – nichts zu laden, nichts,
+   das bei einem Redesign der App veraltet aussieht. */
+.preview {
+  margin: 56px auto 0; max-width: 420px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 28px;
+  box-shadow: var(--shadow); overflow: hidden; text-align: left;
+}
+.preview .top {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--muted); display: flex; gap: 8px;
+  align-items: center;
+}
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); }
+.preview .page { padding: 22px 20px 8px; font-size: 15.5px; }
+.preview .page p { margin: 0 0 12px; color: var(--muted); }
+.preview .page .now {
+  color: var(--text);
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border-radius: 6px; padding: 2px 4px; margin: 0 -4px;
+}
+.preview .controls {
+  display: flex; align-items: center; justify-content: center; gap: 26px;
+  padding: 16px 20px 24px;
+}
+.play {
+  width: 58px; height: 58px; border-radius: 50%; background: var(--primary);
+  display: grid; place-items: center;
+}
+.play svg { width: 22px; height: 22px; fill: var(--on-primary); margin-left: 3px; }
+.skip { width: 22px; height: 22px; fill: var(--muted); }
+
+/* ---------------------------------------------------------- Abschnitte */
+section { padding: 76px 0; }
+section.soft { background: var(--bg-soft); }
+h2 {
+  margin: 0 0 14px; font-size: clamp(28px, 4vw, 40px); line-height: 1.15;
+  letter-spacing: -.03em; text-align: center; font-weight: 700;
+}
+section > .wrap > p.sub {
+  margin: 0 auto 48px; max-width: 620px; text-align: center;
+  color: var(--muted); font-size: 18px;
+}
+
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+.card {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 26px;
+}
+section.soft .card { background: var(--bg); }
+.card h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: -.01em; }
+.card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+.card .ico {
+  width: 40px; height: 40px; border-radius: 11px; margin-bottom: 16px;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.card .ico svg { width: 21px; height: 21px; stroke: var(--primary);
+  fill: none; stroke-width: 1.9; stroke-linecap: round;
+  stroke-linejoin: round; }
+
+/* Schritte */
+.steps { display: grid; gap: 28px; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+.step .num {
+  width: 34px; height: 34px; border-radius: 50%; background: var(--primary);
+  color: var(--on-primary); display: grid; place-items: center; font-weight: 650;
+  font-size: 16px; margin-bottom: 14px;
+}
+.step h3 { margin: 0 0 6px; font-size: 18px; }
+.step p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+/* Szenen mit Menschen. width/height stehen im Markup, damit der Platz
+   schon vor dem Laden stimmt und nichts nachspringt. */
+.scenes { display: grid; gap: 26px; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 860px) { .scenes { grid-template-columns: 1fr; } }
+.scenes figure { margin: 0; }
+.scenes img {
+  width: 100%; height: auto; display: block;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+.scenes figcaption { padding: 18px 4px 0; }
+.scenes h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.01em; }
+.scenes p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+/* Datenschutz-Block */
+.claim {
+  max-width: 760px; margin: 0 auto; text-align: center;
+}
+.claim h2 { text-align: center; }
+.claim p { color: var(--muted); font-size: 18px; }
+.pill-row {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  margin-top: 28px;
+}
+.pill {
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 8px 16px; font-size: 14.5px; color: var(--muted);
+  background: var(--bg);
+}
+
+/* FAQ */
+.faq { max-width: 760px; margin: 0 auto; }
+details {
+  border-bottom: 1px solid var(--border); padding: 20px 0;
+}
+details summary {
+  cursor: pointer; font-weight: 600; font-size: 17px; list-style: none;
+  display: flex; justify-content: space-between; gap: 16px;
+  min-height: 44px; align-items: center;
+}
+details summary::-webkit-details-marker { display: none; }
+details summary::after {
+  content: '+'; color: var(--muted); font-weight: 400; font-size: 22px;
+  line-height: 1;
+}
+details[open] summary::after { content: '−'; }
+details p { margin: 12px 0 0; color: var(--muted); font-size: 16px; }
+
+/* Abschluss + Fuß */
+.final { text-align: center; }
+.final h2 { margin-bottom: 12px; }
+.final p { color: var(--muted); font-size: 18px; margin: 0 0 28px; }
+footer {
+  border-top: 1px solid var(--border); padding: 36px 0;
+  color: var(--muted); font-size: 14.5px;
+}
+.foot { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; }
+.foot nav { margin-left: auto; display: flex; gap: 22px; flex-wrap: wrap; }
+/* Auch hier eine treffbare Flaeche - die Fusszeile ist auf dem Handy
+   der Ort, an dem man am ehesten danebentippt. */
+.foot a {
+  color: var(--muted); text-decoration: none;
+  display: inline-flex; align-items: center; min-height: 44px;
+}
+.foot a:hover { color: var(--text); text-decoration: underline; }
+
+/* Sprachwahl: eine Liste echter Links, kein Auswahlfeld. So funktioniert
+   sie ohne Skript, laesst sich in einem neuen Tab oeffnen, und jede
+   Sprache hat eine eigene Adresse, die Suchmaschinen und Lesezeichen
+   verstehen. */
+.langs {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px;
+  margin-top: 8px; font-size: 14.5px;
+}
+.langs-label { color: var(--muted); }
+.langs ul {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 0 16px;
+}
+.langs a {
+  color: var(--muted); text-decoration: none;
+  display: inline-flex; align-items: center; min-height: 44px;
+}
+.langs a:hover { color: var(--text); text-decoration: underline; }
+/* Die aktuelle Sprache bleibt ein Link (sie ist ja erreichbar), wird
+   aber hervorgehoben - aria-current allein saehe niemand. */
+.langs a[aria-current="true"] { color: var(--text); font-weight: 600; }
+.legal-note { margin-top: 4px; font-size: 13.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#inhalt">{{skip}}</a>
+
+<header>
+  <div class="wrap bar">
+    <a class="logo" href="/{{lang}}/" aria-label="{{logoAria}}">
+      <!-- Das Zeichen der App, unveraendert aus public/icon.svg. Es
+           bringt seinen eigenen Grund mit und sitzt deshalb in hell wie
+           dunkel richtig. aria-hidden, weil direkt daneben "Booxnet"
+           steht - sonst laese ein Screenreader den Namen doppelt. -->
+      <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <rect width="48" height="48" rx="12" fill="#0B63D6"/>
+        <rect x="13" y="7" width="6.2" height="34" rx="3.1" fill="#fff"/>
+        <circle cx="27.5" cy="29.5" r="11.8" fill="#fff"/>
+        <path d="M20.5 26 C23 24.3, 25.7 24.3, 27.5 26 C29.3 24.3, 32 24.3, 34.5 26 L34.5 33 C32 31.4, 29.3 31.4, 27.5 33 C25.7 31.4, 23 31.4, 20.5 33 Z" fill="#0B63D6"/>
+      </svg>
+      Booxnet
+    </a>
+    <nav aria-label="{{nav.label}}">
+      <a href="#funktionen" class="hide-s">{{nav.features}}</a>
+      <a href="#so-gehts" class="hide-s">{{nav.how}}</a>
+      <a href="#fragen" class="hide-s">{{nav.faq}}</a>
+      <a class="btn small" href="__APP_URL__">{{nav.openApp}}</a>
+    </nav>
+  </div>
+</header>
+
+<main id="inhalt">
+
+<section class="hero">
+  <div class="wrap">
+    <h1>{{hero.line1}}<br><em>{{hero.accent}}</em>.</h1>
+    <p class="lead">
+      {{hero.lead}}
+    </p>
+    <div class="cta-row">
+      <a class="btn" href="__APP_URL__">{{hero.cta}}</a>
+      <a class="btn ghost" href="#so-gehts">{{hero.cta2}}</a>
+    </div>
+    <p class="note">{{hero.note}}</p>
+
+    <div class="preview" aria-hidden="true">
+      <div class="top"><span class="dot"></span> {{preview.chapter}}</div>
+      <div class="page">
+        <p>{{preview.p1}}</p>
+        <p><span class="now">{{preview.p2}}</span></p>
+        <p>{{preview.p3}}</p>
+      </div>
+      <div class="controls">
+        <svg class="skip" viewBox="0 0 24 24"><path d="M19 5v14l-11-7 11-7zM6 5h2v14H6z"/></svg>
+        <span class="play">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </span>
+        <svg class="skip" viewBox="0 0 24 24"><path d="M5 5v14l11-7L5 5zm11 0h2v14h-2z"/></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="soft" id="funktionen">
+  <div class="wrap">
+    <h2>{{features.h2}}</h2>
+    <p class="sub">
+      {{features.sub}}
+    </p>
+    <div class="grid">
+
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
+        <h3>{{features.items.0.h}}</h3>
+        <p>{{features.items.0.p}}</p>
+      </div>
+
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+        <h3>{{features.items.1.h}}</h3>
+        <p>{{features.items.1.p}}</p>
+      </div>
+
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21a9 9 0 1 0-9-9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></div>
+        <h3>{{features.items.2.h}}</h3>
+        <p>{{features.items.2.p}}</p>
+      </div>
+
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 4 6v6c0 4.5 3.2 8.4 8 9 4.8-.6 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h3>{{features.items.3.h}}</h3>
+        <p>{{features.items.3.p}}</p>
+      </div>
+
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12a7 7 0 0 1 14 0"/><path d="M2 12h1m18 0h1M6 19h12M9 16h6"/></svg></div>
+        <h3>{{features.items.4.h}}</h3>
+        <p>{{features.items.4.p}}</p>
+      </div>
+
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h10M4 12h16M4 18h7"/><path d="M17 15v6m3-3h-6"/></svg></div>
+        <h3>{{features.items.5.h}}</h3>
+        <p>{{features.items.5.p}}</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="so-gehts">
+  <div class="wrap">
+    <h2>{{steps.h2}}</h2>
+    <p class="sub">{{steps.sub}}</p>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <h3>{{steps.items.0.h}}</h3>
+        <p>{{steps.items.0.p}}</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <h3>{{steps.items.1.h}}</h3>
+        <p>{{steps.items.1.p}}</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <h3>{{steps.items.2.h}}</h3>
+        <p>{{steps.items.2.p}}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="soft" id="szenen">
+  <div class="wrap">
+    <h2>{{scenes.h2}}</h2>
+    <p class="sub">{{scenes.sub}}</p>
+    <div class="scenes">
+      <figure>
+        <img src="/{{scenes.items.0.img}}" alt="{{scenes.items.0.alt}}"
+             width="480" height="360" loading="lazy" decoding="async">
+        <figcaption>
+          <h3>{{scenes.items.0.h}}</h3>
+          <p>{{scenes.items.0.p}}</p>
+        </figcaption>
+      </figure>
+      <figure>
+        <img src="/{{scenes.items.1.img}}" alt="{{scenes.items.1.alt}}"
+             width="480" height="360" loading="lazy" decoding="async">
+        <figcaption>
+          <h3>{{scenes.items.1.h}}</h3>
+          <p>{{scenes.items.1.p}}</p>
+        </figcaption>
+      </figure>
+      <figure>
+        <img src="/{{scenes.items.2.img}}" alt="{{scenes.items.2.alt}}"
+             width="480" height="360" loading="lazy" decoding="async">
+        <figcaption>
+          <h3>{{scenes.items.2.h}}</h3>
+          <p>{{scenes.items.2.p}}</p>
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap claim">
+    <h2>{{privacy.h2}}</h2>
+    <p>{{privacy.p}}</p>
+    <div class="pill-row">
+      <span class="pill">{{privacy.pills.0}}</span>
+      <span class="pill">{{privacy.pills.1}}</span>
+      <span class="pill">{{privacy.pills.2}}</span>
+      <span class="pill">{{privacy.pills.3}}</span>
+      <span class="pill">{{privacy.pills.4}}</span>
+    </div>
+  </div>
+</section>
+
+<section id="fragen">
+  <div class="wrap">
+    <h2>{{faq.h2}}</h2>
+    <div class="faq">
+
+      <details open>
+        <summary>{{faq.items.0.q}}</summary>
+        <p>{{faq.items.0.a}}</p>
+      </details>
+
+      <details>
+        <summary>{{faq.items.1.q}}</summary>
+        <p>{{faq.items.1.a}}</p>
+      </details>
+
+      <details>
+        <summary>{{faq.items.2.q}}</summary>
+        <p>{{faq.items.2.a}}</p>
+      </details>
+
+      <details>
+        <summary>{{faq.items.3.q}}</summary>
+        <p>{{faq.items.3.a}}</p>
+      </details>
+
+      <details>
+        <summary>{{faq.items.4.q}}</summary>
+        <p>{{faq.items.4.a}}</p>
+      </details>
+
+      <details>
+        <summary>{{faq.items.5.q}}</summary>
+        <p>{{faq.items.5.a}}</p>
+      </details>
+
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>{{final.h2}}</h2>
+    <p>{{final.p}}</p>
+    <a class="btn" href="__APP_URL__">{{final.cta}}</a>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span>© <span id="jahr">2026</span> Booxnet</span>
+    <nav aria-label="{{footer.label}}">
+      <a href="/impressum.html">{{footer.imprint}}</a>
+      <a href="/datenschutz.html">{{footer.privacy}}</a>
+      <a href="__APP_URL__">{{footer.openApp}}</a>
+    </nav>
+  </div>
+  <!-- Sprachwahl als Liste echter Links, nicht als Auswahlfeld: So
+       funktioniert sie ohne Skript, laesst sich in einem neuen Tab
+       oeffnen und jede Sprache hat eine eigene Adresse, die Suchmaschinen
+       und Lesezeichen verstehen. -->
+  <div class="wrap langs">
+    <span class="langs-label">{{footer.langLabel}}</span>
+    <ul>{{languages}}</ul>
+  </div>
+  <div class="wrap legal-note">{{footer.legalNote}}</div>
+</footer>
+
+<script>
+  // Einzige Zeile Skript auf der Seite: Das Jahr soll nicht veralten.
+  document.getElementById('jahr').textContent = new Date().getFullYear()
+</script>
+
+</body>
+</html>
